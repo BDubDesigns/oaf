@@ -22,6 +22,7 @@ See:
 
 - [`docs/doctrine.md`](docs/doctrine.md) — the beliefs OAF is built on.
 - [`docs/non-goals.md`](docs/non-goals.md) — what OAF explicitly will not do (for now).
+- [`docs/stack.md`](docs/stack.md) — the one blessed app stack for Alpha 0.
 - [`docs/decisions/0001-product-shape.md`](docs/decisions/0001-product-shape.md) — the first recorded decision.
 
 ## Status
