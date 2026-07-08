@@ -57,8 +57,10 @@ The concrete list (framework, language, ORM, etc.) lives in
 - Postgres image version pinned.
 - Future stack updates go through an explicit OAF stack upgrade path.
 
-Exact version numbers are intentionally deferred to the dependency /
-package policy issue (#6) unless a concrete example is required here.
+Exact version numbers are intentionally deferred to the stack snapshot /
+version-pinning policy issue (#14) unless a concrete example is required
+here. The package allowlist format and dependency-addition/update rules
+remain scoped to #6.
 
 ## Consequences
 
@@ -71,11 +73,11 @@ package policy issue (#6) unless a concrete example is required here.
 
 ## Confirmed deferred to later issues
 
-- Exact dependency versions → #6 (package allowlist / dependency policy).
+- Exact dependency versions and OAF Stack 0.1 snapshot policy → #14.
 - Exact canonical folder structure → #4.
 - Exact Better Auth scaffolding details → a later design/implementation
   issue.
-- Exact package allowlist format → #6.
+- Exact package allowlist format and dependency-addition/update rules → #6.
 - Exact docs pack format → #7.
 - Exact generated app implementation → #8.
 - Exact sandbox implementation → #9.

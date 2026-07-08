@@ -77,13 +77,17 @@ For every generated app:
 - Future stack changes happen through an explicit OAF stack upgrade path,
   not ad-hoc drift.
 
-Exact versions are intentionally left to the dependency / package policy
-issue (#6) unless a specific example is needed here.
+Exact versions and the OAF Stack 0.1 snapshot policy are intentionally
+left to issue #14. The package allowlist format and
+dependency-addition/update policy remain scoped to #6 unless a specific
+example is needed here.
 
 ## What this document does NOT do
 
 This document defines the stack. It does **not** implement it, pin exact
-versions, or dictate folder layout. Those are scoped to later issues.
+versions, or dictate folder layout. Exact stack snapshot versions and the
+version-pinning policy are scoped to #14; the package allowlist and
+dependency-addition policy are scoped to #6. Folder layout is scoped to #4.
 
 See also:
 
