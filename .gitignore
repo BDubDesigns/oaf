@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Local editor / OS files
+.DS_Store
+Thumbs.db
+.directory
+
+# IDEs
+.vscode/
+.idea/
+
+# Test output
+playwright-report/
+test-results/
+
+# OAF local runtime artifacts
+# Ignore .oaf/ (local runtime/cache), but NOT oaf/ (generated OAF apps may
+# commit project docs, receipts, and docs-pack manifests there).
+.oaf/
