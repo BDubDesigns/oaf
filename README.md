@@ -36,14 +36,22 @@ See:
 
 ## Status
 
-Alpha 0. Documentation and product definition are in place (see `docs/`).
-Minimal implementation has begun: `oaf init` can scaffold a canonical app
-skeleton (issue #8). There is no full Next.js app, sandbox runner, or
-package install yet.
+Alpha 0. Documentation and product definition are locked (see `docs/`, ADRs
+`0001`–`0009`), including the Pi-integration decision (ADR 0009: build a tiny
+OAF-owned agent loop; do not wrap or fork Pi). Working primitives exist:
+
+- `oaf init` scaffolds a canonical app skeleton.
+- `oaf doctor` validates a generated app.
+- `oaf sandbox run` enforces the command policy in a locked-down container.
+
+There is **no agent loop yet** — that is the Alpha 1 milestone
+(`docs/planning/alpha-1-plan.md`). The generated app is a skeleton, not a
+running Next.js app, and there is no package install or provider integration
+yet.
 
 ## Usage (Alpha 0, local dev)
 
-OAF is in early implementation. To try the minimal factory primitive:
+OAF is in early implementation. To try the minimal factory primitives:
 
     node bin/oaf.mjs init chores-app
     cd chores-app
@@ -53,15 +61,21 @@ Or, from outside the app, point the CLI at it:
 
     node ../bin/oaf.mjs doctor
 
+Run a sandbox-checked command (see `docs/sandbox.md` for policy):
+
+    node bin/oaf.mjs sandbox run "pnpm test"
+    node bin/oaf.mjs sandbox status
+
 Once the `oaf` bin is installed / packaged, the commands shorten to:
 
     oaf init chores-app
-    cd chores-app
     oaf doctor
+    oaf sandbox run "pnpm test"
 
-Run the repo smoke test with:
+Run the repo smoke tests with:
 
     node tests/oaf-init.test.mjs
+    node tests/sandbox.test.mjs
 
 ## License
 
