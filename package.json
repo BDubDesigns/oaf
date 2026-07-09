@@ -1,0 +1,17 @@
+{
+  "name": "oaf",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "oaf": "bin/oaf.mjs"
+  },
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node tests/oaf-init.test.mjs",
+    "doctor": "node bin/oaf.mjs doctor"
+  }
+}
