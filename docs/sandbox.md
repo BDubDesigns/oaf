@@ -135,6 +135,28 @@ Every command execution should eventually record:
 
 These logs feed OAF's receipts (issue #10) and make agent work auditable.
 
+## CLI command
+
+OAF provides a minimal runner (issue #9):
+
+```text
+oaf sandbox run "pnpm test"
+oaf sandbox run "pnpm typecheck"
+oaf sandbox run --network "pnpm install"
+oaf sandbox status
+```
+
+- `oaf sandbox run <command>` enforces this policy **before** execution:
+  denied commands are rejected; confirmation-required commands need
+  `--confirm`; network-required commands need `--network`.
+- When a container runtime (Docker or Podman) is available, the command runs
+  inside a locked-down container: only the project directory is mounted,
+  network is off by default, and the Docker socket / user home are never
+  mounted.
+- `oaf sandbox status` reports whether a container runtime is available.
+- Receipt emission, agent integration, and package-allowlist config are
+  intentionally out of scope for this first slice (see issues #10, #6).
+
 ## Relationship to other issues
 
 - **#3** defines the blessed stack.
