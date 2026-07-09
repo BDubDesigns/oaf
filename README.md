@@ -32,7 +32,32 @@ See:
 
 ## Status
 
-Pre-implementation. Documentation and product definition only. No code yet.
+Alpha 0. Documentation and product definition are in place (see `docs/`).
+Minimal implementation has begun: `oaf init` can scaffold a canonical app
+skeleton (issue #8). There is no full Next.js app, sandbox runner, or
+package install yet.
+
+## Usage (Alpha 0, local dev)
+
+OAF is in early implementation. To try the minimal factory primitive:
+
+    node bin/oaf.mjs init chores-app
+    cd chores-app
+    node oaf/doctor.mjs
+
+Or, from outside the app, point the CLI at it:
+
+    node ../bin/oaf.mjs doctor
+
+Once the `oaf` bin is installed / packaged, the commands shorten to:
+
+    oaf init chores-app
+    cd chores-app
+    oaf doctor
+
+Run the repo smoke test with:
+
+    node tests/oaf-init.test.mjs
 
 ## License
 
