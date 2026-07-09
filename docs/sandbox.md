@@ -150,5 +150,6 @@ These logs feed OAF's receipts (issue #10) and make agent work auditable.
 See also:
 
 - `docs/safety.md`
+- `docs/receipts.md` — how command logs feed structured receipts.
 - `docs/decisions/0005-sandbox-command-policy.md`
 - `docs/doctrine.md`
