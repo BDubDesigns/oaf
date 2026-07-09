@@ -171,4 +171,5 @@ See also:
 
 - `docs/stack.md`
 - `docs/stack-snapshots.md`
+- `docs/receipts.md` — receipts live in `oaf/receipts/`.
 - `docs/decisions/0004-canonical-app-structure.md`

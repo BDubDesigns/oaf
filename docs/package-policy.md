@@ -137,3 +137,7 @@ for unrelated major versions (issue #7).
   structure · **#5** sandbox policy · **#6** (this) allowlist/dependency
   policy · **#7** docs pack · **#8** `oaf init` · **#9** sandbox
   runner · **#10** receipt format.
+
+See also:
+
+- `docs/receipts.md` — package/install changes are recorded in receipts.
