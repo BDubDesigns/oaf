@@ -15,10 +15,12 @@ Instead, OAF *produces* codebases with a small, strict surface area. The
 agent that builds an OAF app and the agent that maintains it later are
 working in a shape they can rely on. Predictability is the product.
 
-## 2. OAF is an all-in-one app factory, not a plugin
+## 2. OAF is an all-in-one app factory, not a plugin or generic platform
 
 OAF is a standalone, lightweight coding agent and app factory. It is not
-an OpenCode/Codex plugin, and it is not a thin layer over someone else's
+an OpenCode/Codex plugin, and it is not a generic agent platform. OAF is a
+purpose-built factory for one blessed stack and one canonical structure, not
+a general-purpose agent harness. It is not a thin layer over someone else's
 agent loop. The factory owns the conventions, the boundaries, and the
 guardrails end to end.
 
@@ -71,8 +73,24 @@ For meaningful work, OAF produces a receipt: what changed, why, what it
 cost, and what was verified. Receipts make agent work auditable and keep
 humans in the loop without micromanaging.
 
+## 9. OAF is greenfield-first for Alpha 0
+
+OAF creates new apps from scratch using OAF's own conventions. In Alpha 0
+it does not operate on arbitrary existing repositories. Starting greenfield
+is what makes the strict, predictable surface possible in the first place.
+
 ## Summary
 
 OAF trades flexibility for legibility. It gives up "understand any repo"
 to gain "never be surprised by this repo." Everything else follows from
 that trade.
+
+## See also
+
+- `docs/stack.md` — the one blessed Alpha 0 stack.
+- `docs/app-structure.md` — canonical generated app structure.
+- `docs/sandbox.md` — command execution and sandbox policy.
+- `docs/package-policy.md` — dependency allowlist and addition policy.
+- `docs/docs-pack.md` — local docs pack for internet-off work.
+- `docs/receipts.md` — build receipt format.
+- `docs/decisions/0001-product-shape.md` — the foundational product-shape decision.
