@@ -82,16 +82,31 @@ See the draft schema below. At minimum, a receipt should capture:
 - identity (`schemaVersion`, `id`, `createdAt`, `oafVersion`),
 - the app/project and task it belongs to,
 - the stack / docs-pack it was built against,
-- model/provider usage,
+- model/provider usage, including **free / paid / local** run mode,
+- the **refined prompt** actually used (if the original request was
+  rewritten or clarified before execution),
+- a **plan summary** of what the agent intended to do,
+- **ambiguity questions and answers** raised during the work (if any),
 - files created/touched,
 - commands run (mirroring sandbox command logs),
 - checks/tests executed and their results,
+- **migrations** applied or generated (if any),
+- **visual review notes** from browser-review mode (if any),
 - warnings and assumptions,
 - package/install changes,
 - screenshots/references (by hash/path, not raw blobs),
 - cost (estimate and/or actual if known),
 - human review status,
 - final outcome and next steps.
+
+### Prompt and output context
+
+Raw prompts and model outputs may be **summarized or redacted** depending on
+sensitivity (see the secret redaction policy below). However, a receipt must
+still record enough context to explain **what the agent was asked to do**:
+the original request, the refined prompt if one was used, the plan summary,
+and any ambiguity questions/answers. The goal is reproducibility of intent,
+not a full transcript dump.
 
 ## Secret redaction policy
 
@@ -170,10 +185,26 @@ renderer.
   "usage": {
     "model": "example-model",
     "provider": "example-provider",
+    "runMode": "free",
     "calls": 14,
     "tokensIn": 18200,
     "tokensOut": 6400
   },
+  "refinedPrompt": {
+    "used": true,
+    "summary": "Original request clarified: scaffold the recurring-chores feature with list/create/complete UI only.",
+    "note": "Original request was rewritten before execution; full transcript redacted per sensitivity."
+  },
+  "plan": {
+    "summary": "Create ChoreList UI, wire create/complete server actions, add Zod schemas, run tests."
+  },
+  "ambiguity": [
+    {
+      "question": "Should chores support recurrence (daily/weekly)?",
+      "answer": "Defer recurrence to a later iteration; build single-shot chores now.",
+      "askedAt": "2026-07-09T04:12:10Z"
+    }
+  ],
   "files": {
     "created": ["features/chores/components/ChoreList.tsx"],
     "touched": ["features/chores/index.ts"],
@@ -192,6 +223,22 @@ renderer.
   ],
   "checks": [
     { "name": "unit", "type": "test", "status": "pass", "detail": "12 passed" }
+  ],
+  "migrations": [
+    {
+      "name": "0001_create_chores",
+      "status": "generated",
+      "applied": false,
+      "note": "Migration generated but not applied in this receipt; requires human approval."
+    }
+  ],
+  "visualReview": [
+    {
+      "mode": "browser-review",
+      "summary": "Home route renders ChoreList; create modal opens and closes.",
+      "screenshotRef": "oaf/receipts/.../home.png",
+      "containsSensitive": false
+    }
   ],
   "warnings": [
     "Schema change not yet paired with a migration in this receipt."
