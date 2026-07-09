@@ -25,6 +25,8 @@ See:
 - [`docs/stack.md`](docs/stack.md) — the one blessed app stack for Alpha 0.
 - [`docs/sandbox.md`](docs/sandbox.md) — sandbox and command execution policy.
 - [`docs/safety.md`](docs/safety.md) — OAF's safety posture.
+- [`docs/dependencies.md`](docs/dependencies.md) — dependency control policy.
+- [`docs/package-policy.md`](docs/package-policy.md) — package allowlist and addition policy.
 - [`docs/decisions/0001-product-shape.md`](docs/decisions/0001-product-shape.md) — the first recorded decision.
 
 ## Status
