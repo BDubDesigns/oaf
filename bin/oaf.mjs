@@ -70,7 +70,7 @@ function doctor() {
   console.log("\nDoctor: this is a valid OAF Alpha 0 app skeleton.");
 }
 
-function runSandboxCli(args) {
+async function runSandboxCli(args) {
   const [sub, ...rest] = args;
   if (sub === "status") {
     sandboxStatus();
@@ -87,7 +87,7 @@ function runSandboxCli(args) {
     }
     const command = cmdParts.join(" ");
     if (!command) fail("Error: sandbox run requires a command.\n\n  oaf sandbox run <command>");
-    const code = runSandbox({ command, network, confirm });
+    const code = await runSandbox({ command, network, confirm });
     process.exit(typeof code === "number" ? code : 1);
   }
   console.error(`Unknown sandbox command: ${sub ?? "(none)"}\n`);

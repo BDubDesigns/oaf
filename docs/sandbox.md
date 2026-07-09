@@ -68,13 +68,21 @@ These run without confirmation in the appropriate mode:
 - `pnpm lint`
 - `pnpm typecheck`
 - `pnpm build`
-- `pnpm dev` **only** in a browser-review / test context — not as a
-  background-forever process.
+
+Allowlisted commands are matched **exactly** (no shell chaining). A command
+like `pnpm test; pnpm install` or `pnpm test && echo hi` is **not**
+allowlisted; the appended part requires its own policy check. `pnpm dev` is
+**not** allowlisted by default — see below.
 
 ## Require confirmation
 
-These are allowed only after explicit user approval:
+These are allowed only after explicit user approval, passed as the
+`--confirm` flag to `oaf sandbox run`. **Without `--confirm`, confirmation-
+required commands fail closed.** Blocked commands stay blocked even with
+`--confirm` (it is approval, not a bypass).
 
+- `pnpm dev` (run a dev server — only appropriate in a browser-review /
+  test context, and only with explicit `--confirm`)
 - `pnpm install`
 - `pnpm add <approved-package>@<pinned-version>`
 - `pnpm remove`

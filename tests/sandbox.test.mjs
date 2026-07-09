@@ -42,6 +42,21 @@ assert(add.level === "confirm" && add.network, "pnpm add requires confirm + netw
 // 4. Unknown command requires confirmation (not silently allowed)
 assert(classifyCommand("ls").level === "confirm", "unknown command requires confirmation");
 
+// 4b. Shell chaining must not bypass the allowlist (exact match only)
+assert(
+  classifyCommand("pnpm test; pnpm install").level !== "allow",
+  "pnpm test; pnpm install is not allowlisted",
+);
+assert(
+  classifyCommand("pnpm test && echo hi").level !== "allow",
+  "pnpm test && echo hi is not allowlisted",
+);
+// pnpm dev is confirmation-required, not allowlisted
+assert(
+  classifyCommand("pnpm dev").level === "confirm",
+  "pnpm dev is confirmation-required, not allowed",
+);
+
 // 5. Container argv shape (no Docker needed to assert this)
 const argv = buildContainerRun("docker", {
   command: "pnpm test",
@@ -102,6 +117,28 @@ if (!detectRuntime()) {
   assert(
     runCode !== 0 || /\[sandbox\] (command|mode)/.test(runOut),
     "sandbox attempted sandboxed execution (or exited non-zero)",
+  );
+}
+
+// 8b. CLI awaits the async sandbox run path (enters execution before exit).
+if (detectRuntime()) {
+  let out = "";
+  let code = 0;
+  try {
+    out = execFileSync("node", [binPath, "sandbox", "run", "pnpm test"], {
+      stdio: "pipe",
+    }).toString();
+  } catch (e) {
+    out = (e.stdout || "").toString() + (e.stderr || "").toString();
+    code = e.status ?? 1;
+  }
+  assert(
+    /\[sandbox\] command:/.test(out),
+    "CLI entered async execution path for an allowed command",
+  );
+  assert(
+    code !== 0 || /\[sandbox\] exit:/.test(out),
+    "CLI awaited sandbox run and exited with the child code",
   );
 }
 
