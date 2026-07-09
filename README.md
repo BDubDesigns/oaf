@@ -1,6 +1,10 @@
 # OAF — Opinionated App Factory
 
-OAF is an all-in-one, lightweight coding agent and app factory.
+OAF (Opinionated App Factory) is a convention-locked app factory and
+coding-agent environment. It makes a small number of strong choices up front
+— one blessed stack, one canonical app structure, and strict safety
+guardrails — so the apps it creates are predictable and easy for coding
+agents to understand.
 
 The core thesis is simple:
 

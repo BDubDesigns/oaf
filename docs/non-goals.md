@@ -19,9 +19,19 @@ later through decision records; until then, they are out of scope.
 - **Reselling LLMs or hosting.**
   OAF is not an LLM provider and does not bill for model usage.
 
-- **Full automatic deployment.**
-  OAF may prepare an app to run, but it does not own your production
-  deployment pipeline.
+- **Full automatic deployment (incl. Coolify).**
+  OAF generates Docker/Coolify-ready apps, but it does not perform automatic
+  Coolify (or any other) deployment in Alpha 0. It does not own your
+  production deployment pipeline.
+
+- **Arbitrary package installation.**
+  Dependencies are a controlled, allowlisted surface. Agents cannot install
+  random packages; additions require policy approval and pinned versions
+  (see `docs/package-policy.md`).
+
+- **Unrestricted shell access.**
+  Agents never receive raw, unrestricted shell access. Every command runs
+  through the OAF-controlled sandbox (see `docs/sandbox.md`).
 
 - **Arbitrary MCP integration.**
   OAF controls its tool surface. Open-ended MCP plugin ecosystems are not
@@ -42,3 +52,13 @@ later through decision records; until then, they are out of scope.
 Every item above is a place where a coding tool can quietly become a
 different, much larger product. OAF's strength is saying no early, so the
 yeses stay cheap and predictable.
+
+## See also
+
+- `docs/doctrine.md` — the beliefs OAF is built on.
+- `docs/stack.md` — the one blessed Alpha 0 stack.
+- `docs/app-structure.md` — canonical generated app structure.
+- `docs/sandbox.md` — command execution and sandbox policy.
+- `docs/package-policy.md` — dependency allowlist and addition policy.
+- `docs/docs-pack.md` — local docs pack for internet-off work.
+- `docs/receipts.md` — build receipt format.
