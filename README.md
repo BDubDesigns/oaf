@@ -27,6 +27,7 @@ See:
 - [`docs/safety.md`](docs/safety.md) — OAF's safety posture.
 - [`docs/dependencies.md`](docs/dependencies.md) — dependency control policy.
 - [`docs/package-policy.md`](docs/package-policy.md) — package allowlist and addition policy.
+- [`docs/docs-pack.md`](docs/docs-pack.md) — local docs pack system for internet-off work.
 - [`docs/decisions/0001-product-shape.md`](docs/decisions/0001-product-shape.md) — the first recorded decision.
 
 ## Status
