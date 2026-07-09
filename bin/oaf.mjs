@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, writeFileSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, isAbsolute } from "node:path";
 import { getAppTemplates } from "../lib/templates.mjs";
 import { checkApp } from "../lib/doctor.mjs";
+import { runSandbox, sandboxStatus } from "../lib/sandbox.mjs";
 
 const USAGE = `OAF — Opinionated App Factory (Alpha 0)
 
@@ -69,6 +70,31 @@ function doctor() {
   console.log("\nDoctor: this is a valid OAF Alpha 0 app skeleton.");
 }
 
+async function runSandboxCli(args) {
+  const [sub, ...rest] = args;
+  if (sub === "status") {
+    sandboxStatus();
+    return;
+  }
+  if (sub === "run") {
+    let network = false;
+    let confirm = false;
+    const cmdParts = [];
+    for (const a of rest) {
+      if (a === "--network") network = true;
+      else if (a === "--confirm") confirm = true;
+      else cmdParts.push(a);
+    }
+    const command = cmdParts.join(" ");
+    if (!command) fail("Error: sandbox run requires a command.\n\n  oaf sandbox run <command>");
+    const code = await runSandbox({ command, network, confirm });
+    process.exit(typeof code === "number" ? code : 1);
+  }
+  console.error(`Unknown sandbox command: ${sub ?? "(none)"}\n`);
+  console.log("Usage:\n  oaf sandbox run <command>\n  oaf sandbox status");
+  process.exit(1);
+}
+
 const [cmd, arg] = process.argv.slice(2);
 switch (cmd) {
   case "init":
@@ -76,6 +102,9 @@ switch (cmd) {
     break;
   case "doctor":
     doctor();
+    break;
+  case "sandbox":
+    runSandboxCli(process.argv.slice(3));
     break;
   case "--help":
   case "-h":

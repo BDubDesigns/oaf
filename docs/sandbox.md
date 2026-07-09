@@ -68,13 +68,21 @@ These run without confirmation in the appropriate mode:
 - `pnpm lint`
 - `pnpm typecheck`
 - `pnpm build`
-- `pnpm dev` **only** in a browser-review / test context — not as a
-  background-forever process.
+
+Allowlisted commands are matched **exactly** (no shell chaining). A command
+like `pnpm test; pnpm install` or `pnpm test && echo hi` is **not**
+allowlisted; the appended part requires its own policy check. `pnpm dev` is
+**not** allowlisted by default — see below.
 
 ## Require confirmation
 
-These are allowed only after explicit user approval:
+These are allowed only after explicit user approval, passed as the
+`--confirm` flag to `oaf sandbox run`. **Without `--confirm`, confirmation-
+required commands fail closed.** Blocked commands stay blocked even with
+`--confirm` (it is approval, not a bypass).
 
+- `pnpm dev` (run a dev server — only appropriate in a browser-review /
+  test context, and only with explicit `--confirm`)
 - `pnpm install`
 - `pnpm add <approved-package>@<pinned-version>`
 - `pnpm remove`
@@ -134,6 +142,28 @@ Every command execution should eventually record:
 - responsible agent / model, if known
 
 These logs feed OAF's receipts (issue #10) and make agent work auditable.
+
+## CLI command
+
+OAF provides a minimal runner (issue #9):
+
+```text
+oaf sandbox run "pnpm test"
+oaf sandbox run "pnpm typecheck"
+oaf sandbox run --network "pnpm install"
+oaf sandbox status
+```
+
+- `oaf sandbox run <command>` enforces this policy **before** execution:
+  denied commands are rejected; confirmation-required commands need
+  `--confirm`; network-required commands need `--network`.
+- When a container runtime (Docker or Podman) is available, the command runs
+  inside a locked-down container: only the project directory is mounted,
+  network is off by default, and the Docker socket / user home are never
+  mounted.
+- `oaf sandbox status` reports whether a container runtime is available.
+- Receipt emission, agent integration, and package-allowlist config are
+  intentionally out of scope for this first slice (see issues #10, #6).
 
 ## Relationship to other issues
 

@@ -11,7 +11,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node tests/oaf-init.test.mjs",
+    "test": "node tests/oaf-init.test.mjs && node tests/sandbox.test.mjs",
     "doctor": "node bin/oaf.mjs doctor"
   }
 }
