@@ -91,6 +91,7 @@ dependency-addition policy are scoped to #6. Folder layout is scoped to #4.
 
 See also:
 
+- `docs/stack-snapshots.md` — exact version selection and OAF Stack 0.1 snapshot policy.
 - `docs/doctrine.md`
 - `docs/non-goals.md`
 - `docs/decisions/0002-blessed-stack-v0.md`
