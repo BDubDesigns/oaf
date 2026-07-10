@@ -118,7 +118,10 @@ the sandbox's project-only mount boundary for in-process file tools.
 - **Atomicity:** write UTF-8 contents to a temporary sibling in the verified
   parent, then rename it over the destination. This prevents a partially
   written destination on normal write failures; temporary files are removed on
-  failure.
+  failure. When replacing an existing regular file, OAF applies its captured
+  permission mode to the temporary file before rename, preserving executable
+  bits and other mode bits. New files keep Node's normal creation mode after
+  the process umask is applied.
 - **Non-goals:** partial edits, patch/diff application, append-only modes.
 
 ### `command`

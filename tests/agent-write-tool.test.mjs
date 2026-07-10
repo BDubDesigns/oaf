@@ -1,12 +1,14 @@
 // Focused test for Alpha 1's workspace-bounded whole-file write tool.
 // Uses only Node built-ins; no third-party dependencies.
 import {
+  chmodSync,
   existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -73,6 +75,17 @@ try {
     !readdirSync(workspace).some((name) => name.includes(".oaf-") && name.endsWith(".tmp")),
     "atomic write leaves no temporary file after success",
   );
+
+  // Atomic replacement must not strip the mode of an existing executable file.
+  if (process.platform === "win32") {
+    console.log("SKIP  executable permission preservation is not portable on Windows");
+  } else {
+    const executable = join(workspace, "tool.mjs");
+    writeFileSync(executable, "#!/usr/bin/env node\n");
+    chmodSync(executable, 0o755);
+    await executeWrite({ workspaceRoot: workspace, path: "tool.mjs", content: "export {};\n" });
+    assert((statSync(executable).mode & 0o777) === 0o755, "write preserves an existing regular file's permission mode");
+  }
 
   // 3. workspaceRoot and path boundaries fail closed.
   await rejects(
