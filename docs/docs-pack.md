@@ -91,7 +91,8 @@ Generated apps record docs-pack metadata under `oaf/`:
 
 ## Minimal Alpha 1 pack and context loader (#34)
 
-The first checked-in pack is `docs-packs/stack-0.1/`. It is intentionally
+The first checked-in pack is `docs-packs/stack-0.1/`, aligned to the
+authoritative `config/stack/oaf-stack-0.1.json` snapshot. It is intentionally
 small: a manifest and five OAF-owned Markdown documents covering agent
 guidance, stack, app structure, package policy, and sandbox boundaries. It is
 not a complete third-party framework reference pack.
@@ -182,7 +183,9 @@ loader. Every entry has a project-relative `path` and a boolean `required`
 flag. The loader does not recursively discover Markdown files. The current
 minimal pack keeps every listed document required; only workspace `docs/app.md`
 is optional. Future packs may add source/retrieval metadata and more chunks
-through explicit stack/docs-pack work, not casual agent edits.
+through explicit stack/docs-pack work, not casual agent edits. A pack manifest
+`oafStack` must match the authoritative snapshot ID selected by generated-app
+metadata.
 
 ## Agent lookup behavior
 

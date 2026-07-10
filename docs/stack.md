@@ -77,21 +77,25 @@ For every generated app:
 - Future stack changes happen through an explicit OAF stack upgrade path,
   not ad-hoc drift.
 
-Exact versions and the OAF Stack 0.1 snapshot policy are intentionally
-left to issue #14. The package allowlist format and
-dependency-addition/update policy remain scoped to #6 unless a specific
+Exact versions are locked in the authoritative
+`config/stack/oaf-stack-0.1.json` snapshot. Selection policy and human
+rationale live in `docs/stack-snapshots.md`; official-source and compatibility
+evidence live in `docs/stack-0.1-verification.md`. The package allowlist format
+and dependency-addition/update policy remain scoped to #6 unless a specific
 example is needed here.
 
 ## What this document does NOT do
 
-This document defines the stack. It does **not** implement it, pin exact
-versions, or dictate folder layout. Exact stack snapshot versions and the
-version-pinning policy are scoped to #14; the package allowlist and
-dependency-addition policy are scoped to #6. Folder layout is scoped to #4.
+This document defines the stack categories. Exact values belong only in the
+machine-readable snapshot; this document does not duplicate them or dictate
+folder layout. The package allowlist and dependency-addition policy are scoped
+to #6. Folder layout is scoped to #4.
 
 See also:
 
-- `docs/stack-snapshots.md` — exact version selection and OAF Stack 0.1 snapshot policy.
+- `config/stack/oaf-stack-0.1.json` — authoritative exact Stack 0.1 values.
+- `docs/stack-snapshots.md` — selection and snapshot policy.
+- `docs/stack-0.1-verification.md` — official-source verification and probe evidence.
 - `docs/app-structure.md` — where generated app files live.
 - `docs/doctrine.md`
 - `docs/non-goals.md`

@@ -1,0 +1,32 @@
+{
+  "id": "0.1.0",
+  "status": "locked",
+  "verifiedAt": "2026-07-10",
+  "docsPack": "stack-0.1",
+  "runtime": {
+    "node": "24.15.0",
+    "pnpm": "11.5.2"
+  },
+  "framework": {
+    "next": "16.2.7",
+    "react": "19.2.7",
+    "reactDom": "19.2.7",
+    "typescript": "6.0.3"
+  },
+  "data": {
+    "postgresImage": "postgres:18.3-bookworm",
+    "drizzleOrm": "0.45.2",
+    "drizzleKit": "0.31.10",
+    "pg": "8.21.0"
+  },
+  "app": {
+    "betterAuth": "1.6.14",
+    "zod": "4.4.3",
+    "tailwindcss": "4.2.4",
+    "tailwindPostcss": "4.2.4"
+  },
+  "testing": {
+    "vitest": "4.1.8",
+    "playwright": "1.60.0"
+  }
+}

@@ -57,18 +57,18 @@ explicit snapshot model.
 The first explicit snapshot is **OAF Stack 0.1** (version `0.1.0`).
 Generated apps record it, e.g. `{ "oafStack": "0.1.0" }`.
 
-The candidate version table (from issue #14 research) is captured in
-`docs/stack-snapshots.md`. It is a **candidate snapshot, not a final
-lock**: final verification of npm / Docker metadata, cross-package
-compatibility, and release age belongs to the implementation / config step.
+The original candidate version table from issue #14 research was captured in
+`docs/stack-snapshots.md`. It is historical only: issue #44 completed final
+official-source verification, release-age review, and a temporary compatibility
+probe. `config/stack/oaf-stack-0.1.json` is now the locked authority; see
+`docs/stack-0.1-verification.md` for evidence.
 
 Key directional calls:
 
 - **Node 24 LTS** (not 22) for the longest practical support runway.
 - **Postgres 18** (not 17) as the current supported major.
-- **Tailwind CSS 4** (not v3) as the styling baseline, unless
-  compatibility research finds a blocker; exact v4 pin must be resolved
-  before generated-app implementation and must not remain `4.x`.
+- **Tailwind CSS 4** (not v3) as the styling baseline; the locked exact
+  Tailwind/PostCSS pair lives in `config/stack/oaf-stack-0.1.json`.
 - **TypeScript 6** initially, with **TypeScript 7** named as a likely
   early stack-upgrade target once mature enough.
 
@@ -83,9 +83,8 @@ Key directional calls:
 
 ## Confirmed deferred to later issues
 
-- **Final compatibility verification and lock of the Stack 0.1 candidate
-  table** → the implementation / `oaf-core` config step (issue #8 scope or
-  its config follow-up). The doc table stays candidate until then.
+- **Future Stack 0.1 upgrades** → explicit successor snapshot work; the
+  candidate-table lock is complete in issue #44.
 - **Package allowlist format and dependency-addition / update rules** → #6.
 - **Docs pack version alignment with pinned dependencies** → #7.
 - **Exact canonical folder layout** → #4.

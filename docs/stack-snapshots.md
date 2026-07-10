@@ -4,9 +4,9 @@ This document defines how OAF chooses exact dependency versions, how it
 records an **OAF stack snapshot**, and how generated apps preserve a
 reproducible dependency graph.
 
-This is policy and documentation for Alpha 0. It does **not** implement
-the stack or generate apps. (See issue #14; implementation lands later in
-#8 / the `oaf-core` config.)
+This is policy and documentation for Alpha 0/1. Exact Stack 0.1 values are
+locked in `config/stack/oaf-stack-0.1.json`; this document explains the policy
+and governance around that machine-readable source of truth.
 
 ## Why snapshots exist
 
@@ -116,68 +116,36 @@ Generated apps record which OAF stack snapshot created them, for example:
 This record lets OAF reason about upgrades and reproducibility later, and lets
 humans see at a glance which snapshot an app is pinned to.
 
-### Candidate version table
+### Locked Stack 0.1 snapshot
 
-> **Candidate snapshot — not a final lock.**
-> These pins are carried over from issue #14's research direction. Before any
-> generated-app implementation treats them as final, OAF must verify current
-> npm / Docker metadata, cross-package compatibility, and release age. The
-> authoritative machine-readable snapshot will live in a future `oaf-core`
-> config (e.g. `packages/oaf-core/src/stack/oaf-stack-0.1.ts`).
+`config/stack/oaf-stack-0.1.json` is the **single authoritative source** for
+every exact Stack 0.1 value: Node, pnpm, framework, data, app, and testing
+pins, plus the aligned docs-pack ID. It is plain deterministic JSON, status
+`locked`, and validated by `lib/stack-snapshot.mjs` and offline tests.
 
-| Concern | Candidate pin | Notes |
-| --- | --- | --- |
-| Node | `24.18.0` | Node 24 LTS for the longest practical support runway. |
-| pnpm | `11.5.2` | Pin package manager. Verify Node 24 compatibility and supply-chain hardening defaults. |
-| Next.js | `16.2.7` | Current stable major; avoid release-day latest. Verify React 19 / Node 24 compatibility. |
-| React | `19.2.7` | Keep React and React DOM matched exactly. |
-| React DOM | `19.2.7` | Must match React exactly. |
-| TypeScript | `6.0.3` | Initial Stack 0.1 candidate. Track TypeScript 7 as likely early upgrade target once mature. |
-| Postgres image | `postgres:18.4-bookworm` | Current supported Postgres major, exact minor image tag, Debian base. |
-| Drizzle ORM | `0.45.2` | Candidate ORM / schema layer pin. |
-| Drizzle Kit | `0.31.10` | Candidate migration / tooling pin; verify with Drizzle ORM version. |
-| Better Auth | `1.6.14` | Candidate auth pin; verify Next 16 / React 19 / Drizzle compatibility. |
-| Zod | `4.4.3` | Candidate validation / schema-boundary pin. |
-| Tailwind CSS | `4.x` (exact TBD) | Use Tailwind 4, not v3. Resolve exact pin after npm compatibility / release-age check. **Must not be left as `4.x` in generated-app implementation.** |
-| `@tailwindcss/postcss` | matching `4.x` (exact TBD) | Likely needed for Next / PostCSS setup in Tailwind 4. Match Tailwind CSS version per Tailwind Labs guidance. |
-| `@tailwindcss/vite` | likely not needed for Next | Include only if the generated app / tooling actually uses Vite; do not add casually. |
-| Vitest | `4.1.8` | Candidate unit / integration test pin. |
-| Playwright | `1.60.0` | Candidate browser / e2e / visual smoke test pin. Avoid release-day browser bundle churn. |
-| pg | `8.21.0` | Candidate Postgres client pin if needed by the stack. |
+Human-facing rationale, official-source provenance, release-age results, peer
+constraints, and temporary package-resolution probe evidence live in
+`docs/stack-0.1-verification.md`. That record is evidence only; it must not be
+used as a second manually synchronized version authority.
 
-### Tailwind 4 decision
-
-OAF uses **Tailwind CSS 4** as the Stack 0.1 styling baseline unless
-compatibility research finds a blocker. Rationale: v4 is the better
-long-term foundation — faster, lighter, modern, and aligned with OAF's goal
-of cheap, repeated agent loops (released January 2025; ground-up rewrite
-with a new high-performance engine, simplified install, automatic content
-detection, CSS-first config).
-
-If Tailwind ships a formal v4 LTS / dist-tag, prefer it. If not, choose a
-mature stable v4 release that satisfies the release-age policy and works
-cleanly with Next.js. The exact pin must be resolved before generated-app
-implementation; it must not silently remain `4.x`.
-
-### TypeScript 7 tracking decision
-
-OAF Stack 0.1 starts on **TypeScript 6** unless TypeScript 7 has aged
-enough and passes compatibility checks by implementation time. TypeScript 7
-remains an explicit **early stack-upgrade target**, because native compiler /
-tooling speed improvements matter for OAF's fast feedback loops.
+The locked snapshot deliberately selects mature, stable versions rather than
+newest available releases. Key calls are Node 24 Active LTS with sufficient
+age, Postgres 18 with an aged exact Bookworm tag, Tailwind 4 with an exact
+matched PostCSS integration pin, and TypeScript 6. TypeScript 7 remains a
+future explicit stack-upgrade candidate after age and compatibility review.
 
 ## Stack snapshot governance
 
-- **Where declared:** the authoritative snapshot will be a versioned config
-  in `oaf-core` (future). This document is the human-readable policy; the
-  config is the source of truth for generation.
+- **Where declared:** `config/stack/oaf-stack-0.1.json` is the authoritative
+  versioned config. This document is human-readable policy; the config drives
+  generation metadata.
 - **How recorded in apps:** generated apps carry an `oafStack` marker
   (example above).
 - **How to upgrade:** snapshot-to-snapshot upgrades go through an explicit
   `oaf update-stack` path, not casual `pnpm update`. An upgrade is a
   deliberate, receipted change.
-- **Docs pack alignment:** how docs pack versions align with pinned
-  dependency versions is deferred to issue #7.
+- **Docs pack alignment:** the snapshot owns the `docsPack` ID; the matching
+  docs-pack manifest records the same `oafStack` ID and tests prevent drift.
 
 ## Relationship to other issues
 
