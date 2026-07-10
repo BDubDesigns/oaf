@@ -162,7 +162,8 @@ The loop aggregates these (plus `agent_start` / `turn_start` / `message_*`
 
 ## What is intentionally not here
 
-- No tool execution bodies (A1-3, A1-4).
+- No `write` tool execution body yet.
+- No sandbox-routed `command` execution body yet.
 - No dynamic tool discovery or registration.
 - No `edit` tool (deferred).
 - No provider/model integration (A1-5).
