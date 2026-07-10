@@ -153,12 +153,14 @@ issue-ready. Numbers are suggested and can be renumbered at creation time.
 - **Non-goals:** receipt viewer, storage backend, human-review workflow.
 
 ### Issue A1-7 — Add sample generated-app fixture for agent-loop tests
-- **Scope:** A committed fixture (generated via `oaf init`, trimmed) under
-  `tests/fixtures/sample-app/` with `oaf/*.json` markers and a minimal
-  `docs-packs/stack-0.1/` stub so the loop has real context to load.
-- **Acceptance:** agent-loop tests run against this fixture; docs-pack marker
-  resolves to the stub pack; no network used.
-- **Non-goals:** full docs-pack content (later), real Next.js app.
+- **Status:** Implemented by #33 as `tests/fixtures/generated-app/`.
+- **Scope:** A committed, curated subset of real `oaf init` output with
+  `oaf/*.json` markers, a copy helper, and deterministic offline doctor/sanity
+  validation. Drift checks compare retained generated files to the current
+  templates.
+- **Acceptance:** future agent-loop tests can copy the fixture into an
+  independent temporary workspace; no network used.
+- **Non-goals:** docs-context loading or docs-pack content, real Next.js app.
 
 ### Issue A1-8 — Alpha 1 status / README updates
 - **Scope:** Update `README.md` Status + add an `oaf agent` usage line once
