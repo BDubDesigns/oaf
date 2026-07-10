@@ -38,17 +38,18 @@ bounded to one project root, so they stay fast and do not need a container.
 zones honor the **same project-root boundary** — `read` may not read `/etc`
 any more than `command` can.
 
-## Read-only execution (issue #29)
+## In-process file execution (issues #29, #36)
 
-`lib/agent/tool-execution.mjs` implements the `read`, `list`, and `grep` tool
-bodies. Each requires an explicit `workspaceRoot` supplied by OAF's future
-loop; it is execution context, not an agent-visible tool argument. The module
-uses Node built-ins only and never executes a shell command.
+`lib/agent/tool-execution.mjs` implements the `read`, `list`, `grep`, and
+`write` tool bodies. Each requires an explicit `workspaceRoot` supplied by
+OAF's future loop; it is execution context, not an agent-visible tool argument.
+The module uses Node built-ins only and never executes a shell command or
+accesses the network.
 
 It rejects absolute paths, `..` traversal, resolved paths outside the real
 workspace root, and requested symlinks that resolve outside that root. During
 recursive `list` and `grep`, nested symlinks are never followed. This mirrors
-the sandbox's project-only mount boundary for in-process reads.
+the sandbox's project-only mount boundary for in-process file tools.
 
 ## Fixed tool set
 
@@ -109,6 +110,18 @@ the sandbox's project-only mount boundary for in-process reads.
 - **Safety:** reject paths outside the project root; no symlink escapes. A
   future hardening option is to route writes through the sandbox too, but Alpha
   1 keeps them as bounded in-process ops.
+- **Execution:** whole-file replacement only. The parent directory must already
+  exist; `write` never creates directory trees. New files are allowed. Existing
+  targets must be regular files and are rejected if they are symlinks,
+  directories, or other non-regular entries. For new files, OAF first resolves
+  and validates the real parent directory before constructing the destination.
+- **Atomicity:** write UTF-8 contents to a temporary sibling in the verified
+  parent, then rename it over the destination. This prevents a partially
+  written destination on normal write failures; temporary files are removed on
+  failure. When replacing an existing regular file, OAF applies its captured
+  permission mode to the temporary file before rename, preserving executable
+  bits and other mode bits. New files keep Node's normal creation mode after
+  the process umask is applied.
 - **Non-goals:** partial edits, patch/diff application, append-only modes.
 
 ### `command`
@@ -162,7 +175,6 @@ The loop aggregates these (plus `agent_start` / `turn_start` / `message_*`
 
 ## What is intentionally not here
 
-- No `write` tool execution body yet.
 - No sandbox-routed `command` execution body yet.
 - No dynamic tool discovery or registration.
 - No `edit` tool (deferred).
@@ -172,7 +184,8 @@ The loop aggregates these (plus `agent_start` / `turn_start` / `message_*`
 ## Relationship to other issues
 
 - #27 — `AgentEvent` model this registry references.
-- A1-3 — implement `read` / `list` / `grep`.
+- #29 — workspace-bounded `read` / `list` / `grep` execution bodies.
+- #36 — workspace-bounded whole-file `write` execution body.
 - A1-4 — implement sandbox-routed `command`.
 - A1-5 — implement the loop with a provider seam.
 - A1-6 — emit a receipt from a run.
