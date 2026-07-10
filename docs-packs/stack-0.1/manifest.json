@@ -1,0 +1,19 @@
+{
+  "docsPack": "stack-0.1",
+  "oafStack": "0.1.0",
+  "documents": [
+    { "path": "oaf/agent-guidance.md", "required": true },
+    { "path": "oaf/stack.md", "required": true },
+    { "path": "oaf/app-structure.md", "required": true },
+    { "path": "oaf/package-policy.md", "required": true },
+    { "path": "oaf/sandbox.md", "required": true }
+  ],
+  "sources": [
+    {
+      "name": "oaf",
+      "version": "0.1.0",
+      "path": "oaf/",
+      "sourceUrl": "https://github.com/BDubDesigns/oaf/tree/main/docs"
+    }
+  ]
+}
