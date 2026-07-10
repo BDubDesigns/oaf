@@ -51,6 +51,12 @@ workspace root, and requested symlinks that resolve outside that root. During
 recursive `list` and `grep`, nested symlinks are never followed. This mirrors
 the sandbox's project-only mount boundary for in-process file tools.
 
+`command` is implemented separately through the shared sandbox seam
+`runSandboxCommand` in `lib/sandbox.mjs` (issue #30). Both `oaf sandbox run`
+and `executeCommand` use that same policy evaluation and container execution
+path. The agent tool contains no process-spawn, shell, or unsandboxed fallback
+path.
+
 ## Fixed tool set
 
 | Tool | Kind | Mutates | Sandbox | Filesystem |
@@ -133,11 +139,22 @@ the sandbox's project-only mount boundary for in-process file tools.
   - `confirm` absent = **fail closed** (confirmation-required commands need
     explicit `--confirm`).
 - **Result:** `{ exitCode, stdout, stderr, truncated }`.
-- **Mutating, sandbox-required.** The loop's `command` body MUST call
-  `oaf sandbox run`; it is **never** a raw `spawn`/shell.
+- **Mutating, sandbox-required.** The loop's `command` body MUST call the
+  shared runner used by `oaf sandbox run`; it is **never** a raw `spawn`/shell.
 - **Emits:** same as `read`.
 - **Safety:** every execution is policy-checked and containerized; only the
   project dir is mounted; Docker socket / home / secrets are off limits.
+- **Execution:** `executeCommand` requires an explicit `workspaceRoot` and
+  passes it as the sandbox working directory. `mode`, if supplied, must be one
+  of `plan`, `edit`, `test`, `browser`, `install`, or `research`; an unknown
+  mode is rejected before sandbox execution. Mode records execution intent;
+  the existing sandbox command classifier remains the enforcement authority.
+  `network` defaults off and `confirm` defaults false, so confirmation-required
+  commands fail closed unless explicitly approved.
+- **Result behavior:** policy and sandbox-start failures throw structured
+  errors. A command that starts returns `exitCode`, `stdout`, `stderr`, and
+  `truncated` even when it exits non-zero; non-zero is never reported as success.
+  Alpha 1 has no output truncation policy yet, so `truncated` is `false`.
 - **Non-goals:** interactive shells, background daemons, arbitrary `npx`/`dlx`.
 
 ## `write` vs `edit` — Alpha 1 decision
@@ -175,7 +192,6 @@ The loop aggregates these (plus `agent_start` / `turn_start` / `message_*`
 
 ## What is intentionally not here
 
-- No sandbox-routed `command` execution body yet.
 - No dynamic tool discovery or registration.
 - No `edit` tool (deferred).
 - No provider/model integration (A1-5).
@@ -186,7 +202,7 @@ The loop aggregates these (plus `agent_start` / `turn_start` / `message_*`
 - #27 — `AgentEvent` model this registry references.
 - #29 — workspace-bounded `read` / `list` / `grep` execution bodies.
 - #36 — workspace-bounded whole-file `write` execution body.
-- A1-4 — implement sandbox-routed `command`.
+- #30 — sandbox-routed `command` execution body.
 - A1-5 — implement the loop with a provider seam.
 - A1-6 — emit a receipt from a run.
 - `docs/sandbox.md` — the policy `command` routes through.
