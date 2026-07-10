@@ -38,6 +38,18 @@ bounded to one project root, so they stay fast and do not need a container.
 zones honor the **same project-root boundary** — `read` may not read `/etc`
 any more than `command` can.
 
+## Read-only execution (issue #29)
+
+`lib/agent/tool-execution.mjs` implements the `read`, `list`, and `grep` tool
+bodies. Each requires an explicit `workspaceRoot` supplied by OAF's future
+loop; it is execution context, not an agent-visible tool argument. The module
+uses Node built-ins only and never executes a shell command.
+
+It rejects absolute paths, `..` traversal, resolved paths outside the real
+workspace root, and requested symlinks that resolve outside that root. During
+recursive `list` and `grep`, nested symlinks are never followed. This mirrors
+the sandbox's project-only mount boundary for in-process reads.
+
 ## Fixed tool set
 
 | Tool | Kind | Mutates | Sandbox | Filesystem |
@@ -57,6 +69,9 @@ any more than `command` can.
 - **Read-only, workspace-bounded**, in-process. No sandbox.
 - **Emits:** `tool_call`, `tool_execution_start`, `tool_execution_end`, `tool_result`.
 - **Safety:** reject paths outside the project root; no symlink escapes.
+- **Execution:** UTF-8 only. Ranges are 1-based and inclusive. Full reads
+  preserve the file contents; ranged reads return the selected lines and set
+  `truncated` only when lines were omitted. Alpha 1 adds no output-size cap.
 - **Non-goals:** editing, writing, executing.
 
 ### `list`
@@ -66,6 +81,9 @@ any more than `command` can.
 - **Read-only, workspace-bounded**, in-process. No sandbox.
 - **Emits:** same as `read`.
 - **Safety:** same workspace boundary.
+- **Execution:** `recursive: true` is supported; recursive entry names are
+  relative to the requested directory. Symlinks are listed as `other` and are
+  never traversed.
 - **Non-goals:** recursive filesystem walking outside the project.
 
 ### `grep`
@@ -75,6 +93,10 @@ any more than `command` can.
 - **Read-only, workspace-bounded**, in-process. No sandbox.
 - **Emits:** same as `read`.
 - **Safety:** same workspace boundary; never reads outside the project.
+- **Execution:** plain substring matching, not regular expressions. It walks
+  regular files recursively from `path` (default project root), skips files
+  containing a NUL byte, and supports a small workspace-relative glob syntax:
+  `*`, `?`, and `**`. Alpha 1 adds no match-count cap.
 - **Non-goals:** replacing/editing matches.
 
 ### `write`
