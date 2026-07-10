@@ -46,6 +46,18 @@ strictEqual(toolCall.toolCallId, "c1", "tool_call carries toolCallId");
 // 3. unknown event types are rejected
 throws(() => createEvent("not_a_real_event"), /Unknown AgentEvent type/, "createEvent rejects unknown type");
 
+// 3b. fields must not override the validated type
+throws(
+  () => createEvent("agent_start", { type: "bogus" }),
+  /must not contain a 'type' property/,
+  "createEvent rejects fields.type override",
+);
+throws(
+  () => createEvent("agent_start", { type: "agent_start" }),
+  /must not contain a 'type' property/,
+  "createEvent rejects duplicate fields.type even when equal",
+);
+
 // 4. collector records events in order
 const c = createEventCollector();
 c.record(createEvent("agent_start", { runId: "run_1" }));
