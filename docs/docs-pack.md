@@ -89,6 +89,32 @@ Generated apps record docs-pack metadata under `oaf/`:
 
 (Exact schema finalized later in #8 / #10.)
 
+## Minimal Alpha 1 pack and context loader (#34)
+
+The first checked-in pack is `docs-packs/stack-0.1/`. It is intentionally
+small: a manifest and five OAF-owned Markdown documents covering agent
+guidance, stack, app structure, package policy, and sandbox boundaries. It is
+not a complete third-party framework reference pack.
+
+`lib/agent/context.mjs` provides the read-only `loadAgentContext({
+workspaceRoot, oafRoot? })` assembly step for the future loop. It reads the
+generated app's `oaf/app.json`, `oaf/stack.json`, and `oaf/docs-pack.json`
+markers, resolves the matching pack only under the OAF-owned `docs-packs/`
+directory, then loads this fixed order:
+
+1. required workspace markers (`oaf/app.json`, `oaf/stack.json`,
+   `oaf/docs-pack.json`),
+2. required workspace `README.md`,
+3. optional workspace `docs/app.md`,
+4. the manifest's ordered required docs-pack documents.
+
+The loader uses local files only: no network, downloads, package installs,
+user-home lookup, tool execution, model call, mutation, event emission, or
+receipt emission. It validates real paths for both roots and rejects absolute,
+traversal, malformed, unknown, or symlink-escaping references. Its result is
+JSON-serializable and includes per-document plus total UTF-8 byte counts;
+bytes are **not** a model-token estimate.
+
 ## Initial docs sources
 
 - OAF doctrine / conventions
@@ -129,12 +155,15 @@ license_notes:
 - **`license_notes`** — notes on whether / how the docs can be
   stored / summarized.
 
-## Manifest concept (documented, not implemented)
+## Manifest format
 
 ```json
 {
   "docsPack": "stack-0.1",
   "oafStack": "0.1.0",
+  "documents": [
+    { "path": "oaf/agent-guidance.md", "required": true }
+  ],
   "createdAt": "ISO_TIMESTAMP",
   "sources": [
     {
@@ -148,8 +177,12 @@ license_notes:
 }
 ```
 
-This file is **conceptual** for Alpha 0; the actual manifest is future
-implementation work (#8 tooling).
+`documents` is the explicit, ordered allowlist used by the Alpha 1 context
+loader. Every entry has a project-relative `path` and a boolean `required`
+flag. The loader does not recursively discover Markdown files. The current
+minimal pack keeps every listed document required; only workspace `docs/app.md`
+is optional. Future packs may add source/retrieval metadata and more chunks
+through explicit stack/docs-pack work, not casual agent edits.
 
 ## Agent lookup behavior
 

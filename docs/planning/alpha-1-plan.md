@@ -78,6 +78,11 @@ A tiny OAF-owned loop that closes the missing step above:
 generated app → loop reads docs-pack context → proposes edits/commands →
 sandbox executes them → a JSON receipt is written to `oaf/receipts/`.
 
+**Context progress:** #34 implements the local-only context assembly step:
+generated markers select the OAF-owned `stack-0.1` manifest, which loads a
+small ordered guidance set plus workspace metadata. Docs-context loading is
+complete for this minimal pack; model-loop orchestration remains deferred.
+
 ## 4. What stays explicitly out of scope (reaffirm non-goals)
 
 - No support for **arbitrary existing repositories** (greenfield OAF apps only).
