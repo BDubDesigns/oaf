@@ -83,6 +83,10 @@ generated markers select the OAF-owned `stack-0.1` manifest, which loads a
 small ordered guidance set plus workspace metadata. Docs-context loading is
 complete for this minimal pack; model-loop orchestration remains deferred.
 
+**Snapshot progress:** #44 locks the machine-readable Stack 0.1 source used by
+generated metadata, pnpm metadata, and docs-pack identity. It does not create
+a full runnable generated app or change the deferred model-loop work.
+
 ## 4. What stays explicitly out of scope (reaffirm non-goals)
 
 - No support for **arbitrary existing repositories** (greenfield OAF apps only).
