@@ -6,7 +6,8 @@ OAF's trust story, not an implementation detail. It must be in place
 
 ## Core principle
 
-> The model may propose actions, but only OAF can execute commands.
+> The model may propose actions, but only OAF can execute commands and grant
+> authorization capabilities.
 
 Agents must **never** receive raw, unrestricted shell access. Every command
 goes through an OAF-controlled runner that applies policy, sandboxing,
@@ -14,6 +15,26 @@ logging, and user-confirmation rules.
 
 OAF decides **whether** and **how** a proposed action executes. The agent
 proposes; OAF executes.
+
+For agent runs, the model proposes, OAF policy classifies, and trusted host
+code authorizes. Provider arguments never prove human approval, network access,
+mount policy, or write authority. Until an interactive CLI approval path is
+connected to agent runs, commands requiring approval or network are rejected.
+
+## Verification execution
+
+Recordability is not execution trust. Before an agent can run a canonical
+`pnpm` verification command, OAF verifies an OAF-owned blessed script
+definition, exact pinned package-manager metadata, no unowned `pre`/`post`
+lifecycle hook, and no custom `.npmrc` script shell. Sandbox containment does
+not prove repository code benign; this prevents package-script indirection.
+
+Agent package verification runs in a disposable copy outside the authoritative
+project. The copy excludes `.git`, `oaf/receipts`, `.env*`, `node_modules`, and
+symlinks; authoritative `node_modules`, when present, is mounted read-only.
+The disposable copy is writable at `/workspace`, network is always off, and it
+is removed after every outcome. Canonical Git inspection commands mount the
+authoritative project read-only.
 
 ## Default stance: internet-off
 

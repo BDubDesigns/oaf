@@ -132,12 +132,11 @@ path.
 
 ### `command`
 - **Purpose:** propose a shell command for OAF to run.
-- **Args:** `{ command: string, mode?: enum, network?: boolean, confirm?: boolean }`.
+- **Args:** `{ command: string, mode?: enum }`.
   - `mode` is a sandbox mode from `docs/sandbox.md`
     (`plan` | `edit` | `test` | `browser` | `install` | `research`).
-  - `network` defaults **off** (internet-off by default).
-  - `confirm` absent = **fail closed** (confirmation-required commands need
-    explicit `--confirm`).
+  - Provider arguments cannot request approval or network access. These are
+    trusted host capabilities, never model claims.
 - **Result:** `{ exitCode, stdout, stderr, truncated }`.
 - **Mutating, sandbox-required.** The loop's `command` body MUST call the
   shared runner used by `oaf sandbox run`; it is **never** a raw `spawn`/shell.
@@ -149,8 +148,8 @@ path.
   of `plan`, `edit`, `test`, `browser`, `install`, or `research`; an unknown
   mode is rejected before sandbox execution. Mode records execution intent;
   the existing sandbox command classifier remains the enforcement authority.
-  `network` defaults off and `confirm` defaults false, so confirmation-required
-  commands fail closed unless explicitly approved.
+  Agent commands requiring approval or network fail closed; the standalone
+  human CLI has a separate, trusted `--confirm` / `--network` path.
 - **Result behavior:** policy and sandbox-start failures throw structured
   errors. A command that starts returns `exitCode`, `stdout`, `stderr`, and
   `truncated` even when it exits non-zero; non-zero is never reported as success.
@@ -180,7 +179,8 @@ issue once the loop shape is proven. It is intentionally out of Alpha 1.
 `bash` implies a raw shell the agent drives. `command` signals the OAF safety
 story — *the model proposes an action; OAF decides and executes* through the
 sandbox. The arg shape (`command`, `mode`, `network`, `confirm`) makes policy
-intent explicit at the call site.
+    intent explicit at the call site. Provider tool arguments carry only
+    `command` and `mode`; OAF policy and trusted host code own authorization.
 
 ## Event types emitted
 

@@ -43,7 +43,12 @@ explicit human consent).
     or deletion require confirmation.**
 14. **Dangerous commands are blocked by default.**
 15. **Sandbox policy is part of OAF's trust story, not an implementation
-    detail.**
+   detail.**
+16. **Provider/model authorization claims are never trusted.** Agent command
+    arguments carry only command intent; trusted host code owns approvals,
+    networking, and mounts.
+17. **Repository package scripts are verified against OAF-owned definitions
+    before agent verification execution, and run in disposable workspaces.**
 
 ### Sandbox modes
 
@@ -99,6 +104,9 @@ receipts (issue #10).
   security-relevant stance from decision 0003.
 - The policy is enforced by the runner implemented in issue #9; this
   decision is the contract it must satisfy.
+- Canonical command identity is recordable audit metadata, not execution
+  authority. Agent verification cannot mutate the authoritative checkout via a
+  repository-controlled package script.
 
 ## Confirmed deferred to later issues
 
