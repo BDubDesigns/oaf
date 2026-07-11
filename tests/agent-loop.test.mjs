@@ -70,8 +70,8 @@ try {
 
     const toolResult = result.events.find((event) => event.type === "tool_result");
     assert(toolResult.toolName === "read", "read tool result names the tool");
-    assert(toolResult.summary.path === "README.md" && toolResult.summary.bytes > 0,
-      "read tool result records only path and byte count");
+    assert(toolResult.summary.path === "README.md" && toolResult.summary.bytes > 0 && toolResult.summary.truncated === false,
+      "read tool result records path, byte count, and truncation flag");
   }
 
   // 2. Context is supplied through the provider seam.

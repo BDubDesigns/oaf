@@ -371,7 +371,7 @@ try {
     const toolMessage = requests[1].messages.find((message) => message.role === "tool" && message.tool_call_id === "real-read");
     assert(result.status === "success" && result.terminalReason === "assistant_terminal" && result.turns === 2,
       "adapter integration ends through the existing loop terminal path");
-    assert(result.events.some((event) => event.type === "tool_result" && event.toolCallId === "real-read" && event.summary.path === "README.md" && event.summary.bytes > 0),
+    assert(result.events.some((event) => event.type === "tool_result" && event.toolCallId === "tool_1_1" && event.summary.path === "README.md" && event.summary.bytes > 0 && event.summary.truncated === false),
       "existing registry validates and executes the real workspace read tool safely");
     assert(typeof toolMessage?.content === "string" && toolMessage.content.includes("Opinionated App Factory"),
       "second provider request contains the matching tool result");
@@ -396,7 +396,7 @@ try {
     const result = await runAgentLoop({ task: "read twice", workspaceRoot: withFixture(), provider, maxTurns: 3 });
     assert(calls === 2 && result.status === "failed" && result.terminalReason === "provider_error",
       "reused ID across turns takes the existing provider-error path");
-    assert(result.events.filter((event) => event.type === "tool_call" && event.toolCallId === "reused").length === 1,
+    assert(result.events.filter((event) => event.type === "tool_call" && event.toolCallId === "tool_1_1").length === 1,
       "reused ID is rejected before a second ambiguous tool dispatch");
     assert(result.events.some((event) => event.type === "message_end" && event.errorCode === "provider_error"),
       "duplicate-ID failure is recorded as a bounded provider error");
@@ -419,7 +419,7 @@ try {
     });
     const result = await runAgentLoop({ task: "read twice", workspaceRoot: withFixture(), provider, maxTurns: 4 });
     assert(result.status === "success" && result.turns === 3 &&
-      result.events.filter((event) => event.type === "tool_call").map((event) => event.toolCallId).join(",") === "unique-1,unique-2",
+      result.events.filter((event) => event.type === "tool_call").map((event) => event.toolCallId).join(",") === "tool_1_1,tool_2_1",
     "unique IDs across multiple turns dispatch and complete normally");
   }
 
