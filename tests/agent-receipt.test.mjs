@@ -105,6 +105,14 @@ try {
     });
     assert(receipt.oafVersion === null, "oafVersion is null when it cannot be read/validated");
     assert(receipt.warnings.some((w) => /oafVersion/i.test(w)), "a warning records the missing oafVersion");
+
+    const invalid = buildReceipt({
+      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, context: { docsPack: {} }, events: [] },
+      task: "x",
+      oafVersion: "1.2.3garbage",
+    });
+    assert(invalid.oafVersion === null, "invalid explicitly supplied oafVersion is rejected");
+    assert(invalid.warnings.some((w) => /oafVersion/i.test(w)), "invalid explicitly supplied oafVersion adds a warning");
   }
 
   // 5. original task and terminal result are present.
@@ -118,6 +126,8 @@ try {
     assert(result.receipt.outcome !== "all good", "outcome is not the raw model content");
     assert(typeof result.receipt.outcome === "string" && result.receipt.outcome.length > 0,
       "outcome is a deterministic summary built from run facts");
+    assert(result.receipt.outcome.startsWith("Agent reached a terminal response with no recorded tool or check failures."),
+      "clean terminal run uses the audited-success outcome wording");
   }
 
   // 5b. BLOCKER 1: raw model output is never persisted; in-memory run keeps it.
@@ -235,6 +245,46 @@ try {
     const failResult = await runAgentLoopWithReceipt({ task: "t", workspaceRoot: wsFail, provider: failProvider, commandExecutor: failExecutor });
     assert(failResult.receipt.commands[0].exitCode === 7 && failResult.receipt.commands[0].status === "fail",
       "non-zero exit code is recorded as fail (not success)");
+    assert(failResult.receipt.status === "partial" && failResult.receipt.terminalReason === "assistant_terminal",
+      "terminal response after a non-zero build is partial, not success");
+    assert(!failResult.receipt.outcome.includes("Agent completed the task"),
+      "partial build outcome does not claim task completion");
+    assert(failResult.receipt.warnings.some((w) => /Partial terminal run: 0 failed\/rejected\/missing tool action\(s\).*1 command\(s\) did not pass, 1 check\(s\) did not pass/.test(w)),
+      "partial warning exposes the failed command and check counts");
+  }
+
+  // 7b. A rejected tool and a missing paired result both make terminal runs partial.
+  {
+    const workspace = withFixture();
+    const provider = createMockProvider({
+      script: [
+        { content: null, toolCalls: [{ id: "bad", name: "unknown_tool", args: {} }] },
+        { content: "done", toolCalls: [] },
+      ],
+    });
+    const rejected = await runAgentLoopWithReceipt({ task: "x", workspaceRoot: workspace, provider });
+    assert(rejected.receipt.status === "partial" && rejected.receipt.terminalReason === "assistant_terminal",
+      "terminal response after a rejected tool is partial");
+    assert(rejected.receipt.outcome.startsWith("Agent reached a terminal response, but one or more tool actions or checks did not complete successfully."),
+      "rejected-tool outcome uses partial wording");
+    assert(rejected.receipt.warnings.some((w) => /Partial terminal run: 1 failed\/rejected\/missing tool action\(s\).*0 check\(s\) did not pass/.test(w)),
+      "partial warning exposes the rejected tool count");
+
+    const missing = buildReceipt({
+      run: {
+        runId: "missing-result",
+        status: "success",
+        terminalReason: "assistant_terminal",
+        turns: 1,
+        content: "ignored",
+        context: { docsPack: {} },
+        events: [{ type: "tool_call", toolCallId: "missing", toolName: "read", args: { path: "README.md" }, seq: 1, ts: "2000-01-01T00:00:00.000Z" }],
+      },
+      task: "x",
+    });
+    assert(missing.status === "partial", "missing tool_result makes a terminal receipt partial");
+    assert(missing.warnings.some((w) => /1 failed\/rejected\/missing tool action\(s\) \(1 missing result\(s\)\)/.test(w)),
+      "partial warning counts missing tool results");
   }
 
   // 8. a run with no checks does not claim checks passed.
