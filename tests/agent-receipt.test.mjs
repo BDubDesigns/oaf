@@ -190,12 +190,12 @@ try {
       assert(result.receipt.warnings.some((w) => /redact/i.test(w)), `redaction warning recorded: ${sentinel}`);
     }
 
-    // Known-safe check remains visible and is not redacted.
+    // Canonical recordable command remains identifiable and is not redacted.
     const wsSafe = withFixture();
     const safeResult = await runCommandTask(wsSafe, "pnpm test");
     assert(safeResult.receipt.commands[0].command === "pnpm test" && safeResult.receipt.commands[0].redacted === false,
-      "known-safe command remains visible");
-    assert(safeResult.receipt.checks.some((c) => c.name === "test"), "safe pnpm test is recorded as a check");
+      "canonical recordable command remains identifiable");
+    assert(safeResult.receipt.checks.some((c) => c.name === "test"), "canonical pnpm test is recorded as a check");
   }
 
   // 6. successful write is listed as a touched file; read is not.
@@ -278,7 +278,7 @@ try {
         turns: 1,
         content: "ignored",
         context: { docsPack: {} },
-        events: [{ type: "tool_call", toolCallId: "missing", toolName: "read", args: { path: "README.md" }, seq: 1, ts: "2000-01-01T00:00:00.000Z" }],
+        events: [{ type: "tool_call", toolCallId: "missing", toolName: "read", summary: { path: "README.md" }, seq: 1, ts: "2000-01-01T00:00:00.000Z" }],
       },
       task: "x",
     });
