@@ -92,17 +92,24 @@ try {
   assert(gitArgv.includes(`${fixture.workspace}:/workspace:ro`), "git inspection mount is read-only");
 
   await rejects(() => runSandboxCommand({ command: "pnpm test", cwd: fixture.workspace }), "INVALID_ORIGIN", "omitted generic origin fails closed");
-  await rejects(() => runAgentSandboxCommand({ command: "pnpm install", approvalGranted: true, networkGranted: true, cwd: fixture.workspace }), "AGENT_NETWORK_DENIED", "agent entry cannot self-authorize network command");
-  await rejects(() => runAgentSandboxCommand({ command: "unknown command", approvalGranted: true, cwd: fixture.workspace }), "AGENT_AUTHORIZATION_REQUIRED", "agent entry cannot self-authorize unknown command");
-  await rejects(() => runHumanSandboxCommand({ command: "pnpm install", approvalGranted: false, networkGranted: false, cwd: fixture.workspace }), "POLICY_REJECTED", "human CLI requires trusted flags");
-  let humanAuthorizationReached = false;
-  try {
-    await runHumanSandboxCommand({ command: "pnpm install", approvalGranted: true, networkGranted: true, cwd: fixture.workspace });
-    humanAuthorizationReached = true;
-  } catch (error) {
-    humanAuthorizationReached = error instanceof SandboxError && error.code === "SANDBOX_UNAVAILABLE";
+  let invalidCalls = 0;
+  const invalidDependencies = { detectRuntime: () => { invalidCalls++; return "fake"; }, runContainer: async () => { invalidCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
+  for (const key of ["approvalGranted", "networkGranted", "origin", "confirm", "network", "unknown"]) {
+    await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, [key]: true, dependencies: invalidDependencies }), "INVALID_AGENT_ARGUMENT", `agent entry rejects ${key}`);
   }
-  assert(humanAuthorizationReached, "trusted human CLI flags reach sandbox authorization path");
+  assert(invalidCalls === 0, "invalid agent entry fields never reach runtime or container seams");
+  await rejects(() => runAgentSandboxCommand({ command: "pnpm install", cwd: fixture.workspace }), "AGENT_NETWORK_DENIED", "agent entry cannot execute network command");
+  await rejects(() => runAgentSandboxCommand({ command: "unknown command", cwd: fixture.workspace }), "AGENT_AUTHORIZATION_REQUIRED", "agent entry cannot execute unknown command");
+  await rejects(() => runHumanSandboxCommand({ command: "pnpm install", approvalGranted: false, networkGranted: false, cwd: fixture.workspace }), "POLICY_REJECTED", "human CLI requires trusted flags");
+  let humanRuntimeCalls = 0;
+  let humanContainerCalls = 0;
+  let humanOptions = null;
+  const humanResult = await runHumanSandboxCommand({ command: "pnpm install", approvalGranted: true, networkGranted: true, cwd: fixture.workspace, dependencies: {
+    detectRuntime: () => { humanRuntimeCalls++; return "fake-runtime"; },
+    runContainer: async (options) => { humanContainerCalls++; humanOptions = options; return { exitCode: 0, stdout: "human out", stderr: "human err", truncated: false }; },
+  } });
+  assert(humanRuntimeCalls === 1 && humanContainerCalls === 1 && humanOptions.command === "pnpm install" && humanOptions.network === true && humanOptions.argv[humanOptions.argv.indexOf("--network") + 1] === "bridge", "trusted human grants reach injected enabled-network sandbox path");
+  assert(humanResult.exitCode === 0 && humanResult.stdout === "human out" && humanResult.stderr === "human err", "human injected runner returns deterministic result without real runtime or mutation");
 
   // Exercise the real agent entry path with a fake container executor.
   let disposablePath = null;
