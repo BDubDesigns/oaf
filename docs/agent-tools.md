@@ -19,6 +19,20 @@ The registry is the source of truth for the loop, tests, and receipts.
   dependencies, and receipt storage are hidden from read/list/grep and denied
   for writes; root `oaf/` is never model-writable. Trusted receipt emission uses
   an internal workspace writer, not the provider tool.
+
+## CLI configuration
+
+`oaf agent <task>` supports one explicitly configured provider only. It requires
+`OAF_PROVIDER=openai-compatible`, `OAF_PROVIDER_BASE_URL`, `OAF_MODEL`, and
+`OAF_API_KEY_ENV`; the key is read from the environment variable named by
+`OAF_API_KEY_ENV`. `OAF_MAX_TURNS` is optional and must be an integer from 1 to
+16. Exit codes are 0 for successful terminal receipts, 1 for failed/partial
+runs, 2 for task/config/workspace errors, and 3 for max-turn exhaustion.
+
+Allowed source context and tool results are sent to the configured provider.
+Protected paths remain unavailable; agent commands remain network-off and cannot
+self-approve. Receipts are privacy-safe summaries, not transcripts. Alpha 1 has
+no routing, fallback, streaming, or interactive approval.
 - **No raw shell.** The only process-executing tool is `command`, and it routes
   through `oaf sandbox run`. The agent never receives a shell.
 - **Greenfield OAF apps only.** All file tools are scoped to the `oaf init`-
