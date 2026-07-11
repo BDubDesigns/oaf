@@ -108,6 +108,11 @@ await scenario((_req, res, _body, number) => { const payload = number === 1 ? { 
   const result = await runCli([bin, "agent", "protected"], { cwd: workspace, env }); const files = receiptFiles(workspace); const receipt = JSON.parse(readFileSync(join(workspace, "oaf/receipts", files[0]), "utf8"));
   assert(result.status === 1 && count() === 2 && receipt.status === "partial" && !`${result.stdout}${result.stderr}${JSON.stringify(receipt)}`.includes(workspace), "protected path becomes partial without host-path leakage");
 });
+await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "receipt failure" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env, requests: count }) => {
+  rmSync(join(workspace, "oaf", "receipts"), { recursive: true }); writeFileSync(join(workspace, "oaf", "receipts"), "blocked");
+  const result = await runCli([bin, "agent", "receipt"], { cwd: workspace, env });
+  assert(result.status === 1 && count() === 1 && /receipt could not be written/.test(result.stderr) && !/Receipt:/.test(result.stdout) && !`${result.stdout}${result.stderr}`.includes(workspace), "receipt-write failure is bounded with no receipt claim or retry");
+});
 const commandFixture = copyGeneratedAppFixture();
 try {
   const help = await runCli([bin, "--help"], { cwd: commandFixture.workspace, env: process.env });
