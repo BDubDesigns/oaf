@@ -242,6 +242,12 @@ try {
     assert(reported.providerCall.requestedModel === "test-model" && reported.providerCall.reportedModel === "actual-model-x",
       "requested and reported models can differ and both are preserved");
 
+    const trimmed = await providerWith(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
+      model: "  actual-model-trim  ",
+    })).complete(request());
+    assert(trimmed.providerCall.reportedModel === "actual-model-trim", "reported model identifiers are trimmed");
+
     const absent = await providerWith(response({ role: "assistant", content: "hi" }, undefined, "stop")).complete(request());
     assert(absent.providerCall.reportedModel === null, "absent reported model remains null");
 
@@ -250,6 +256,33 @@ try {
       model: 123,
     })).complete(request());
     assert(malformed.providerCall.reportedModel === null, "non-string reported model becomes null per contract");
+
+    // Reported model identifiers are bounded, trimmed, and constrained.
+    const oversized = await providerWith(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
+      model: "x".repeat(200),
+    })).complete(request());
+    assert(oversized.providerCall.reportedModel === null, "oversized reported model becomes null");
+
+    const whitespace = await providerWith(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
+      model: "   ",
+    })).complete(request());
+    assert(whitespace.providerCall.reportedModel === null, "whitespace-only reported model becomes null");
+
+    const badCharset = await providerWith(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
+      model: "bad model/id!",
+    })).complete(request());
+    assert(badCharset.providerCall.reportedModel === null, "malformed-charset reported model becomes null");
+
+    // A provider that echoes the API key in the model field must not retain it.
+    const echoed = await providerWith(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
+      model: `real-${API_KEY}`,
+    })).complete(request());
+    assert(echoed.providerCall.reportedModel === null, "API-key echo in model field is dropped");
+    assert(!JSON.stringify(echoed.providerCall).includes(API_KEY), "serialized provider metadata omits the API key");
 
     const missingUsage = await providerWith(response({ role: "assistant", content: "hi" }, undefined, "stop")).complete(request());
     deepEqual(missingUsage.providerCall.usage, { inputTokens: null, outputTokens: null, totalTokens: null },
@@ -306,8 +339,8 @@ try {
     assert(typeof toolMessage?.content === "string" && toolMessage.content.includes("Opinionated App Factory"),
       "second provider request contains the matching tool result");
     deepEqual(result.providerCalls, [
-      { provider: "openai-compatible", requestedModel: "test-model", reportedModel: null, usage: { inputTokens: 3, outputTokens: 2, totalTokens: 5 } },
-      { provider: "openai-compatible", requestedModel: "test-model", reportedModel: null, usage: { inputTokens: 9, outputTokens: 1, totalTokens: 10 } },
+      { turn: 1, provider: "openai-compatible", requestedModel: "test-model", reportedModel: null, usage: { inputTokens: 3, outputTokens: 2, totalTokens: 5 } },
+      { turn: 2, provider: "openai-compatible", requestedModel: "test-model", reportedModel: null, usage: { inputTokens: 9, outputTokens: 1, totalTokens: 10 } },
     ], "loop preserves per-call provider usage metadata");
   }
 
@@ -425,6 +458,55 @@ try {
       let injectedError = "";
       try { await providerWith("x".repeat(MAX_BODY_BYTES + 1)).complete(request()); } catch (error) { injectedError = error.message; }
       assert(/exceeded the maximum allowed size/.test(injectedError), "oversized injected body is rejected before JSON parsing");
+
+      // Multibyte UTF-8 body whose JS string length is within the limit but
+      // whose byte length exceeds it is rejected before JSON parsing.
+      let multibyteError = "";
+      const emoji = "🖂".repeat(300_000); // length 600000 (<= limit), bytes 1200000 (> 1 MiB)
+      try { await providerWith(emoji).complete(request()); } catch (error) { multibyteError = error.message; }
+      assert(/exceeded the maximum allowed size/.test(multibyteError), "multibyte UTF-8 body exceeds the byte limit");
+      assert(!multibyteError.includes("🖂"), "multibyte oversize error omits body fragments");
+    // 15. BLOCKER 1: malformed providerCall metadata takes the provider-error path.
+    {
+      const badShape = {
+        async complete() {
+          return {
+            content: "x",
+            toolCalls: [],
+            providerCall: { provider: 123, requestedModel: "m", reportedModel: "ok", usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } },
+          };
+        },
+      };
+      const shapeResult = await runAgentLoop({ task: "x", workspaceRoot: withFixture(), provider: badShape });
+      assert(shapeResult.status === "failed" && shapeResult.terminalReason === "provider_error",
+        "malformed providerCall shape takes the existing provider-error path");
+
+      const extraField = {
+        async complete() {
+          return {
+            content: "x",
+            toolCalls: [],
+            providerCall: { provider: "openai-compatible", requestedModel: "m", reportedModel: null, usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 }, secret: "remote content" },
+          };
+        },
+      };
+      const extraResult = await runAgentLoop({ task: "x", workspaceRoot: withFixture(), provider: extraField });
+      assert(extraResult.status === "failed" && extraResult.terminalReason === "provider_error",
+        "extra arbitrary providerCall field is rejected");
+
+      const badUsage = {
+        async complete() {
+          return {
+            content: "x",
+            toolCalls: [],
+            providerCall: { provider: "openai-compatible", requestedModel: "m", reportedModel: null, usage: { inputTokens: "big", outputTokens: 1, totalTokens: 2 } },
+          };
+        },
+      };
+      const usageResult = await runAgentLoop({ task: "x", workspaceRoot: withFixture(), provider: badUsage });
+      assert(usageResult.status === "failed" && usageResult.terminalReason === "provider_error",
+        "non-integer usage field is rejected");
+    }
     } finally {
       globalThis.fetch = realFetch;
     }

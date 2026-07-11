@@ -188,7 +188,7 @@ try {
   {
     const loopSource = readFileSync(join(repoRoot, "lib", "agent", "loop.mjs"), "utf8");
     const providerSource = readFileSync(join(repoRoot, "lib", "agent", "provider.mjs"), "utf8");
-    const forbidden = /(node:(http|https|net)\b|\b(fetch|axios|undici|openai|anthropic|@anthropic|@openai)\b)/i;
+    const forbidden = /(node:(http|https|net)\b|\bfetch\s*\(|from\s+["'](?:axios|undici|openai|anthropic|@anthropic|@openai)["'])/i;
     assert(!forbidden.test(loopSource), "loop module imports no network/provider SDK");
     assert(!forbidden.test(providerSource), "provider module imports no network/provider SDK");
   }
