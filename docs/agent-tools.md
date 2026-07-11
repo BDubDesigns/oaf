@@ -14,6 +14,11 @@ The registry is the source of truth for the loop, tests, and receipts.
   and only those tools exist.
 - **OAF owns the boundaries.** The model proposes actions; OAF decides whether
   and how they execute (doctrine §7, `docs/sandbox.md`).
+- **Visibility is separate from containment.** A path inside the workspace can
+  still be unavailable to the model. Known secret-bearing paths, Git internals,
+  dependencies, and receipt storage are hidden from read/list/grep and denied
+  for writes; root `oaf/` is never model-writable. Trusted receipt emission uses
+  an internal workspace writer, not the provider tool.
 - **No raw shell.** The only process-executing tool is `command`, and it routes
   through `oaf sandbox run`. The agent never receives a shell.
 - **Greenfield OAF apps only.** All file tools are scoped to the `oaf init`-
