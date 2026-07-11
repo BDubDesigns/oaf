@@ -3,11 +3,18 @@ import { createServer } from "node:http";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+import { sanitizeTerminal, usageFrom } from "../lib/agent/cli.mjs";
 
 let failures = 0;
 function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
 function runCli(args, options) { return new Promise((resolveChild) => { const child = spawn("node", args, options); let stdout = ""; let stderr = ""; child.stdout.on("data", (data) => { stdout += data; }); child.stderr.on("data", (data) => { stderr += data; }); child.on("close", (status) => resolveChild({ status, stdout, stderr })); }); }
 const repo = resolve(import.meta.dirname, "..");
+const sanitized = sanitizeTerminal("\x1b[31mRED\x1b[0m\x1b]title\x07\0x\by\rz\n\tok");
+assert(sanitized === "REDxyz\n\tok", "terminal sanitizer strips CSI, OSC, controls, and CR");
+const unicode = sanitizeTerminal("a".repeat(8190) + "€😀");
+assert(Buffer.byteLength(unicode, "utf8") <= 8192 + Buffer.byteLength("\n[response truncated]", "utf8") && unicode.endsWith("[response truncated]"), "terminal sanitizer truncates at Unicode boundary");
+const usageFailure = usageFrom({ turns: 1, providerCalls: [] }, { model: " test/model " });
+assert(usageFailure.calls === 1 && usageFailure.tokensIn === null && usageFailure.tokensOut === null && usageFailure.model === "test/model", "usage counts failed attempts without fabricated tokens");
 const fixture = copyGeneratedAppFixture();
 const secret = "OAF_CLI_SECRET_SENTINEL";
 let calls = 0;
@@ -34,6 +41,7 @@ try {
   assert(success.status === 0, "successful CLI round trip exits 0");
   assert(existsSync(join(fixture.workspace, "app/oaf-cli-test.txt")), "provider tool call writes allowed file");
   assert(/Receipt: oaf\/receipts\/.+\.json/.test(output), "CLI prints project-relative receipt path");
+  assert(/Response:\nCLI terminal response/.test(output), "CLI prints established terminal content under response heading");
   assert(auth === `Bearer ${secret}`, "API key sentinel appears only in Authorization header");
   assert(!output.includes(secret), "API key sentinel absent from CLI output");
   const receipts = readdirSync(join(fixture.workspace, "oaf/receipts")).filter((name) => name.endsWith(".json"));
