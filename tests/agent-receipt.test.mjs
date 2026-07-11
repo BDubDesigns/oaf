@@ -321,7 +321,7 @@ try {
 
     const wsMax = withFixture();
     const loopy = createMockProvider({
-      script: () => ({ content: null, toolCalls: [{ id: "l", name: "read", args: { path: "README.md" } }] }),
+      script: (request, callCount) => ({ content: null, toolCalls: [{ id: `l-${callCount}`, name: "read", args: { path: "README.md" } }] }),
     });
     const maxResult = await runAgentLoopWithReceipt({ task: "loop", workspaceRoot: wsMax, provider: loopy, maxTurns: 2 });
     assert(maxResult.receipt.status === "failed" && maxResult.receipt.terminalReason === "max_turns",

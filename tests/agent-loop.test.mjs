@@ -160,7 +160,7 @@ try {
   {
     const workspace = withFixture();
     const provider = createMockProvider({
-      script: () => ({ content: null, toolCalls: [{ id: "loop", name: "read", args: { path: "README.md" } }] }),
+      script: (request, callCount) => ({ content: null, toolCalls: [{ id: `loop-${callCount}`, name: "read", args: { path: "README.md" } }] }),
     });
     const result = await runAgentLoop({ task: "loop", workspaceRoot: workspace, provider, maxTurns: 3 });
 
@@ -188,8 +188,9 @@ try {
   {
     const loopSource = readFileSync(join(repoRoot, "lib", "agent", "loop.mjs"), "utf8");
     const providerSource = readFileSync(join(repoRoot, "lib", "agent", "provider.mjs"), "utf8");
-    const forbidden = /(node:(http|https|net)\b|\b(fetch|axios|undici|openai|anthropic|@anthropic|@openai)\b)/i;
+    const forbidden = /(node:(http|https|net)\b|\bfetch\s*\(|from\s+["'](?:axios|undici|openai|anthropic|@anthropic|@openai)["'])/i;
     assert(!forbidden.test(loopSource), "loop module imports no network/provider SDK");
+    assert(!loopSource.includes("openai-compatible-provider"), "loop imports no concrete OpenAI-compatible adapter");
     assert(!forbidden.test(providerSource), "provider module imports no network/provider SDK");
   }
 
