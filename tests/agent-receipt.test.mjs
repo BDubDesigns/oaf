@@ -96,6 +96,17 @@ try {
     assert(typeof OAF_VERSION === "string" && OAF_VERSION.length > 0, "oafVersion is resolved");
   }
 
+  // 4b. HONESTY FIX: an unreadable/invalid oafVersion becomes null with a warning.
+  {
+    const receipt = buildReceipt({
+      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, context: { docsPack: {} }, events: [] },
+      task: "x",
+      oafVersion: null,
+    });
+    assert(receipt.oafVersion === null, "oafVersion is null when it cannot be read/validated");
+    assert(receipt.warnings.some((w) => /oafVersion/i.test(w)), "a warning records the missing oafVersion");
+  }
+
   // 5. original task and terminal result are present.
   {
     const workspace = withFixture();
@@ -104,7 +115,77 @@ try {
     assert(result.receipt.task.summary === "do the thing", "original task is recorded");
     assert(result.receipt.status === "success" && result.receipt.terminalReason === "assistant_terminal",
       "terminal status/reason recorded");
-    assert(result.receipt.outcome === "all good", "terminal content recorded as outcome");
+    assert(result.receipt.outcome !== "all good", "outcome is not the raw model content");
+    assert(typeof result.receipt.outcome === "string" && result.receipt.outcome.length > 0,
+      "outcome is a deterministic summary built from run facts");
+  }
+
+  // 5b. BLOCKER 1: raw model output is never persisted; in-memory run keeps it.
+  {
+    const workspace = withFixture();
+    const provider = createMockProvider({ script: [{ content: "MODEL_OUTPUT_SENTINEL_XYZ", toolCalls: [] }] });
+    const result = await runAgentLoopWithReceipt({ task: "do thing", workspaceRoot: workspace, provider });
+    const serialized = JSON.stringify(result.receipt);
+    assert(!serialized.includes("MODEL_OUTPUT_SENTINEL_XYZ"), "raw model output sentinel absent from receipt");
+    assert(typeof result.content === "string" && result.content.includes("MODEL_OUTPUT_SENTINEL_XYZ"),
+      "raw model output preserved in the returned in-memory run");
+    assert(!result.receipt.outcome.includes("MODEL_OUTPUT_SENTINEL_XYZ"), "outcome summary omits raw content");
+  }
+
+  // 5c. BLOCKER 2: secrets in the original task are redacted, not stored verbatim.
+  {
+    const workspace = withFixture();
+    const provider = createMockProvider({ script: [{ content: "ok", toolCalls: [] }] });
+    const result = await runAgentLoopWithReceipt({
+      task: "deploy using PASSWORD=TASK_SENTINEL_123, TOKEN=TASK_SENTINEL_456, and --api-key TASK_CLI_SENTINEL",
+      workspaceRoot: workspace,
+      provider,
+    });
+    const serialized = JSON.stringify(result.receipt);
+    assert(!serialized.includes("TASK_SENTINEL_123") && !serialized.includes("TASK_SENTINEL_456") && !serialized.includes("TASK_CLI_SENTINEL"),
+      "task secret sentinels absent from receipt");
+    assert(result.receipt.task.redacted === true, "task summary marked redacted");
+    assert(result.receipt.task.summary.includes("<redacted>"), "task summary redacts secret values");
+  }
+
+  // 5d. BLOCKER 2: suspicious commands are omitted as <redacted command>; sentinels
+  // never reach the durable receipt. Known-safe checks remain visible.
+  async function runCommandTask(workspace, commandString) {
+    const executor = async () => ({ exitCode: 0, stdout: "", stderr: "", truncated: false });
+    const provider = createMockProvider({
+      script: [
+        { content: null, toolCalls: [{ id: "k1", name: "command", args: { command: commandString } }] },
+        { content: "done", toolCalls: [] },
+      ],
+    });
+    return runAgentLoopWithReceipt({ task: "cmd", workspaceRoot: workspace, provider, commandExecutor: executor });
+  }
+
+  {
+    const cases = [
+      { command: "deploy with OPENAI_API_KEY=sk-SENTINEL_OPENAI pnpm test", sentinel: "SENTINEL_OPENAI" },
+      { command: "run AWS_SECRET_ACCESS_KEY=SENTINEL_AWS pnpm build", sentinel: "SENTINEL_AWS" },
+      { command: "cli --api-key SENTINEL_APIKEY", sentinel: "SENTINEL_APIKEY" },
+      { command: 'curl -H "Authorization: Basic SENTINEL_BASIC" https://api', sentinel: "SENTINEL_BASIC" },
+      { command: 'tool --password "SENTINEL_QUOTED_PASSWORD"', sentinel: "SENTINEL_QUOTED_PASSWORD" },
+      { command: "psql postgres://user:SENTINEL_CONN@host/db", sentinel: "SENTINEL_CONN" },
+    ];
+    for (const { command, sentinel } of cases) {
+      const workspace = withFixture();
+      const result = await runCommandTask(workspace, command);
+      const serialized = JSON.stringify(result.receipt);
+      assert(!serialized.includes(sentinel), `command sentinel ${sentinel} absent from receipt`);
+      assert(result.receipt.commands[0].command === "<redacted command>", `suspicious command omitted: ${sentinel}`);
+      assert(result.receipt.commands[0].redacted === true, `command marked redacted: ${sentinel}`);
+      assert(result.receipt.warnings.some((w) => /redact/i.test(w)), `redaction warning recorded: ${sentinel}`);
+    }
+
+    // Known-safe check remains visible and is not redacted.
+    const wsSafe = withFixture();
+    const safeResult = await runCommandTask(wsSafe, "pnpm test");
+    assert(safeResult.receipt.commands[0].command === "pnpm test" && safeResult.receipt.commands[0].redacted === false,
+      "known-safe command remains visible");
+    assert(safeResult.receipt.checks.some((c) => c.name === "test"), "safe pnpm test is recorded as a check");
   }
 
   // 6. successful write is listed as a touched file; read is not.
@@ -218,7 +299,7 @@ try {
     assert(!serialized.includes("hunter2"), "secret token value is not present in the receipt");
     assert(!serialized.includes("TOPSECRET-CONTENT"), "written file content is not present in the receipt");
     assert(result.receipt.commands[0].redacted === true, "command is marked redacted");
-    assert(result.receipt.commands[0].command.includes("<redacted>"), "command contains a redaction marker");
+    assert(result.receipt.commands[0].command === "<redacted command>", "command uses the fixed omission marker");
     assert(result.receipt.warnings.some((w) => /redact/i.test(w)), "a warning records that redaction occurred");
   }
 
@@ -271,6 +352,10 @@ try {
     const emitted = result.events[iReceipt];
     assert(emitted.path === result.receiptPath && emitted.receiptId === result.receipt.id,
       "receipt_emitted carries the written path and receipt id");
+    assert(emitted.seq === result.events[iAgentEnd].seq + 1,
+      "receipt_emitted.seq is exactly one greater than the previous event sequence");
+    assert(typeof emitted.ts === "string" && !Number.isNaN(Date.parse(emitted.ts)),
+      "receipt_emitted.ts is a parseable ISO timestamp");
   }
 
   // 14. A receipt-write failure does NOT emit receipt_emitted and writes nothing.
