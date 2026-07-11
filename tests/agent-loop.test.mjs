@@ -160,7 +160,7 @@ try {
   {
     const workspace = withFixture();
     const provider = createMockProvider({
-      script: () => ({ content: null, toolCalls: [{ id: "loop", name: "read", args: { path: "README.md" } }] }),
+      script: (request, callCount) => ({ content: null, toolCalls: [{ id: `loop-${callCount}`, name: "read", args: { path: "README.md" } }] }),
     });
     const result = await runAgentLoop({ task: "loop", workspaceRoot: workspace, provider, maxTurns: 3 });
 
