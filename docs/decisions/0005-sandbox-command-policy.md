@@ -49,6 +49,9 @@ explicit human consent).
     networking, and mounts.
 17. **Repository package scripts are verified against OAF-owned definitions
     before agent verification execution, and run in disposable workspaces.**
+18. **Workspace containment and model data visibility are separate policies.**
+    Agent file tools deny known secret-bearing paths and OAF receipt storage;
+    agent `git diff` is disabled until safe output filtering is designed.
 
 ### Sandbox modes
 

@@ -41,6 +41,12 @@ The disposable copy is writable at `/workspace`, network is always off, and it
 is removed after every outcome. Canonical Git inspection commands mount the
 authoritative project read-only.
 
+Agent `git diff` is disabled pending a safe output design: diff output can
+contain tracked secret data outside file-tool path controls. `git status` and
+`git log --oneline` remain read-only agent commands. This is path-based
+protection, not general secret detection; ordinary allowed source tool results
+may still be sent to the configured provider.
+
 ## Default stance: internet-off
 
 Normal OAF work is **internet-off by default**. "Network off" means no
