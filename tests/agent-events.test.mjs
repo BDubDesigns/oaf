@@ -5,6 +5,7 @@ import {
   AGENT_EVENT_TYPES,
   createEvent,
   createEventCollector,
+  recordContinuation,
 } from "../lib/agent/events.mjs";
 
 let failures = 0;
@@ -91,6 +92,23 @@ c.clear();
 strictEqual(c.all().length, 0, "clear() empties the collector");
 c.record(createEvent("agent_start", { runId: "run_2" }));
 strictEqual(c.all()[0].seq, 1, "seq resets after clear()");
+
+// 8. A continuation event keeps the shared recorded-event shape after a loop.
+const continued = recordContinuation(
+  [
+    { type: "agent_start", runId: "run_3", seq: 7, ts: "2000-01-01T00:00:00.000Z" },
+    { type: "agent_end", status: "success", seq: 8, ts: "2000-01-01T00:00:01.000Z" },
+  ],
+  { type: "receipt_emitted", receiptId: "rcpt_1" },
+);
+strictEqual(continued.type, "receipt_emitted", "continuation retains its validated event type");
+strictEqual(continued.seq, 9, "continuation seq is one greater than the prior stream");
+assert(typeof continued.ts === "string" && !Number.isNaN(Date.parse(continued.ts)), "continuation gets an ISO timestamp");
+throws(
+  () => recordContinuation([], { type: "bogus" }),
+  /Unknown AgentEvent type/,
+  "continuation rejects unknown event types",
+);
 
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed.`);
