@@ -1,7 +1,11 @@
 // Focused coverage for the first real OpenAI-compatible provider adapter.
-// Every transport here is injected: no network and no real credential are used.
+// Every transport here is injected unless a test explicitly exercises the
+// built-in fetch transport with an overridden global fetch (no real network).
 import { deepEqual } from "node:assert";
-import { createOpenAICompatibleProvider } from "../lib/agent/openai-compatible-provider.mjs";
+import {
+  createOpenAICompatibleProvider,
+  MAX_BODY_BYTES,
+} from "../lib/agent/openai-compatible-provider.mjs";
 import { runAgentLoop } from "../lib/agent/loop.mjs";
 import { buildToolProtocol } from "../lib/agent/provider.mjs";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
@@ -36,8 +40,10 @@ function request({ messages = [{ role: "user", content: "hello" }], tools = buil
   return { system: "OAF system context", messages, tools };
 }
 
-function response(message, usage) {
-  return JSON.stringify({ choices: [{ message }], ...(usage === undefined ? {} : { usage }) });
+function response(message, usage, finishReason = "stop") {
+  const choice = { message };
+  if (finishReason !== null) choice.finish_reason = finishReason;
+  return JSON.stringify({ choices: [choice], ...(usage === undefined ? {} : { usage }) });
 }
 
 function providerWith(body, captured = []) {
@@ -75,8 +81,9 @@ try {
       "configured model and system message are sent explicitly");
     assert(sent.tools.length === 5 && sent.tools.every((tool) => tool.type === "function" && tool.function.parameters),
       "fixed registry schemas translate to function tools without duplication");
-    deepEqual(result.usage, { inputTokens: 11, outputTokens: 7, totalTokens: 18 }, "provider usage maps when present");
-    assert(result.model === "test-model" && result.provider === "openai-compatible", "safe provider metadata is returned");
+    deepEqual(result.providerCall.usage, { inputTokens: 11, outputTokens: 7, totalTokens: 18 }, "provider usage maps when present");
+    assert(result.providerCall.requestedModel === "test-model" && result.providerCall.provider === "openai-compatible",
+      "safe provider metadata is returned");
     assert(JSON.stringify(oafRequest) === before, "request and message history are not mutated during translation");
   }
 
@@ -84,22 +91,22 @@ try {
   {
     const one = await providerWith(response({ role: "assistant", content: null, tool_calls: [
       { id: "call-one", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
-    ] })).complete(request());
+    ] }, undefined, "tool_calls")).complete(request());
     deepEqual(one.toolCalls, [{ id: "call-one", name: "read", args: { path: "README.md" } }], "one valid tool call translates");
 
     const many = await providerWith(response({ role: "assistant", content: "I will inspect both.", tool_calls: [
       { id: "call-a", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
       { id: "call-b", type: "function", function: { name: "list", arguments: '{"path":"."}' } },
-    ] })).complete(request());
+    ] }, undefined, "tool_calls")).complete(request());
     assert(many.content === "I will inspect both." && many.toolCalls.length === 2 && many.toolCalls[1].id === "call-b",
       "multiple calls and assistant text translate together");
-    deepEqual(many.usage, { inputTokens: null, outputTokens: null, totalTokens: null }, "missing usage remains unavailable, never zero");
+    deepEqual(many.providerCall.usage, { inputTokens: null, outputTokens: null, totalTokens: null }, "missing usage remains unavailable, never zero");
   }
 
   // 3. Full OAF history remains present, including assistant calls and each result.
   {
     const captured = [];
-    const provider = providerWith(response({ role: "assistant", content: "next" }), captured);
+    const provider = providerWith(response({ role: "assistant", content: "next" }, undefined, "stop"), captured);
     await provider.complete(request({ messages: [
       { role: "user", content: "read both files" },
       { role: "assistant", content: null, toolCalls: [
@@ -162,20 +169,19 @@ try {
   // 6. Strict response validation rejects malformed protocol data before dispatch.
   {
     const cases = [
-      [JSON.stringify({ choices: [] }), /no choices/, "empty choices"],
-      [response({ role: "user", content: "wrong role" }), /malformed assistant message/, "malformed assistant message"],
-      [response({ role: "assistant", content: 3 }), /invalid assistant content/, "non-string assistant content"],
-      [response({ role: "assistant", content: null, tool_calls: [{}] }), /malformed function tool call/, "malformed tool-call shape"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "custom", function: { name: "read", arguments: "{}" } }] }), /malformed function tool call/, "non-function tool-call type"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "", type: "function", function: { name: "read", arguments: "{}" } }] }), /malformed function tool call/, "empty tool-call ID"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "", arguments: "{}" } }] }), /malformed function tool call/, "empty function name"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: 3 } }] }), /malformed function tool call/, "non-string function arguments"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: "{" } }] }), /invalid function arguments JSON/, "malformed tool argument JSON"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: "[]" } }] }), /plain object/, "non-object parsed tool arguments"],
+      [response({ role: "user", content: "wrong role" }, undefined, "stop"), /malformed assistant message/, "malformed assistant message"],
+      [response({ role: "assistant", content: 3 }, undefined, "stop"), /invalid assistant content/, "non-string assistant content"],
+      [response({ role: "assistant", content: null, tool_calls: [{}] }, undefined, "tool_calls"), /malformed function tool call/, "malformed tool-call shape"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "custom", function: { name: "read", arguments: "{}" } }] }, undefined, "tool_calls"), /malformed function tool call/, "non-function tool-call type"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "", type: "function", function: { name: "read", arguments: "{}" } }] }, undefined, "tool_calls"), /malformed function tool call/, "empty tool-call ID"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "", arguments: "{}" } }] }, undefined, "tool_calls"), /malformed function tool call/, "empty function name"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: 3 } }] }, undefined, "tool_calls"), /malformed function tool call/, "non-string function arguments"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: "{" } }] }, undefined, "tool_calls"), /invalid function arguments JSON/, "malformed tool argument JSON"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: "[]" } }] }, undefined, "tool_calls"), /plain object/, "non-object parsed tool arguments"],
       [response({ role: "assistant", content: null, tool_calls: [
         { id: "same", type: "function", function: { name: "read", arguments: "{}" } },
         { id: "same", type: "function", function: { name: "list", arguments: "{}" } },
-      ] }), /duplicate tool-call IDs/, "duplicate IDs in one provider response"],
+      ] }, undefined, "tool_calls"), /duplicate tool-call IDs/, "duplicate IDs in one provider response"],
     ];
     for (const [body, pattern, label] of cases) {
       await rejects(() => providerWith(body).complete(request()), pattern, `${label} is rejected`);
@@ -203,7 +209,80 @@ try {
     assert(!configurationError.includes(API_KEY) && !configurationError.includes("Authorization"), "configuration error omits API-key and authorization values");
   }
 
-  // 8. Integration: adapter -> existing loop -> real registered read -> adapter -> terminal.
+  // 8. BLOCKER 1: finish_reason is required and parsed honestly.
+  {
+    const finish = (message, finishReason) => providerWith(response(message, undefined, finishReason)).complete(request());
+    const ok = await finish({ role: "assistant", content: "done" }, "stop");
+    assert(ok.content === "done" && ok.toolCalls.length === 0, "stop plus terminal text succeeds");
+
+    const tools = await finish({ role: "assistant", content: null, tool_calls: [
+      { id: "t1", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
+    ] }, "tool_calls");
+    assert(tools.toolCalls.length === 1, "tool_calls finish reason with valid calls continues");
+
+    await rejects(() => finish({ role: "assistant", content: "partial" }, "length"), /maximum length/, "length does not succeed");
+    await rejects(() => finish({ role: "assistant", content: "blocked" }, "content_filter"), /content filter/, "content_filter does not succeed");
+    await rejects(() => finish({ role: "assistant", content: "I cannot help", refusal: "I cannot help with that" }, "stop"), /model refusal/, "refusal does not succeed");
+    await rejects(() => finish({ role: "assistant", content: null }, "stop"), /no terminal content/, "null content with no tool calls does not succeed");
+    await rejects(() => finish({ role: "assistant", content: "   " }, "stop"), /no terminal content/, "whitespace-only content with no tool calls does not succeed");
+    await rejects(() => finish({ role: "assistant", content: null, tool_calls: [] }, "tool_calls"), /no tool calls/, "tool_calls finish reason with no calls fails");
+    await rejects(() => finish({ role: "assistant", content: "hi", tool_calls: [
+      { id: "t1", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
+    ] }, "stop"), /inconsistent finish_reason/, "inconsistent stop-plus-tool-calls fails");
+    await rejects(() => finish({ role: "assistant", content: "hi" }, null), /unsupported or missing finish_reason/, "missing finish reason fails closed");
+    await rejects(() => finish({ role: "assistant", content: "hi" }, "weird_reason"), /unsupported or missing finish_reason/, "unknown finish reason fails closed");
+  }
+
+  // 9. BLOCKER 2: requested and reported model identity are preserved separately.
+  {
+    const reported = await providerWith(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
+      model: "actual-model-x",
+    })).complete(request());
+    assert(reported.providerCall.requestedModel === "test-model" && reported.providerCall.reportedModel === "actual-model-x",
+      "requested and reported models can differ and both are preserved");
+
+    const absent = await providerWith(response({ role: "assistant", content: "hi" }, undefined, "stop")).complete(request());
+    assert(absent.providerCall.reportedModel === null, "absent reported model remains null");
+
+    const malformed = await providerWith(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
+      model: 123,
+    })).complete(request());
+    assert(malformed.providerCall.reportedModel === null, "non-string reported model becomes null per contract");
+
+    const missingUsage = await providerWith(response({ role: "assistant", content: "hi" }, undefined, "stop")).complete(request());
+    deepEqual(missingUsage.providerCall.usage, { inputTokens: null, outputTokens: null, totalTokens: null },
+      "one call with missing usage remains explicitly incomplete");
+
+    // Two provider calls retain both calls' usage.
+    const calls = [];
+    const twoShot = createOpenAICompatibleProvider({
+      ...config,
+      transport: async () => {
+        calls.push(true);
+        if (calls.length === 1) {
+          return { status: 200, body: response({ role: "assistant", content: null, tool_calls: [
+            { id: "c1", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
+          ] }, { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 }, "tool_calls") };
+        }
+        return { status: 200, body: response({ role: "assistant", content: "done" }, { prompt_tokens: 9, completion_tokens: 1, total_tokens: 10 }, "stop") };
+      },
+    });
+    const first = await twoShot.complete(request());
+    assert(first.toolCalls.length === 1, "first provider call returns tool calls");
+    const second = await twoShot.complete(request());
+    assert(second.content === "done", "second provider call returns terminal text");
+    deepEqual(first.providerCall.usage, { inputTokens: 3, outputTokens: 2, totalTokens: 5 }, "first call usage is preserved");
+    deepEqual(second.providerCall.usage, { inputTokens: 9, outputTokens: 1, totalTokens: 10 }, "second call usage is preserved");
+
+    // Provider metadata never carries raw secrets, prompts, or headers.
+    const metaJson = JSON.stringify(reported.providerCall);
+    assert(!metaJson.includes(API_KEY) && !metaJson.includes("Authorization") && !metaJson.includes("PROMPT_SENTINEL"),
+      "no raw key, authorization, or prompt enters provider metadata");
+  }
+
+  // 10. Integration: adapter -> existing loop -> real registered read -> adapter -> terminal.
   {
     const requests = [];
     let turn = 0;
@@ -214,8 +293,8 @@ try {
         turn++;
         if (turn === 1) return { status: 200, body: response({ role: "assistant", content: null, tool_calls: [
           { id: "real-read", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
-        ] }, { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 }) };
-        return { status: 200, body: response({ role: "assistant", content: "completed" }, { prompt_tokens: 9, completion_tokens: 1, total_tokens: 10 }) };
+        ] }, { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 }, "tool_calls") };
+        return { status: 200, body: response({ role: "assistant", content: "completed" }, { prompt_tokens: 9, completion_tokens: 1, total_tokens: 10 }, "stop") };
       },
     });
     const result = await runAgentLoop({ task: "read the readme", workspaceRoot: withFixture(), provider, maxTurns: 3 });
@@ -226,10 +305,13 @@ try {
       "existing registry validates and executes the real workspace read tool");
     assert(typeof toolMessage?.content === "string" && toolMessage.content.includes("Opinionated App Factory"),
       "second provider request contains the matching tool result");
-    deepEqual(result.usage, { inputTokens: 9, outputTokens: 1, totalTokens: 10 }, "loop preserves additive provider usage metadata");
+    deepEqual(result.providerCalls, [
+      { provider: "openai-compatible", requestedModel: "test-model", reportedModel: null, usage: { inputTokens: 3, outputTokens: 2, totalTokens: 5 } },
+      { provider: "openai-compatible", requestedModel: "test-model", reportedModel: null, usage: { inputTokens: 9, outputTokens: 1, totalTokens: 10 } },
+    ], "loop preserves per-call provider usage metadata");
   }
 
-  // 9. Run-scoped duplicate protection rejects an ID reused on a later turn before dispatch.
+  // 11. Run-scoped duplicate protection rejects an ID reused on a later turn before dispatch.
   {
     let calls = 0;
     const provider = createOpenAICompatibleProvider({
@@ -238,7 +320,7 @@ try {
         calls++;
         return { status: 200, body: response({ role: "assistant", content: null, tool_calls: [
           { id: "reused", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
-        ] }) };
+        ] }, undefined, "tool_calls") };
       },
     });
     const result = await runAgentLoop({ task: "read twice", workspaceRoot: withFixture(), provider, maxTurns: 3 });
@@ -250,7 +332,7 @@ try {
       "duplicate-ID failure is recorded as a bounded provider error");
   }
 
-  // 10. Distinct IDs on separate provider turns remain valid within one run.
+  // 12. Distinct IDs on separate provider turns remain valid within one run.
   {
     let turn = 0;
     const provider = createOpenAICompatibleProvider({
@@ -260,15 +342,92 @@ try {
         if (turn <= 2) {
           return { status: 200, body: response({ role: "assistant", content: null, tool_calls: [
             { id: `unique-${turn}`, type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
-          ] }) };
+          ] }, undefined, "tool_calls") };
         }
-        return { status: 200, body: response({ role: "assistant", content: "done" }) };
+        return { status: 200, body: response({ role: "assistant", content: "done" }, undefined, "stop") };
       },
     });
     const result = await runAgentLoop({ task: "read twice", workspaceRoot: withFixture(), provider, maxTurns: 4 });
     assert(result.status === "success" && result.turns === 3 &&
       result.events.filter((event) => event.type === "tool_call").map((event) => event.toolCallId).join(",") === "unique-1,unique-2",
     "unique IDs across multiple turns dispatch and complete normally");
+  }
+
+  // 13. BLOCKER 2: a provider failure after one successful call keeps only prior completed-call metadata.
+  {
+    let turn = 0;
+    const provider = createOpenAICompatibleProvider({
+      ...config,
+      transport: async () => {
+        turn++;
+        if (turn === 1) return { status: 200, body: response({ role: "assistant", content: null, tool_calls: [
+          { id: "ok-1", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
+        ] }, { prompt_tokens: 4, completion_tokens: 1, total_tokens: 5 }, "tool_calls") };
+        return { status: 500, body: `remote ${API_KEY}` };
+      },
+    });
+    const result = await runAgentLoop({ task: "read then fail", workspaceRoot: withFixture(), provider, maxTurns: 3 });
+    assert(result.status === "failed" && result.terminalReason === "provider_error", "second failed call ends the run as failed");
+    assert(result.providerCalls.length === 1, "only the prior completed call metadata is preserved");
+    deepEqual(result.providerCalls[0].usage, { inputTokens: 4, outputTokens: 1, totalTokens: 5 }, "preserved call keeps its usage");
+  }
+
+  // 14. BLOCKER 3: built-in fetch transport enforces bounded, non-consumed bodies.
+  {
+    const realFetch = globalThis.fetch;
+    const makeStream = (chunks, onCancel) => new ReadableStream({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk));
+        controller.close();
+      },
+      cancel() { if (onCancel) onCancel(); },
+    });
+    try {
+      // Normal bounded response still succeeds through the real default transport.
+      const okPayload = JSON.stringify({ choices: [{ message: { role: "assistant", content: "bounded", tool_calls: [] }, finish_reason: "stop" }], model: "reported-y" });
+      globalThis.fetch = async () => ({ status: 200, body: makeStream([okPayload]) });
+      const okProvider = createOpenAICompatibleProvider({ ...config });
+      const okResult = await okProvider.complete(request());
+      assert(okResult.content === "bounded" && okResult.providerCall.reportedModel === "reported-y", "normal bounded response succeeds via default transport");
+
+      // Non-2xx response body is never consumed.
+      let bodyRead = false;
+      const fakeBody = {
+        getReader() {
+          bodyRead = true;
+          return { read: async () => ({ done: true, value: undefined }), cancel: async () => {} };
+        },
+      };
+      globalThis.fetch = async () => ({ status: 401, body: fakeBody });
+      let non2xxError = "";
+      try { await okProvider.complete(request()); } catch (error) { non2xxError = error.message; }
+      assert(non2xxError === "OpenAI-compatible provider request failed with HTTP status 401.", "non-2xx error is generic and status-only");
+      assert(!bodyRead, "non-2xx response body is never read");
+
+      // Oversized successful body is rejected and the stream is cancelled at the limit.
+      let cancelled = false;
+      const sentinel = "BODY_SENTINEL_XYZ";
+      const big = `${sentinel}${"x".repeat(MAX_BODY_BYTES + 1000)}`;
+      globalThis.fetch = async () => ({
+        status: 200,
+        body: new ReadableStream({
+          start(controller) { controller.enqueue(new TextEncoder().encode(big)); },
+          cancel() { cancelled = true; },
+        }),
+      });
+      let oversizeError = "";
+      try { await okProvider.complete(request()); } catch (error) { oversizeError = error.message; }
+      assert(/exceeded the maximum allowed size/.test(oversizeError), "oversized successful body is rejected while reading");
+      assert(cancelled, "response stream is cancelled/aborted at the limit");
+      assert(!oversizeError.includes(sentinel), "oversize error omits remote body fragments");
+
+      // Oversized injected-transport string is rejected before JSON parsing.
+      let injectedError = "";
+      try { await providerWith("x".repeat(MAX_BODY_BYTES + 1)).complete(request()); } catch (error) { injectedError = error.message; }
+      assert(/exceeded the maximum allowed size/.test(injectedError), "oversized injected body is rejected before JSON parsing");
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   }
 } finally {
   for (const fixture of fixtures) fixture.cleanup();
