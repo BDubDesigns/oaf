@@ -209,6 +209,82 @@ try {
     assert(result.receipt.status === "failed" && result.receipt.terminalReason === "provider_error", "duplicate provider ID rejected before dispatch");
     assert(result.events.filter((e) => e.type === "tool_call").length === 1, "only first duplicate ID call recorded");
   }
+
+  // 9. Large read (>1 MiB): provider receives exact content, events retain only metadata.
+  {
+    const root = workspace();
+    const sentinel = "LARGE_READ_SENTINEL_53";
+    const largeContent = sentinel + "x".repeat(1_100_000);
+    writeFileSync(join(root, "large.txt"), largeContent);
+    const requests = [];
+    const provider = createMockProvider({
+      script: [
+        { content: null, toolCalls: [{ id: "read-1", name: "read", args: { path: "large.txt" } }] },
+        { content: "done", toolCalls: [] },
+      ],
+      onRequest: (request) => requests.push(request),
+    });
+    const result = await runAgentLoopWithReceipt({ task: "read large", workspaceRoot: root, provider });
+    const secondTool = requests[1].messages.find((message) => message.role === "tool");
+    const readEvent = result.events.find((event) => event.type === "tool_result" && event.toolName === "read");
+    const executionEnds = result.events.filter((event) => event.type === "tool_execution_end");
+    const all = `${JSON.stringify(result.events)}${JSON.stringify(result.receipt)}`;
+    assert(secondTool.toolResults[0].result.content === largeContent, "provider receives exact large content ephemerally");
+    assert(!all.includes(sentinel), "large read content sentinel absent from audit data");
+    assert(readEvent.summary.path === "large.txt" && readEvent.summary.bytes === Buffer.byteLength(largeContent) && readEvent.summary.truncated === false, "large read event retains true byte count");
+    assert(executionEnds.length === 1 && executionEnds[0].success === true, "exactly one successful execution_end for large read");
+  }
+
+  // 10. Large write (>1 MiB): file written once, provider receives exact result, event reports true byte count.
+  {
+    const root = workspace();
+    const sentinel = "LARGE_WRITE_SENTINEL_53";
+    const largeContent = sentinel + "y".repeat(1_100_000);
+    const requests = [];
+    const provider = createMockProvider({
+      script: [
+        { content: null, toolCalls: [{ id: "write-1", name: "write", args: { path: "large-write.txt", content: largeContent } }] },
+        { content: "done", toolCalls: [] },
+      ],
+      onRequest: (request) => requests.push(request),
+    });
+    const result = await runAgentLoopWithReceipt({ task: "write large", workspaceRoot: root, provider });
+    const secondTool = requests[1].messages.find((message) => message.role === "tool");
+    const writeFile = readFileSync(join(root, "large-write.txt"), "utf8");
+    const writeEvent = result.events.find((event) => event.type === "tool_result" && event.toolName === "write");
+    const executionEnds = result.events.filter((event) => event.type === "tool_execution_end");
+    const all = `${JSON.stringify(result.events)}${JSON.stringify(result.receipt)}`;
+    assert(writeFile === largeContent, "large file written exactly once");
+    assert(secondTool.toolResults[0].result.path === "large-write.txt" && secondTool.toolResults[0].result.bytes === Buffer.byteLength(largeContent), "provider receives exact large write result ephemerally");
+    assert(!all.includes(sentinel), "large write content sentinel absent from audit data");
+    assert(writeEvent.summary.path === "large-write.txt" && writeEvent.summary.bytes === Buffer.byteLength(largeContent), "large write event reports true byte count");
+    assert(executionEnds.length === 1 && executionEnds[0].success === true, "exactly one successful execution_end for large write");
+  }
+
+  // 11. Large command stdout (>1 MiB): provider receives exact stdout, events retain only byte count.
+  {
+    const root = workspace();
+    const sentinel = "LARGE_COMMAND_SENTINEL_53";
+    const largeStdout = sentinel + "z".repeat(1_100_000);
+    const requests = [];
+    const executor = async () => ({ exitCode: 0, stdout: largeStdout, stderr: "", truncated: false });
+    const provider = createMockProvider({
+      script: [
+        { content: null, toolCalls: [{ id: "cmd-1", name: "command", args: { command: "pnpm test" } }] },
+        { content: "done", toolCalls: [] },
+      ],
+      onRequest: (request) => requests.push(request),
+    });
+    const result = await runAgentLoopWithReceipt({ task: "cmd large", workspaceRoot: root, provider, commandExecutor: executor });
+    const secondTool = requests[1].messages.find((message) => message.role === "tool");
+    const commandEvent = result.events.find((event) => event.type === "tool_result" && event.toolName === "command");
+    const executionEnds = result.events.filter((event) => event.type === "tool_execution_end");
+    const all = `${JSON.stringify(result.events)}${JSON.stringify(result.receipt)}`;
+    assert(secondTool.toolResults[0].result.stdout === largeStdout, "provider receives exact large stdout ephemerally");
+    assert(!all.includes(sentinel), "large stdout sentinel absent from audit data");
+    assert(commandEvent.summary.exitCode === 0 && commandEvent.summary.stdoutBytes === Buffer.byteLength(largeStdout) && commandEvent.summary.stderrBytes === 0, "large command event retains true byte count");
+    assert(executionEnds.length === 1 && executionEnds[0].success === true, "exactly one successful execution_end for large command");
+  }
 } finally {
   for (const fixture of fixtures) fixture.cleanup();
 }

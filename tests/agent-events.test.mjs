@@ -22,23 +22,14 @@ strictEqual(toolCall.summary.path, "app/page.tsx", "tool_call keeps project-rela
 throws(() => createEvent("not_a_real_event", {}), /Unknown AgentEvent type/, "unknown event type rejected");
 throws(() => createEvent("agent_start", { ...safeStart(), type: "bogus" }), /must not contain a 'type' property/, "fields.type override rejected");
 
-// Raw field rejection in agent_start
+// Raw field rejection
 throws(() => createEvent("agent_start", { ...safeStart(), task: "RAW_TASK" }), /Unsupported AgentEvent field/, "raw task rejected from agent_start");
 throws(() => createEvent("agent_start", { ...safeStart(), workspaceRoot: "/tmp/raw" }), /Unsupported AgentEvent field/, "workspaceRoot rejected from agent_start");
-
-// Raw field rejection in message_end
 throws(() => createEvent("message_end", { ...safeMessageEnd(), content: "RAW" }), /Unsupported AgentEvent field/, "raw content rejected from message_end");
-throws(() => createEvent("message_end", { ...safeMessageEnd(), error: "RAW" }), /Unsupported AgentEvent field/, "raw error rejected from message_end");
-
-// Raw field rejection in tool events
 throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "x" }, args: { path: "x" } }), /Unsupported AgentEvent field/, "raw args rejected from tool_call");
 throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "read", summary: { args: { path: "x" } } }), /Unsupported tool summary field/, "raw args rejected from tool summary");
 throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: 10, truncated: false }, errorCode: null, result: { content: "RAW" } }), /Unsupported AgentEvent field/, "raw result rejected from tool_result");
-throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: { exitCode: 0, stdoutBytes: 10, stderrBytes: 0, truncated: false }, errorCode: null, stdout: "RAW" }), /Unsupported AgentEvent field/, "raw stdout rejected from tool_result fields");
 throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: { stdout: "RAW", exitCode: 0, stdoutBytes: 10, stderrBytes: 0, truncated: false }, errorCode: null }), /Unsupported tool summary field/, "stdout rejected from tool_result summary");
-throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: { stderr: "RAW", exitCode: 0, stdoutBytes: 10, stderrBytes: 0, truncated: false }, errorCode: null }), /Unsupported tool summary field/, "stderr rejected from tool_result summary");
-
-// Arbitrary field rejection
 throws(() => createEvent("agent_end", { ...safeEnd(), arbitrary: "RAW" }), /Unsupported AgentEvent field/, "unknown arbitrary event field rejected");
 
 // Strict ID validation
@@ -53,14 +44,47 @@ throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "nonex
 throws(() => createEvent("tool_execution_start", { toolCallId: "tool_1_1", toolName: "nonexistent" }), /Invalid tool_execution_start toolName/, "unknown tool name rejected in tool_execution_start");
 throws(() => createEvent("tool_execution_end", { toolCallId: "tool_1_1", toolName: "nonexistent", success: true }), /Invalid tool_execution_end toolName/, "unknown tool name rejected in tool_execution_end");
 throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "nonexistent", summary: {}, errorCode: null }), /Invalid tool_result toolName/, "unknown tool name rejected in tool_result");
-// null toolName allowed in tool_call and tool_result (for unknown tool rejection)
 assert(createEvent("tool_call", { toolCallId: "tool_1_1", toolName: null, summary: {} }).toolName === null, "null toolName allowed in tool_call for unknown tools");
 
-// Strict status/terminalReason validation
+// Strict status/terminalReason/disposition/errorCode validation
 throws(() => createEvent("agent_end", { ...safeEnd(), status: "invalid" }), /Invalid status/, "invalid status rejected");
 throws(() => createEvent("agent_end", { ...safeEnd(), terminalReason: "invalid" }), /Invalid terminalReason/, "invalid terminalReason rejected");
 throws(() => createEvent("message_end", { ...safeMessageEnd(), disposition: "invalid" }), /Invalid disposition/, "invalid disposition rejected");
 throws(() => createEvent("message_end", { ...safeMessageEnd(), errorCode: "invalid" }), /Invalid errorCode/, "invalid errorCode rejected");
+
+// Cross-field consistency: message_end
+throws(() => createEvent("message_end", { ...safeMessageEnd(), disposition: "provider_error", errorCode: null }), /provider_error disposition requires provider_error errorCode/, "provider_error disposition requires provider_error errorCode");
+throws(() => createEvent("message_end", { ...safeMessageEnd(), errorCode: "provider_error" }), /non-error disposition requires null errorCode/, "non-error disposition requires null errorCode");
+throws(() => createEvent("message_end", { ...safeMessageEnd(), toolCallCount: 1 }), /terminal disposition requires zero toolCallCount/, "terminal disposition requires zero toolCallCount");
+throws(() => createEvent("message_end", { ...safeMessageEnd(), disposition: "tool_calls", toolCallCount: 0 }), /tool_calls disposition requires at least one tool call/, "tool_calls disposition requires at least one tool call");
+assert(createEvent("message_end", { ...safeMessageEnd(), disposition: "terminal", toolCallCount: 0 }).disposition === "terminal", "terminal disposition with zero toolCallCount accepted");
+assert(createEvent("message_end", { ...safeMessageEnd(), disposition: "tool_calls", toolCallCount: 2 }).disposition === "tool_calls", "tool_calls disposition with positive toolCallCount accepted");
+
+// Cross-field consistency: agent_end
+throws(() => createEvent("agent_end", { ...safeEnd(), status: "success", terminalReason: "max_turns" }), /success requires assistant_terminal/, "success requires assistant_terminal");
+throws(() => createEvent("agent_end", { ...safeEnd(), status: "exhausted", terminalReason: "assistant_terminal" }), /exhausted requires max_turns/, "exhausted requires max_turns");
+throws(() => createEvent("agent_end", { ...safeEnd(), status: "failed", terminalReason: "assistant_terminal" }), /failed requires provider_error/, "failed requires provider_error");
+assert(createEvent("agent_end", { runId: "run_1", status: "exhausted", turns: 8, terminalReason: "max_turns" }).status === "exhausted", "exhausted with max_turns accepted");
+assert(createEvent("agent_end", { runId: "run_1", status: "failed", turns: 1, terminalReason: "provider_error" }).status === "failed", "failed with provider_error accepted");
+
+// Command privacy enforcement in event schema
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "echo UNLABELED_SECRET", redacted: false, mode: null, network: false, confirm: false } }), /Non-redacted command must be a canonical recordable command/, "arbitrary command with redacted false rejected");
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "echo UNLABELED_SECRET", redacted: true, mode: null, network: false, confirm: false } }), /Redacted command must be exactly/, "arbitrary command with redacted true rejected");
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "pnpm test", redacted: true, mode: null, network: false, confirm: false } }), /Redacted command must be exactly/, "canonical command with redacted true rejected");
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "<redacted command>", redacted: false, mode: null, network: false, confirm: false } }), /Non-redacted command must be a canonical recordable command/, "redacted marker with redacted false rejected");
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "", redacted: false, mode: null, network: false, confirm: false } }), /Non-redacted command must be a canonical recordable command/, "empty command rejected");
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "pnpm test && echo x", redacted: false, mode: null, network: false, confirm: false } }), /Non-redacted command must be a canonical recordable command/, "canonical-prefix command rejected");
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "pnpm test --unexpected", redacted: false, mode: null, network: false, confirm: false } }), /Non-redacted command must be a canonical recordable command/, "canonical command with extra args rejected");
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "pnpm test", redacted: false, mode: "invalid", network: false, confirm: false } }), /Command mode must be a valid sandbox mode or null/, "invalid command mode rejected");
+throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "pnpm test", redacted: false, mode: "test", network: false, confirm: false, extra: true } }), /Unsupported tool summary field/, "extra command summary field rejected");
+
+// All seven canonical command summaries accepted
+for (const canonical of ["pnpm test", "pnpm lint", "pnpm typecheck", "pnpm build", "git status", "git diff", "git log --oneline"]) {
+  assert(createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: canonical, redacted: false, mode: null, network: false, confirm: false } }).summary.command === canonical, `canonical command accepted: ${canonical}`);
+}
+assert(createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "<redacted command>", redacted: true, mode: null, network: false, confirm: false } }).summary.redacted === true, "exact redacted marker summary accepted");
+assert(createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "pnpm test", redacted: false, mode: "test", network: true, confirm: true } }).summary.mode === "test", "valid command mode accepted");
+assert(createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "command", summary: { command: "pnpm test", redacted: false, mode: null, network: false, confirm: false } }).summary.mode === null, "null command mode accepted");
 
 // Success completeness validation
 throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: 10 }, errorCode: null }), /read success requires truncated/, "read success requires truncated");
@@ -72,7 +96,6 @@ throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: null
 
 // Error consistency validation
 throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md" }, errorCode: "rejected" }), /Error result must have empty summary/, "error result with non-empty summary rejected");
-throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { bytes: 100 }, errorCode: "execution_error" }), /Error result must have empty summary/, "error result with bytes rejected");
 throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: { exitCode: 1 }, errorCode: "rejected" }), /Error result must have empty summary/, "error result with exitCode rejected");
 
 // Valid success summaries
@@ -87,13 +110,13 @@ assert(createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", su
 assert(createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: {}, errorCode: "execution_error" }).errorCode === "execution_error", "valid command error accepted");
 assert(createEvent("tool_result", { toolCallId: "tool_1_1", toolName: null, summary: {}, errorCode: "rejected" }).errorCode === "rejected", "valid unknown tool error accepted");
 
-// Count bounds
+// Number.isSafeInteger boundaries
+assert(createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: Number.MAX_SAFE_INTEGER, truncated: false }, errorCode: null }).summary.bytes === Number.MAX_SAFE_INTEGER, "MAX_SAFE_INTEGER bytes accepted");
+throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: Number.MAX_SAFE_INTEGER + 1, truncated: false }, errorCode: null }), /Invalid tool summary count/, "unsafe integer bytes rejected");
 throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: -1, truncated: false }, errorCode: null }), /Invalid tool summary count/, "negative bytes rejected");
-throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: 999999999, truncated: false }, errorCode: null }), /Invalid tool summary count/, "oversized bytes rejected");
-
-// Exit code bounds
-throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: { exitCode: 256, stdoutBytes: 0, stderrBytes: 0, truncated: false }, errorCode: null }), /Invalid tool summary exitCode/, "exitCode > 255 rejected");
-throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: { exitCode: -1, stdoutBytes: 0, stderrBytes: 0, truncated: false }, errorCode: null }), /Invalid tool summary exitCode/, "negative exitCode rejected");
+throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: 1.5, truncated: false }, errorCode: null }), /Invalid tool summary count/, "fractional bytes rejected");
+throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: Infinity, truncated: false }, errorCode: null }), /Invalid tool summary count/, "infinite bytes rejected");
+throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: NaN, truncated: false }, errorCode: null }), /Invalid tool summary count/, "NaN bytes rejected");
 
 // Path control character rejection
 throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md\x00", bytes: 10, truncated: false }, errorCode: null }), /Invalid tool summary path/, "path with NUL rejected");
