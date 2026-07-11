@@ -12,19 +12,21 @@ const repo = resolve(import.meta.dirname, "..");
 const sanitized = sanitizeTerminal("\x1b[31mRED\x1b[0m\x1b]title\x07\0x\by\rz\n\tok");
 assert(sanitized === "REDxyz\n\tok", "terminal sanitizer strips CSI, OSC, controls, and CR");
 const unicode = sanitizeTerminal("a".repeat(8190) + "€😀");
-assert(Buffer.byteLength(unicode, "utf8") <= 8192 + Buffer.byteLength("\n[response truncated]", "utf8") && unicode.endsWith("[response truncated]"), "terminal sanitizer truncates at Unicode boundary");
+assert(Buffer.byteLength(unicode, "utf8") <= 8192 && unicode.endsWith("[response truncated]"), "terminal sanitizer truncates at Unicode boundary within final byte limit");
 const usageFailure = usageFrom({ turns: 1, providerCalls: [] }, { model: " test/model " });
 assert(usageFailure.calls === 1 && usageFailure.tokensIn === null && usageFailure.tokensOut === null && usageFailure.model === "test/model", "usage counts failed attempts without fabricated tokens");
 const fixture = copyGeneratedAppFixture();
 const secret = "OAF_CLI_SECRET_SENTINEL";
 let calls = 0;
 let auth = null;
+const requests = [];
 const server = createServer((req, res) => {
   let body = "";
   req.on("data", (chunk) => { body += chunk; });
   req.on("end", () => {
     auth = req.headers.authorization;
     const request = JSON.parse(body);
+    requests.push(request);
     const payload = calls++ === 0
       ? { choices: [{ finish_reason: "tool_calls", message: { role: "assistant", content: null, tool_calls: [{ id: "cli_tool_1", type: "function", function: { name: "write", arguments: JSON.stringify({ path: "app/oaf-cli-test.txt", content: "cli wrote this" }) } }] } }], usage: { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 } }
       : { choices: [{ finish_reason: "stop", message: { role: "assistant", content: "CLI terminal response" } }], usage: { prompt_tokens: 5, completion_tokens: 4, total_tokens: 9 } };
@@ -40,6 +42,11 @@ try {
   const output = success.stdout + success.stderr;
   assert(success.status === 0, "successful CLI round trip exits 0");
   assert(existsSync(join(fixture.workspace, "app/oaf-cli-test.txt")), "provider tool call writes allowed file");
+  const secondMessages = requests[1]?.messages ?? [];
+  const assistantToolCall = secondMessages.find((message) => message.role === "assistant" && message.tool_calls?.[0]?.id === "cli_tool_1");
+  const toolResult = secondMessages.find((message) => message.role === "tool" && message.tool_call_id === "cli_tool_1");
+  assert(Boolean(assistantToolCall) && Boolean(toolResult) && toolResult.content.includes("app/oaf-cli-test.txt") && toolResult.content.includes("bytes"), "second request preserves exact tool-call/result protocol");
+  assert(!JSON.stringify(secondMessages).includes(secret) && !JSON.stringify(secondMessages).includes(fixture.workspace), "tool-result protocol omits key and host path");
   assert(/Receipt: oaf\/receipts\/.+\.json/.test(output), "CLI prints project-relative receipt path");
   assert(/Response:\nCLI terminal response/.test(output), "CLI prints established terminal content under response heading");
   assert(auth === `Bearer ${secret}`, "API key sentinel appears only in Authorization header");

@@ -9,7 +9,8 @@ import {
   writeReceipt,
   receiptFileName,
   RECEIPT_SCHEMA_VERSION,
-  OAF_VERSION,
+   OAF_VERSION,
+   validateReceiptUsage,
 } from "../lib/agent/receipt.mjs";
 import { createMockProvider } from "../lib/agent/provider.mjs";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
@@ -23,6 +24,8 @@ function assert(condition, message) {
     failures++;
   }
 }
+assert(validateReceiptUsage({ provider: "openai-compatible", model: "test/model", runMode: "agent", calls: 1, tokensIn: null, tokensOut: 2 }).calls === 1, "valid receipt usage is retained");
+try { validateReceiptUsage({ provider: "openai-compatible", model: "test/model", runMode: "agent", calls: 1, tokensIn: null, tokensOut: null, extra: true }); assert(false, "malformed receipt usage rejected"); } catch { assert(true, "malformed receipt usage rejected"); }
 
 const fixtures = [];
 const outsideDirs = [];
