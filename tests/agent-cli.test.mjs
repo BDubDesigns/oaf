@@ -78,6 +78,9 @@ try {
 
 // Preflight/config scenarios must never contact the local provider or write receipts.
 await scenario((_req, res) => { res.writeHead(500); res.end("unused"); }, async ({ workspace, env, requests: count }) => {
+  const missingTask = await runCli([bin, "agent"], { cwd: workspace, env });
+  const unsupportedProvider = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_PROVIDER: "other" } });
+  assert(missingTask.status === 2 && unsupportedProvider.status === 2 && count() === 0 && receiptFiles(workspace).length === 0 && !`${missingTask.stdout}${missingTask.stderr}${unsupportedProvider.stdout}${unsupportedProvider.stderr}`.includes(env.OAF_TEST_SECRET) && !`${missingTask.stdout}${missingTask.stderr}${unsupportedProvider.stdout}${unsupportedProvider.stderr}`.includes(env.OAF_PROVIDER_BASE_URL) && !`${missingTask.stdout}${missingTask.stderr}${unsupportedProvider.stdout}${unsupportedProvider.stderr}`.includes(workspace), "missing task and unsupported provider are isolated safe preflight failures");
   for (const key of ["OAF_PROVIDER", "OAF_PROVIDER_BASE_URL", "OAF_MODEL", "OAF_API_KEY_ENV", "OAF_TEST_SECRET"]) {
     const next = { ...env }; delete next[key];
     const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: next });
