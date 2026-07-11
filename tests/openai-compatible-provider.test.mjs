@@ -87,6 +87,37 @@ try {
     assert(JSON.stringify(oafRequest) === before, "request and message history are not mutated during translation");
   }
 
+  // 1b. Requested models are trusted explicit configuration, normalized once.
+  {
+    const captured = [];
+    const provider = createOpenAICompatibleProvider({
+      ...config,
+      model: " vendor/model-name ",
+      transport: async (input) => {
+        captured.push(input);
+        return { status: 200, body: response({ role: "assistant", content: "ok" }, undefined, "stop") };
+      },
+    });
+    const result = await provider.complete(request());
+    const sent = JSON.parse(captured[0].body);
+    assert(sent.model === "vendor/model-name", "configured vendor/model-name is normalized before sending");
+    assert(result.providerCall.requestedModel === "vendor/model-name", "normalized configured model is retained as requestedModel");
+
+    let transportCalls = 0;
+    const neverTransport = async () => { transportCalls++; throw new Error("must not run"); };
+    await rejects(
+      () => createOpenAICompatibleProvider({ ...config, model: "   ", transport: neverTransport }).complete(request()),
+      /model ID/,
+      "empty configured model fails before transport",
+    );
+    await rejects(
+      () => createOpenAICompatibleProvider({ ...config, model: "x".repeat(129), transport: neverTransport }).complete(request()),
+      /model ID/,
+      "oversized configured model fails before transport",
+    );
+    assert(transportCalls === 0, "invalid configured models never reach transport");
+  }
+
   // 2. One, multiple, and text-plus-tool calls all preserve protocol fields.
   {
     const one = await providerWith(response({ role: "assistant", content: null, tool_calls: [
@@ -241,6 +272,12 @@ try {
     })).complete(request());
     assert(reported.providerCall.requestedModel === "test-model" && reported.providerCall.reportedModel === "actual-model-x",
       "requested and reported models can differ and both are preserved");
+
+    const namespaced = await providerWith(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
+      model: "vendor/model-revision",
+    })).complete(request());
+    assert(namespaced.providerCall.reportedModel === "vendor/model-revision", "safe namespaced reported model is retained");
 
     const trimmed = await providerWith(JSON.stringify({
       choices: [{ message: { role: "assistant", content: "hi", tool_calls: [] }, finish_reason: "stop" }],
@@ -425,17 +462,20 @@ try {
 
       // Non-2xx response body is never consumed.
       let bodyRead = false;
+      let bodyCancelled = false;
       const fakeBody = {
         getReader() {
           bodyRead = true;
           return { read: async () => ({ done: true, value: undefined }), cancel: async () => {} };
         },
+        async cancel() { bodyCancelled = true; },
       };
       globalThis.fetch = async () => ({ status: 401, body: fakeBody });
       let non2xxError = "";
       try { await okProvider.complete(request()); } catch (error) { non2xxError = error.message; }
       assert(non2xxError === "OpenAI-compatible provider request failed with HTTP status 401.", "non-2xx error is generic and status-only");
       assert(!bodyRead, "non-2xx response body is never read");
+      assert(bodyCancelled, "non-2xx response body is cancelled without reading");
 
       // Oversized successful body is rejected and the stream is cancelled at the limit.
       let cancelled = false;

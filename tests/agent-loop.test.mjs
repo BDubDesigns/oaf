@@ -190,6 +190,7 @@ try {
     const providerSource = readFileSync(join(repoRoot, "lib", "agent", "provider.mjs"), "utf8");
     const forbidden = /(node:(http|https|net)\b|\bfetch\s*\(|from\s+["'](?:axios|undici|openai|anthropic|@anthropic|@openai)["'])/i;
     assert(!forbidden.test(loopSource), "loop module imports no network/provider SDK");
+    assert(!loopSource.includes("openai-compatible-provider"), "loop imports no concrete OpenAI-compatible adapter");
     assert(!forbidden.test(providerSource), "provider module imports no network/provider SDK");
   }
 
