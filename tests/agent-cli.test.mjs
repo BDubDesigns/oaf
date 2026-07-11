@@ -56,8 +56,10 @@ try {
   const secondMessages = requests[1]?.messages ?? [];
   const assistantToolCall = secondMessages.find((message) => message.role === "assistant" && message.tool_calls?.[0]?.id === "cli_tool_1");
   const toolResult = secondMessages.find((message) => message.role === "tool" && message.tool_call_id === "cli_tool_1");
-  assert(Boolean(assistantToolCall) && Boolean(toolResult) && toolResult.content.includes("app/oaf-cli-test.txt") && toolResult.content.includes("bytes"), "second request preserves exact tool-call/result protocol");
-  assert(!JSON.stringify(secondMessages).includes(secret) && !JSON.stringify(secondMessages).includes(fixture.workspace), "tool-result protocol omits key and host path");
+  const decodedArgs = assistantToolCall?.tool_calls?.[0]?.function?.arguments;
+  let parsedResult = null; try { parsedResult = JSON.parse(toolResult?.content); } catch {}
+  assert(assistantToolCall?.tool_calls?.[0]?.id === "cli_tool_1" && assistantToolCall?.tool_calls?.[0]?.function?.name === "write" && decodedArgs === JSON.stringify({ path: "app/oaf-cli-test.txt", content: "cli wrote this" }) && JSON.stringify(parsedResult) === JSON.stringify({ path: "app/oaf-cli-test.txt", bytes: 14 }), "second request preserves exact write tool-call/result protocol");
+  assert(!JSON.stringify(secondMessages).includes(secret) && !JSON.stringify(secondMessages).includes(fixture.workspace) && !JSON.stringify(secondMessages).includes(env.OAF_PROVIDER_BASE_URL) && !JSON.stringify(secondMessages).includes("Authorization"), "tool-result protocol omits credentials, endpoint, and host path");
   assert(/Receipt: oaf\/receipts\/.+\.json/.test(output), "CLI prints project-relative receipt path");
   assert(/Response:\nCLI terminal response/.test(output), "CLI prints established terminal content under response heading");
   assert(auth === `Bearer ${secret}`, "API key sentinel appears only in Authorization header");
@@ -113,6 +115,10 @@ await scenario((_req, res) => { res.writeHead(200, { "content-type": "applicatio
   const result = await runCli([bin, "agent", "receipt"], { cwd: workspace, env });
   assert(result.status === 1 && count() === 1 && /receipt could not be written/.test(result.stderr) && !/Receipt:/.test(result.stdout) && !`${result.stdout}${result.stderr}`.includes(workspace), "receipt-write failure is bounded with no receipt claim or retry");
 });
+await scenario((_req, res) => { const content = `safe \x1b[31mRED\x1b[0m \x1b]title\x07 \x1b]st\x1b\\ \x1bX\0a\bb\u0085\r\n\t😀${"z".repeat(9000)}`; res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "sanitize"], { cwd: workspace, env }); const response = result.stdout.split("Response:\n")[1] ?? "";
+  assert(result.status === 0 && response.includes("safe RED") && response.includes("😀") && response.includes("[response truncated]") && !/[\x00-\x08\x0b-\x1f\x7f-\x9f\x1b]/.test(response) && Buffer.byteLength(response.trimEnd(), "utf8") <= 8192, "spawned CLI sanitizes terminal controls and bounds Unicode response");
+});
 const commandFixture = copyGeneratedAppFixture();
 try {
   const help = await runCli([bin, "--help"], { cwd: commandFixture.workspace, env: process.env });
@@ -120,5 +126,7 @@ try {
   const sandbox = await runCli([bin, "sandbox", "run", "sudo rm -rf /"], { cwd: commandFixture.workspace, env: process.env });
   assert(help.status === 0 && /agent/.test(help.stdout) && doctor.status === 0 && /valid OAF/.test(doctor.stdout) && sandbox.status !== 0 && /blocked/i.test(`${sandbox.stdout}${sandbox.stderr}`), "help, doctor, and sandbox policy dispatch remain functional");
 } finally { commandFixture.cleanup(); }
+const initParent = copyGeneratedAppFixture();
+try { const target = join(initParent.workspace, "new-app"); const init = await runCli([bin, "init", "new-app"], { cwd: initParent.workspace, env: process.env }); const doctor = await runCli([bin, "doctor"], { cwd: target, env: process.env }); assert(init.status === 0 && existsSync(join(target, "oaf", "app.json")) && doctor.status === 0, "init creates marked app and doctor succeeds"); } finally { initParent.cleanup(); }
 if (failures) process.exit(1);
 console.log("All agent CLI checks passed.");

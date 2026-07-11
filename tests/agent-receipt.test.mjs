@@ -26,6 +26,7 @@ function assert(condition, message) {
 }
 assert(validateReceiptUsage({ provider: "openai-compatible", model: "test/model", runMode: "agent", calls: 1, tokensIn: null, tokensOut: 2 }).calls === 1, "valid receipt usage is retained");
 try { validateReceiptUsage({ provider: "openai-compatible", model: "test/model", runMode: "agent", calls: 1, tokensIn: null, tokensOut: null, extra: true }); assert(false, "malformed receipt usage rejected"); } catch { assert(true, "malformed receipt usage rejected"); }
+for (const invalid of [null, false, 0, "", { provider: "openai-compatible", model: "test/model", runMode: "wrong", calls: 1, tokensIn: null, tokensOut: null }, { provider: "x".repeat(65), model: "test/model", runMode: "agent", calls: 1, tokensIn: null, tokensOut: null }, { provider: "openai-compatible", model: "test/model", runMode: "agent", calls: Number.MAX_SAFE_INTEGER + 1, tokensIn: null, tokensOut: null }]) { try { validateReceiptUsage(invalid); assert(false, "invalid explicit usage rejected"); } catch { assert(true, "invalid explicit usage rejected"); } }
 
 const fixtures = [];
 const outsideDirs = [];
