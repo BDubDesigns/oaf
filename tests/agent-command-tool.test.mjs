@@ -63,22 +63,22 @@ try {
   const allowed = await executeWithFakeSandbox({ workspaceRoot: workspace, command: "  pnpm test  " });
   assert(calls.length === 1 && calls[0].command === "pnpm test", "allowed command routes through sandbox seam");
   assert(calls[0].cwd === workspace, "workspaceRoot is forwarded as sandbox cwd");
-  assert(calls[0].network === false, "network defaults off");
-  assert(calls[0].confirm === false, "confirmation defaults off");
+  assert(!Object.hasOwn(calls[0], "origin"), "agent executor does not expose provenance override to injected runner");
+  assert(!Object.hasOwn(calls[0], "approvalGranted") && !Object.hasOwn(calls[0], "networkGranted"), "agent executor does not forward authorization fields");
   assert(allowed.exitCode === 0 && allowed.stdout === "test output\n" && allowed.stderr === "", "stdout and stderr stay separate");
 
-  // 3. Explicit approval is forwarded to the shared runner.
-  await executeWithFakeSandbox({
-    workspaceRoot: workspace,
-    command: "pnpm install",
-    mode: "install",
-    network: true,
-    confirm: true,
-  });
-  assert(
-    calls[1].mode === "install" && calls[1].network === true && calls[1].confirm === true,
-    "mode, network, and explicit confirmation are forwarded",
+  // 3. Model-era authorization keys are never accepted by the agent executor.
+  await rejects(
+    () => executeWithFakeSandbox({ workspaceRoot: workspace, command: "pnpm test", confirm: true }),
+    (error) => /unexpected argument: confirm/.test(error.message),
+    "confirmation claim is rejected before sandbox dispatch",
   );
+  await rejects(
+    () => executeWithFakeSandbox({ workspaceRoot: workspace, command: "pnpm test", network: true }),
+    (error) => /unexpected argument: network/.test(error.message),
+    "network claim is rejected before sandbox dispatch",
+  );
+  assert(calls.length === 1, "authorization claims never reach sandbox seam");
 
   // 4. Non-zero command exits are returned honestly, not thrown.
   const failed = await executeWithFakeSandbox({ workspaceRoot: workspace, command: "pnpm build" });
@@ -88,8 +88,8 @@ try {
   // 5. Real policy checks remain in the shared runner and fail closed before a runtime is needed.
   await rejects(
     () => executeCommand({ workspaceRoot: workspace, command: "pnpm install" }),
-    (error) => error instanceof SandboxError && error.code === "POLICY_REJECTED" && /confirmation/.test(error.message),
-    "confirmation-required command fails closed without confirmation",
+    (error) => error instanceof SandboxError && error.code === "AGENT_NETWORK_DENIED",
+    "network-required agent command fails closed without model approval",
   );
 
   // 6. A sandbox infrastructure failure propagates; no host fallback exists.
