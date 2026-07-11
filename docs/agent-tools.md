@@ -178,9 +178,8 @@ issue once the loop shape is proven. It is intentionally out of Alpha 1.
 
 `bash` implies a raw shell the agent drives. `command` signals the OAF safety
 story — *the model proposes an action; OAF decides and executes* through the
-sandbox. The arg shape (`command`, `mode`, `network`, `confirm`) makes policy
-    intent explicit at the call site. Provider tool arguments carry only
-    `command` and `mode`; OAF policy and trusted host code own authorization.
+sandbox. The arg shape (`command`, `mode`) carries model intent only; OAF
+policy and trusted host code own authorization.
 
 ## Event types emitted
 

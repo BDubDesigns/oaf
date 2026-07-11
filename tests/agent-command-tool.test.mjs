@@ -63,8 +63,8 @@ try {
   const allowed = await executeWithFakeSandbox({ workspaceRoot: workspace, command: "  pnpm test  " });
   assert(calls.length === 1 && calls[0].command === "pnpm test", "allowed command routes through sandbox seam");
   assert(calls[0].cwd === workspace, "workspaceRoot is forwarded as sandbox cwd");
-  assert(calls[0].origin === "agent", "command executor identifies agent origin");
-  assert(calls[0].approvalGranted === false && calls[0].networkGranted === false, "agent executor supplies no trusted authorization");
+  assert(!Object.hasOwn(calls[0], "origin"), "agent executor does not expose provenance override to injected runner");
+  assert(!Object.hasOwn(calls[0], "approvalGranted") && !Object.hasOwn(calls[0], "networkGranted"), "agent executor does not forward authorization fields");
   assert(allowed.exitCode === 0 && allowed.stdout === "test output\n" && allowed.stderr === "", "stdout and stderr stay separate");
 
   // 3. Model-era authorization keys are never accepted by the agent executor.

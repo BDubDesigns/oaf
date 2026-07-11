@@ -1,8 +1,8 @@
 // Command authorization and repository-script trust checks. No container daemon
 // is required: policy failures occur before runtime discovery.
-import { lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildContainerRun, createVerificationWorkspace, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.mjs";
+import { buildContainerRun, createVerificationWorkspace, runAgentSandboxCommand, runHumanSandboxCommand, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.mjs";
 import { runAgentLoop } from "../lib/agent/loop.mjs";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
@@ -48,8 +48,10 @@ try {
 
   const malformed = copyGeneratedAppFixture();
   try { writeFileSync(join(malformed.workspace, "package.json"), "{"); await rejects(() => verifyPackageScript(malformed.workspace, "pnpm test"), "PACKAGE_SCRIPT_POLICY", "malformed package.json fails closed"); } finally { malformed.cleanup(); }
-  const shell = copyGeneratedAppFixture();
-  try { writeFileSync(join(shell.workspace, ".npmrc"), "script-shell=/bin/sh\n"); await rejects(() => verifyPackageScript(shell.workspace, "pnpm test"), "PACKAGE_SCRIPT_POLICY", "custom script shell fails closed"); } finally { shell.cleanup(); }
+  const workspaceConfig = copyGeneratedAppFixture();
+  try { writeFileSync(join(workspaceConfig.workspace, "pnpm-workspace.yaml"), "scriptShell: /bin/sh\nshellEmulator: true\n"); await rejects(() => verifyPackageScript(workspaceConfig.workspace, "pnpm test"), "PACKAGE_SCRIPT_POLICY", "pnpm 11 workspace configuration fails closed"); } finally { workspaceConfig.cleanup(); }
+  const hookMjs = copyGeneratedAppFixture();
+  try { writeFileSync(join(hookMjs.workspace, ".pnpmfile.mjs"), "export default {}\n"); await rejects(() => verifyPackageScript(hookMjs.workspace, "pnpm test"), "PACKAGE_SCRIPT_POLICY", "pnpm mjs hook fails closed"); } finally { hookMjs.cleanup(); }
   const hook = copyGeneratedAppFixture();
   try { writeFileSync(join(hook.workspace, ".pnpmfile.cjs"), "module.exports = {}\n"); await rejects(() => verifyPackageScript(hook.workspace, "pnpm test"), "PACKAGE_SCRIPT_POLICY", "repository pnpm hook fails closed"); } finally { hook.cleanup(); }
   const linked = copyGeneratedAppFixture();
@@ -58,13 +60,19 @@ try {
   // Package verification copies only safe regular project files and always cleans up.
   mkdirSync(join(fixture.workspace, ".git"));
   mkdirSync(join(fixture.workspace, "node_modules"));
-  writeFileSync(join(fixture.workspace, ".env"), "SECRET");
+  for (const name of [".env", ".env.local", ".envrc", ".environment", ".env-secrets"]) {
+    writeFileSync(join(fixture.workspace, name), `SECRET_${name}`);
+    mkdirSync(join(fixture.workspace, "nested"), { recursive: true });
+    writeFileSync(join(fixture.workspace, "nested", name), `SECRET_${name}`);
+  }
+  writeFileSync(join(fixture.workspace, ".npmrc"), "NPM_AUTH_SENTINEL");
   writeFileSync(join(fixture.workspace, "oaf", "receipts", "secret.json"), "SECRET");
   symlinkSync(join(fixture.workspace, "README.md"), join(fixture.workspace, "linked.txt"));
   const verification = await createVerificationWorkspace(fixture.workspace);
   try {
     assert(!lstatSync(join(verification.directory, ".git"), { throwIfNoEntry: false }), "git metadata is not copied");
-    assert(!lstatSync(join(verification.directory, ".env"), { throwIfNoEntry: false }), "env files are not copied");
+    for (const name of [".env", ".env.local", ".envrc", ".environment", ".env-secrets"]) assert(!lstatSync(join(verification.directory, name), { throwIfNoEntry: false }) && !lstatSync(join(verification.directory, "nested", name), { throwIfNoEntry: false }), `${name} files are not copied at any depth`);
+    assert(!lstatSync(join(verification.directory, ".npmrc"), { throwIfNoEntry: false }), "npm auth config is not copied");
     assert(!lstatSync(join(verification.directory, "node_modules"), { throwIfNoEntry: false }), "node_modules is not copied");
     assert(!lstatSync(join(verification.directory, "oaf", "receipts"), { throwIfNoEntry: false }), "receipts are not copied");
     assert(!lstatSync(join(verification.directory, "linked.txt"), { throwIfNoEntry: false }), "symlinks are not followed or copied");
@@ -83,17 +91,50 @@ try {
   const gitArgv = buildContainerRun("docker", { command: "git status", cwd: fixture.workspace, readOnly: true });
   assert(gitArgv.includes(`${fixture.workspace}:/workspace:ro`), "git inspection mount is read-only");
 
-  await rejects(() => runSandboxCommand({ command: "pnpm install", origin: "agent", approvalGranted: true, networkGranted: true, cwd: fixture.workspace }), "AGENT_NETWORK_DENIED", "agent cannot self-authorize network command");
-  await rejects(() => runSandboxCommand({ command: "unknown command", origin: "agent", approvalGranted: true, cwd: fixture.workspace }), "AGENT_AUTHORIZATION_REQUIRED", "agent cannot self-authorize unknown command");
-  await rejects(() => runSandboxCommand({ command: "pnpm install", origin: "human_cli", approvalGranted: false, networkGranted: false, cwd: fixture.workspace }), "POLICY_REJECTED", "human CLI requires trusted flags");
+  await rejects(() => runSandboxCommand({ command: "pnpm test", cwd: fixture.workspace }), "INVALID_ORIGIN", "omitted generic origin fails closed");
+  await rejects(() => runAgentSandboxCommand({ command: "pnpm install", approvalGranted: true, networkGranted: true, cwd: fixture.workspace }), "AGENT_NETWORK_DENIED", "agent entry cannot self-authorize network command");
+  await rejects(() => runAgentSandboxCommand({ command: "unknown command", approvalGranted: true, cwd: fixture.workspace }), "AGENT_AUTHORIZATION_REQUIRED", "agent entry cannot self-authorize unknown command");
+  await rejects(() => runHumanSandboxCommand({ command: "pnpm install", approvalGranted: false, networkGranted: false, cwd: fixture.workspace }), "POLICY_REJECTED", "human CLI requires trusted flags");
   let humanAuthorizationReached = false;
   try {
-    await runSandboxCommand({ command: "pnpm install", origin: "human_cli", approvalGranted: true, networkGranted: true, cwd: fixture.workspace });
+    await runHumanSandboxCommand({ command: "pnpm install", approvalGranted: true, networkGranted: true, cwd: fixture.workspace });
     humanAuthorizationReached = true;
   } catch (error) {
     humanAuthorizationReached = error instanceof SandboxError && error.code === "SANDBOX_UNAVAILABLE";
   }
   assert(humanAuthorizationReached, "trusted human CLI flags reach sandbox authorization path");
+
+  // Exercise the real agent entry path with a fake container executor.
+  let disposablePath = null;
+  const malicious = await runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, dependencies: {
+    detectRuntime: () => "fake",
+    runContainer: async ({ cwd, argv }) => {
+      disposablePath = cwd;
+      writeFileSync(join(cwd, "app", "page.tsx"), "malicious rewrite");
+      unlinkSync(join(cwd, "app", "layout.tsx"));
+      writeFileSync(join(cwd, "malicious-sentinel"), "created");
+      assert(argv.includes(`${cwd}:/workspace`) && argv[argv.indexOf("--network") + 1] === "none", "real agent path mounts disposable workspace with network none");
+      return { exitCode: 0, stdout: "NPM_AUTH_SENTINEL absent", stderr: "", truncated: false };
+    },
+  } });
+  assert(malicious.exitCode === 0 && malicious.stdout === "NPM_AUTH_SENTINEL absent", "agent runner preserves successful command output");
+  assert(!readFileSync(join(fixture.workspace, "app", "page.tsx"), "utf8").includes("malicious") && existsSync(join(fixture.workspace, "app", "layout.tsx")) && !existsSync(join(fixture.workspace, "malicious-sentinel")), "malicious verification cannot alter authoritative project");
+  assert(!existsSync(disposablePath), "agent disposable workspace cleans after success");
+  let failedPath = null;
+  const nonzero = await runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd }) => { failedPath = cwd; return { exitCode: 7, stdout: "out", stderr: "err", truncated: false }; } } });
+  assert(nonzero.exitCode === 7 && nonzero.stdout === "out" && nonzero.stderr === "err" && !existsSync(failedPath), "nonzero verification result and cleanup are preserved");
+  let startupPath = null;
+  await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd }) => { startupPath = cwd; throw new SandboxError("SANDBOX_START_FAILED", "test startup failure"); } } }), "SANDBOX_START_FAILED", "container startup failure propagates");
+  assert(!existsSync(startupPath), "disposable workspace cleans after startup failure");
+  let runtimeCalls = 0;
+  const invalid = copyGeneratedAppFixture();
+  try { const value = manifest(invalid.workspace); value.scripts.test = "node malicious.mjs"; writeManifest(invalid.workspace, value); await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: invalid.workspace, dependencies: { detectRuntime: () => { runtimeCalls++; return "fake"; } } }), "PACKAGE_SCRIPT_POLICY", "script policy rejects before runtime startup"); assert(runtimeCalls === 0, "script policy does not invoke runtime or container"); } finally { invalid.cleanup(); }
+  let gitCwd = null;
+  await runAgentSandboxCommand({ command: "git status", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd, argv }) => { gitCwd = cwd; assert(argv.includes(`${fixture.workspace}:/workspace:ro`) && argv[argv.indexOf("--network") + 1] === "none", "git runner uses authoritative read-only mount"); return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } } });
+  assert(gitCwd === fixture.workspace, "git inspection creates no disposable workspace");
+  const stdout = []; const stderr = [];
+  await runHumanSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, onStdout: (data) => stdout.push(String(data)), onStderr: (data) => stderr.push(String(data)), dependencies: { detectRuntime: () => "fake", runContainer: async ({ onStdout, onStderr }) => { onStdout("stdout"); onStderr("stderr"); return { exitCode: 0, stdout: "stdout", stderr: "stderr", truncated: false }; } } });
+  assert(stdout.join("") === "stdout" && stderr.join("") === "stderr", "human stdout and stderr callbacks route once");
 } finally { fixture.cleanup(); }
 
 if (failures > 0) { console.error(`\n${failures} authorization check(s) failed.`); process.exit(1); }

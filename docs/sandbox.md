@@ -25,13 +25,18 @@ connected to agent runs, commands requiring approval or network are rejected.
 
 Recordability is not execution trust. Before an agent can run a canonical
 `pnpm` verification command, OAF verifies an OAF-owned blessed script
-definition, exact pinned package-manager metadata, no unowned `pre`/`post`
-lifecycle hook, and no custom `.npmrc` script shell. Sandbox containment does
+definition, exact pinned package-manager metadata, and no unowned `pre`/`post`
+lifecycle hook. Pnpm 11 project execution settings live in
+`pnpm-workspace.yaml`; because Alpha 1 does not generate or own it, any such
+file is rejected wholesale. `.pnpmfile.mjs` and `.pnpmfile.cjs` are likewise
+rejected. `.npmrc` is excluded from the disposable copy as auth/registry
+configuration, not parsed as a script-shell setting. Sandbox containment does
 not prove repository code benign; this prevents package-script indirection.
 
 Agent package verification runs in a disposable copy outside the authoritative
-project. The copy excludes `.git`, `oaf/receipts`, `.env*`, `node_modules`, and
-symlinks; authoritative `node_modules`, when present, is mounted read-only.
+project. The copy excludes `.git`, `oaf/receipts`, `.npmrc`, every basename
+beginning `.env`, `node_modules`, and symlinks; authoritative `node_modules`,
+when present, is mounted read-only.
 The disposable copy is writable at `/workspace`, network is always off, and it
 is removed after every outcome. Canonical Git inspection commands mount the
 authoritative project read-only.
