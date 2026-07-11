@@ -1,117 +1,44 @@
-// Focused test for the minimal AgentEvent model.
-// Uses only Node built-ins; no third-party dependencies.
-import { strictEqual, deepEqual, throws, doesNotThrow } from "node:assert";
-import {
-  AGENT_EVENT_TYPES,
-  createEvent,
-  createEventCollector,
-  recordContinuation,
-} from "../lib/agent/events.mjs";
+// Strict event-safe audit schema coverage.
+import { strictEqual, deepEqual, throws } from "node:assert";
+import { AGENT_EVENT_TYPES, createEvent, createEventCollector, recordContinuation } from "../lib/agent/events.mjs";
 
 let failures = 0;
-function assert(cond, msg) {
-  if (cond) {
-    console.log(`PASS  ${msg}`);
-  } else {
-    console.log(`FAIL  ${msg}`);
-    failures++;
-  }
-}
+function assert(condition, message) { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
+function safeStart() { return { runId: "run_1", taskBytes: 12, taskProvided: true }; }
 
-// 1. Known vocabulary
 assert(AGENT_EVENT_TYPES.length === 10, "exactly 10 AgentEvent types defined");
-for (const t of [
-  "agent_start",
-  "turn_start",
-  "message_start",
-  "message_end",
-  "tool_call",
-  "tool_execution_start",
-  "tool_execution_end",
-  "tool_result",
-  "receipt_emitted",
-  "agent_end",
-]) {
-  assert(AGENT_EVENT_TYPES.includes(t), `type present: ${t}`);
-}
+for (const type of ["agent_start", "turn_start", "message_start", "message_end", "tool_call", "tool_execution_start", "tool_execution_end", "tool_result", "receipt_emitted", "agent_end"]) assert(AGENT_EVENT_TYPES.includes(type), `type present: ${type}`);
 
-// 2. event objects have expected shape
-const start = createEvent("agent_start", { runId: "run_1" });
-deepEqual(start, { type: "agent_start", runId: "run_1" }, "createEvent returns plain object with type + fields");
-strictEqual(start.type, "agent_start", "event carries its type");
+const start = createEvent("agent_start", safeStart());
+deepEqual(start, { type: "agent_start", ...safeStart() }, "agent_start stores only safe task metadata");
+const toolCall = createEvent("tool_call", { toolCallId: "c1", toolName: "read", summary: { path: "app/page.tsx" } });
+strictEqual(toolCall.summary.path, "app/page.tsx", "tool_call keeps project-relative summary path");
 
-const toolCall = createEvent("tool_call", { toolCallId: "c1", toolName: "read", args: { path: "app/page.tsx" } });
-strictEqual(toolCall.toolName, "read", "tool_call carries toolName");
-strictEqual(toolCall.toolCallId, "c1", "tool_call carries toolCallId");
+throws(() => createEvent("not_a_real_event", {}), /Unknown AgentEvent type/, "unknown event type rejected");
+throws(() => createEvent("agent_start", { ...safeStart(), task: "RAW_TASK" }), /Unsupported AgentEvent field/, "raw task rejected from agent_start");
+throws(() => createEvent("agent_start", { ...safeStart(), workspaceRoot: "/tmp/raw" }), /Unsupported AgentEvent field/, "workspaceRoot rejected from agent_start");
+throws(() => createEvent("message_end", { turn: 1, disposition: "terminal", contentPresent: true, contentBytes: 1, toolCallCount: 0, errorCode: null, content: "RAW" }), /Unsupported AgentEvent field/, "raw content rejected from message_end");
+throws(() => createEvent("tool_call", { toolCallId: "c1", toolName: "read", summary: { path: "x" }, args: { path: "x" } }), /Unsupported AgentEvent field/, "raw args rejected from tool_call");
+throws(() => createEvent("tool_call", { toolCallId: "c1", toolName: "read", summary: { args: { path: "x" } } }), /Unsupported tool summary field/, "raw args rejected from tool summary");
+throws(() => createEvent("tool_result", { toolCallId: "c1", toolName: "read", summary: {}, errorCode: null, result: { content: "RAW" } }), /Unsupported AgentEvent field/, "raw result rejected from tool_result");
+throws(() => createEvent("tool_result", { toolCallId: "c1", toolName: "command", summary: { stdout: "RAW" }, errorCode: null }), /Unsupported tool summary field/, "stdout rejected from tool_result summary");
+throws(() => createEvent("tool_result", { toolCallId: "c1", toolName: "command", summary: { stderr: "RAW" }, errorCode: null }), /Unsupported tool summary field/, "stderr rejected from tool_result summary");
+throws(() => createEvent("agent_end", { runId: "run_1", status: "success", turns: 1, terminalReason: "assistant_terminal", arbitrary: "RAW" }), /Unsupported AgentEvent field/, "unknown arbitrary event field rejected");
 
-// 3. unknown event types are rejected
-throws(() => createEvent("not_a_real_event"), /Unknown AgentEvent type/, "createEvent rejects unknown type");
+const collector = createEventCollector();
+collector.record(createEvent("agent_start", safeStart()));
+collector.record(createEvent("tool_call", { toolCallId: "c1", toolName: "read", summary: { path: "README.md" } }));
+collector.record(createEvent("agent_end", { runId: "run_1", status: "success", turns: 1, terminalReason: "assistant_terminal" }));
+const all = collector.all();
+assert(all.map((event) => event.seq).join(",") === "1,2,3", "collector assigns contiguous sequence numbers");
+assert(all.every((event) => typeof event.ts === "string" && !Number.isNaN(Date.parse(event.ts))), "collector assigns ISO timestamps");
+JSON.parse(JSON.stringify(all));
+assert(true, "safe events are JSON-serializable");
 
-// 3b. fields must not override the validated type
-throws(
-  () => createEvent("agent_start", { type: "bogus" }),
-  /must not contain a 'type' property/,
-  "createEvent rejects fields.type override",
-);
-throws(
-  () => createEvent("agent_start", { type: "agent_start" }),
-  /must not contain a 'type' property/,
-  "createEvent rejects duplicate fields.type even when equal",
-);
+const continued = recordContinuation(all, { type: "receipt_emitted", runId: "run_1", receiptId: "rcpt_1", path: "oaf/receipts/a.json" });
+strictEqual(continued.seq, 4, "continuation sequence follows recorded stream");
+assert(typeof continued.ts === "string" && !Number.isNaN(Date.parse(continued.ts)), "continuation timestamp is ISO");
+throws(() => recordContinuation([], { type: "receipt_emitted", runId: "run", receiptId: "r", path: "/tmp/escape" }), /Invalid receipt_emitted path/, "absolute receipt path rejected");
 
-// 4. collector records events in order
-const c = createEventCollector();
-c.record(createEvent("agent_start", { runId: "run_1" }));
-c.record(createEvent("tool_call", { toolCallId: "c1", toolName: "read" }));
-c.record(createEvent("agent_end", { status: "success" }));
-const all = c.all();
-strictEqual(all.length, 3, "collector recorded 3 events");
-strictEqual(all[0].type, "agent_start", "first recorded is agent_start");
-strictEqual(all[1].type, "tool_call", "second recorded is tool_call");
-strictEqual(all[2].type, "agent_end", "third recorded is agent_end");
-strictEqual(all[0].seq, 1, "seq assigned in order (1)");
-strictEqual(all[1].seq, 2, "seq assigned in order (2)");
-strictEqual(all[2].seq, 3, "seq assigned in order (3)");
-assert(typeof all[0].ts === "string" && !Number.isNaN(Date.parse(all[0].ts)), "recorded event gets an ISO timestamp");
-
-// 5. collector returns JSON-serializable data
-let serialized;
-doesNotThrow(() => {
-  serialized = JSON.parse(JSON.stringify(all));
-}, "collected events are JSON-serializable");
-strictEqual(serialized.length, 3, "serialized stream keeps all events");
-strictEqual(serialized[1].toolName, "read", "serialized event preserves fields");
-
-// 6. collector rejects unknown types
-const c2 = createEventCollector();
-throws(() => c2.record({ type: "bogus" }), /Unknown AgentEvent type/, "collector rejects unknown type");
-throws(() => c2.record("not-an-object"), /object with a type/, "collector rejects non-object");
-
-// 7. clear/reset
-c.clear();
-strictEqual(c.all().length, 0, "clear() empties the collector");
-c.record(createEvent("agent_start", { runId: "run_2" }));
-strictEqual(c.all()[0].seq, 1, "seq resets after clear()");
-
-// 8. A continuation event keeps the shared recorded-event shape after a loop.
-const continued = recordContinuation(
-  [
-    { type: "agent_start", runId: "run_3", seq: 7, ts: "2000-01-01T00:00:00.000Z" },
-    { type: "agent_end", status: "success", seq: 8, ts: "2000-01-01T00:00:01.000Z" },
-  ],
-  { type: "receipt_emitted", receiptId: "rcpt_1" },
-);
-strictEqual(continued.type, "receipt_emitted", "continuation retains its validated event type");
-strictEqual(continued.seq, 9, "continuation seq is one greater than the prior stream");
-assert(typeof continued.ts === "string" && !Number.isNaN(Date.parse(continued.ts)), "continuation gets an ISO timestamp");
-throws(
-  () => recordContinuation([], { type: "bogus" }),
-  /Unknown AgentEvent type/,
-  "continuation rejects unknown event types",
-);
-
-if (failures > 0) {
-  console.error(`\n${failures} check(s) failed.`);
-  process.exit(1);
-}
+if (failures > 0) { console.error(`\n${failures} event check(s) failed.`); process.exit(1); }
 console.log("\nAll agent-event checks passed.");

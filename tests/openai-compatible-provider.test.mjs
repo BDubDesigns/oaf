@@ -371,8 +371,8 @@ try {
     const toolMessage = requests[1].messages.find((message) => message.role === "tool" && message.tool_call_id === "real-read");
     assert(result.status === "success" && result.terminalReason === "assistant_terminal" && result.turns === 2,
       "adapter integration ends through the existing loop terminal path");
-    assert(result.events.some((event) => event.type === "tool_result" && event.toolCallId === "real-read" && event.result?.content.includes("Opinionated App Factory")),
-      "existing registry validates and executes the real workspace read tool");
+    assert(result.events.some((event) => event.type === "tool_result" && event.toolCallId === "real-read" && event.summary.path === "README.md" && event.summary.bytes > 0),
+      "existing registry validates and executes the real workspace read tool safely");
     assert(typeof toolMessage?.content === "string" && toolMessage.content.includes("Opinionated App Factory"),
       "second provider request contains the matching tool result");
     deepEqual(result.providerCalls, [
@@ -398,7 +398,7 @@ try {
       "reused ID across turns takes the existing provider-error path");
     assert(result.events.filter((event) => event.type === "tool_call" && event.toolCallId === "reused").length === 1,
       "reused ID is rejected before a second ambiguous tool dispatch");
-    assert(result.events.some((event) => event.type === "message_end" && /reuses a tool-call ID/.test(event.error)),
+    assert(result.events.some((event) => event.type === "message_end" && event.errorCode === "provider_error"),
       "duplicate-ID failure is recorded as a bounded provider error");
   }
 
