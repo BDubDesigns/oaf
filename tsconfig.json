@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "rewriteRelativeImportExtensions": true,
+    "types": ["node"]
+  },
+  "include": [
+    "bin/**/*.mjs",
+    "lib/**/*.mjs",
+    "tests/**/*.mjs",
+    "tests/fixtures/node24-native-ts-smoke.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests/fixtures/generated-app/**",
+    "docs-packs/**",
+    ".oaf/**",
+    "coverage",
+    "dist",
+    "build",
+    "out"
+  ]
+}

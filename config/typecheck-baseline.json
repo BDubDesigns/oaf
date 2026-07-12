@@ -1,0 +1,3969 @@
+{
+  "version": 1,
+  "diagnostics": [
+    {
+      "fingerprint": "TS18046|bin/oaf.mjs|116:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|bin/oaf.mjs|116:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|bin/oaf.mjs|117:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/agent/context.mjs|39:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/agent/context.mjs|59:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/agent/context.mjs|82:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/agent/context.mjs|83:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/agent/tool-execution.mjs|135:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/agent/tool-execution.mjs|157:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/agent/tool-execution.mjs|95:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/sandbox.mjs|126:104",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|lib/stack-snapshot.mjs|79:63",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-context.test.mjs|195:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-context.test.mjs|195:62",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-context.test.mjs|195:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-context.test.mjs|196:63",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-context.test.mjs|35:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|533:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|534:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|535:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|538:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|539:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|540:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|541:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|542:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|543:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-diagnostics.test.mjs|561:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-loop.test.mjs|204:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-path-policy.test.mjs|16:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-path-policy.test.mjs|17:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-read-tools.test.mjs|138:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-read-tools.test.mjs|138:62",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-read-tools.test.mjs|138:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-read-tools.test.mjs|139:61",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-read-tools.test.mjs|23:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-receipt.test.mjs|398:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-receipt.test.mjs|398:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-receipt.test.mjs|398:64",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-receipt.test.mjs|399:71",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-write-tool.test.mjs|140:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-write-tool.test.mjs|140:62",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-write-tool.test.mjs|140:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-write-tool.test.mjs|141:61",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/agent-write-tool.test.mjs|34:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/openai-compatible-provider.test.mjs|244:87",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/openai-compatible-provider.test.mjs|248:131",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/openai-compatible-provider.test.mjs|27:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|109:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|109:43",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|110:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|132:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|132:42",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|133:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|83:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|83:47",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|95:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/sandbox.test.mjs|96:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18046|tests/stack-snapshot.test.mjs|30:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18047|tests/agent-cli.test.mjs|34:126",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18047|tests/agent-cli.test.mjs|34:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18047|tests/agent-command-authorization.test.mjs|111:109",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18047|tests/agent-command-authorization.test.mjs|111:142",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18047|tests/agent-command-authorization.test.mjs|111:160",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18047|tests/agent-command-authorization.test.mjs|111:66",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|lib/sandbox.mjs|67:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|lib/sandbox.mjs|67:8",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-command-tool.test.mjs|37:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-loop.test.mjs|107:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-loop.test.mjs|110:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-loop.test.mjs|89:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-loop.test.mjs|89:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-loop.test.mjs|91:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-loop.test.mjs|91:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-loop.test.mjs|92:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-public-tool-errors.test.mjs|16:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-public-tool-errors.test.mjs|20:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-public-tool-errors.test.mjs|23:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-tools.test.mjs|68:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS18048|tests/agent-tools.test.mjs|69:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|lib/agent/receipt.mjs|352:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/agent-command-authorization.test.mjs|83:99",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/agent-diagnostics.test.mjs|261:166",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/agent-diagnostics.test.mjs|279:166",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/agent-diagnostics.test.mjs|297:166",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/agent-diagnostics.test.mjs|315:166",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/openai-compatible-provider.test.mjs|152:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/openai-compatible-provider.test.mjs|467:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/openai-compatible-provider.test.mjs|482:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/openai-compatible-provider.test.mjs|493:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/openai-compatible-provider.test.mjs|501:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/openai-compatible-provider.test.mjs|508:103",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2322|tests/openai-compatible-provider.test.mjs|515:78",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/cli.mjs|58:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/cli.mjs|72:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/cli.mjs|72:88",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/cli.mjs|74:84",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/cli.mjs|78:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/openai-compatible-provider.mjs|128:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/openai-compatible-provider.mjs|348:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/openai-compatible-provider.mjs|349:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/openai-compatible-provider.mjs|350:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/provider.mjs|137:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/provider.mjs|137:46",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/provider.mjs|50:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/provider.mjs|50:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/tool-execution.mjs|194:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/tool-execution.mjs|324:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/agent/tool-execution.mjs|395:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|156:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|159:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|170:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|192:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|192:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|192:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|192:31",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|192:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|192:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|192:60",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|197:112",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|197:117",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|197:126",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|197:136",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|197:146",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|197:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|lib/sandbox.mjs|197:57",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-cli.test.mjs|19:128",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-cli.test.mjs|34:132",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-cli.test.mjs|34:45",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-cli.test.mjs|58:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-command-tool.test.mjs|37:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-diagnostics.test.mjs|506:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|102:160",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|103:137",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|104:140",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|105:142",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|106:179",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|109:117",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|110:127",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|111:115",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|114:180",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|19:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|47:90",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|60:103",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|61:105",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|67:113",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|68:115",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|83:146",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|85:154",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|86:148",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-events.test.mjs|87:146",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-tools.test.mjs|24:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/agent-tools.test.mjs|24:56",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|202:106",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|202:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|202:73",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|203:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|203:64",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|203:98",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|204:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|204:65",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|204:99",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|485:114",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|485:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|485:79",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|502:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|502:80",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|504:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|509:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|509:80",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|516:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|516:82",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|517:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2339|tests/openai-compatible-provider.test.mjs|54:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|lib/agent/cli.mjs|25:103",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|lib/agent/cli.mjs|70:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|lib/agent/tool-execution.mjs|161:18",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|lib/agent/tool-execution.mjs|165:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-cli.test.mjs|255:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-command-authorization.test.mjs|129:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-command-authorization.test.mjs|132:104",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-command-authorization.test.mjs|135:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-command-authorization.test.mjs|28:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-context.test.mjs|91:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|176:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|197:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|217:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|237:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|262:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|280:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|298:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|316:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|341:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|355:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|365:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|397:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|413:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|428:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-diagnostics.test.mjs|515:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|111:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|144:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|172:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|191:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|208:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|227:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|251:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|278:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|29:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|56:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-event-privacy.test.mjs|86:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|105:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|118:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|135:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|152:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|165:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|176:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|202:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|213:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|228:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|250:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|272:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|293:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|318:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|332:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|63:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-loop.test.mjs|87:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-path-policy.test.mjs|117:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-path-policy.test.mjs|41:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-path-policy.test.mjs|42:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-path-policy.test.mjs|48:66",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-path-policy.test.mjs|49:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-path-policy.test.mjs|61:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-path-policy.test.mjs|64:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-path-policy.test.mjs|94:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-public-tool-errors.test.mjs|11:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-read-tools.test.mjs|103:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-read-tools.test.mjs|113:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-read-tools.test.mjs|123:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-read-tools.test.mjs|133:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-read-tools.test.mjs|44:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-read-tools.test.mjs|72:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-read-tools.test.mjs|88:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-read-tools.test.mjs|98:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|105:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|135:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|150:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|162:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|184:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|229:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|247:54",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|258:54",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|278:52",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|312:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|321:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|331:53",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|339:53",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|360:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|373:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|410:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|433:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|447:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|456:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|67:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|79:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|90:45",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-receipt.test.mjs|91:45",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/agent-write-tool.test.mjs|92:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/openai-compatible-provider.test.mjs|379:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/openai-compatible-provider.test.mjs|405:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/openai-compatible-provider.test.mjs|429:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/openai-compatible-provider.test.mjs|448:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/openai-compatible-provider.test.mjs|529:46",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/openai-compatible-provider.test.mjs|542:46",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2345|tests/openai-compatible-provider.test.mjs|555:46",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2349|tests/agent-command-authorization.test.mjs|44:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|bin/oaf.mjs|115:31",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|lib/agent/loop.mjs|305:67",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|lib/agent/loop.mjs|306:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|lib/agent/openai-compatible-provider.mjs|145:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|lib/sandbox.mjs|203:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/agent-command-authorization.test.mjs|103:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/agent-command-authorization.test.mjs|107:54",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/agent-command-authorization.test.mjs|143:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/agent-diagnostics.test.mjs|196:53",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/agent-diagnostics.test.mjs|216:53",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|104:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|118:57",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|123:57",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|156:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|173:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|174:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|175:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|176:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|177:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|178:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|181:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|186:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2353|tests/openai-compatible-provider.test.mjs|187:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2531|tests/agent-cli.test.mjs|19:111",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2531|tests/agent-cli.test.mjs|58:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2538|lib/agent/cli.mjs|35:183",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2551|tests/agent-diagnostics.test.mjs|137:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2554|lib/agent/loop.mjs|284:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2769|lib/agent/openai-compatible-provider.mjs|330:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2769|tests/agent-cli.test.mjs|17:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2769|tests/agent-cli.test.mjs|56:55",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS2769|tests/agent-diagnostics.test.mjs|523:31",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|lib/agent/events.mjs|151:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-cli.test.mjs|157:233",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-cli.test.mjs|158:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-cli.test.mjs|64:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-command-authorization.test.mjs|144:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-command-authorization.test.mjs|144:42",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-command-tool.test.mjs|64:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-command-tool.test.mjs|65:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-command-tool.test.mjs|66:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-command-tool.test.mjs|67:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-command-tool.test.mjs|67:72",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-diagnostics.test.mjs|686:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|112:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|173:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|192:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|228:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|252:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|279:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|289:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|30:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-event-privacy.test.mjs|57:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-loop.test.mjs|296:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-loop.test.mjs|297:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-loop.test.mjs|298:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-loop.test.mjs|338:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-loop.test.mjs|339:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/agent-receipt.test.mjs|460:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|111:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|149:104",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|161:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|380:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|564:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|81:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|85:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|87:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7005|tests/openai-compatible-provider.test.mjs|87:85",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|bin/oaf.mjs|17:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|bin/oaf.mjs|22:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|bin/oaf.mjs|31:18",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|bin/oaf.mjs|75:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/cli.mjs|12:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/cli.mjs|13:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/cli.mjs|43:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/cli.mjs|43:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/cli.mjs|45:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/cli.mjs|70:130",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|105:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|109:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|109:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|109:47",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|124:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|13:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|13:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|131:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|131:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|131:49",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|152:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|152:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|18:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|18:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|30:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|30:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|48:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|48:44",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|48:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|71:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|71:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|71:42",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|97:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/context.mjs|97:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|108:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|110:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|131:87",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|131:96",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|27:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|33:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|33:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|40:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|44:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|57:43",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|84:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|85:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|85:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|97:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/diagnostics.mjs|98:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|133:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|144:12",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|156:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|156:44",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|157:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|157:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|24:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|25:18",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|26:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|26:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|31:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|31:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|32:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|32:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|32:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|34:18",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|34:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|49:31",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|49:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|57:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|61:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/events.mjs|61:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|108:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|108:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|129:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|129:45",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|129:54",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|38:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|40:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|44:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|48:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|48:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|67:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/loop.mjs|67:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|103:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|15:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|154:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|170:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|171:18",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|179:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|179:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|186:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|194:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|199:42",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|21:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|223:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|223:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|223:49",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|253:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|253:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|253:54",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|28:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|32:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|32:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|364:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|39:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|44:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|72:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|79:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|79:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/openai-compatible-provider.mjs|91:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/path-policy.mjs|13:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/path-policy.mjs|14:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/path-policy.mjs|15:46",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/path-policy.mjs|8:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/path-policy.mjs|9:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|18:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|22:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|33:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|42:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|66:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|71:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|76:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|76:45",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|92:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|92:47",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/privacy.mjs|98:95",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/provider.mjs|102:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/provider.mjs|152:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/provider.mjs|50:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/provider.mjs|64:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/provider.mjs|70:45",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/provider.mjs|77:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/provider.mjs|81:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|110:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|120:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|124:44",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|139:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|151:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|196:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|232:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|236:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|31:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|315:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|34:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|40:18",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|45:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/receipt.mjs|82:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-errors.mjs|13:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-errors.mjs|13:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-errors.mjs|22:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|116:47",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|116:60",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|140:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|140:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|140:53",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|140:62",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|15:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|15:43",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|170:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|170:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|176:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|25:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|25:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|251:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|288:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|29:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|294:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|294:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|333:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|360:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|360:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|41:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|53:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|53:54",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|65:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|65:52",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|80:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/agent/tool-execution.mjs|80:55",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/command-policy.mjs|24:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/command-policy.mjs|28:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/command-policy.mjs|32:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|107:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|130:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|177:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|18:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|18:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|207:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|207:67",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|25:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|42:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|51:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|55:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|60:43",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|60:58",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|84:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|90:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/sandbox.mjs|90:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/stack-snapshot.mjs|22:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/stack-snapshot.mjs|26:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/stack-snapshot.mjs|26:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/stack-snapshot.mjs|27:94",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/stack-snapshot.mjs|30:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/stack-snapshot.mjs|30:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/stack-snapshot.mjs|36:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/templates.mjs|11:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/templates.mjs|119:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|lib/templates.mjs|119:39",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|10:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|10:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|110:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|110:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|114:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|114:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|118:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|118:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|118:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|118:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|122:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|122:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|122:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|122:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|126:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|126:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|13:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|132:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|132:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|14:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|14:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|156:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|156:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|156:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|156:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|157:260",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|167:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|167:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|177:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|177:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|192:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|192:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|192:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|192:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|200:77",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|204:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|204:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|204:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|204:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|215:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|215:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|215:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|215:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|240:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|240:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|265:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|265:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|277:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|277:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|288:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|288:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|299:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|299:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|312:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|318:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|318:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|318:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|318:49",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|318:60",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|318:71",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|336:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|336:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|343:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|343:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|343:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|343:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|355:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|355:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|362:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|362:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|362:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|362:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|65:50",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|66:43",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|9:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|9:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|90:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-cli.test.mjs|90:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|10:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|10:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|109:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|11:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|11:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|11:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|143:138",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|143:91",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|15:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|16:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|16:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|18:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|36:31",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|37:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|38:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|39:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-authorization.test.mjs|40:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|105:6",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|11:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|11:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|20:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|20:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|20:43",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|47:6",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|52:6",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|57:6",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|73:6",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|78:6",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-command-tool.test.mjs|91:6",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-context.test.mjs|21:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-context.test.mjs|21:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-context.test.mjs|30:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-context.test.mjs|30:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-context.test.mjs|30:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|10:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|10:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|13:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|164:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|194:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|213:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|233:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|259:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|277:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|295:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|313:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|335:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|353:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|363:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|389:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|406:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|424:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|426:14",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|426:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|444:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|470:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|489:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|678:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-diagnostics.test.mjs|679:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|10:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|10:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|109:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|112:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|170:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|173:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|189:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|192:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|225:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|228:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|249:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|252:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|27:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|276:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|279:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|30:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|54:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-event-privacy.test.mjs|57:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-events.test.mjs|6:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-events.test.mjs|6:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|101:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|107:47",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|110:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|14:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|14:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|163:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|163:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|23:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|23:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|23:44",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|282:31",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|306:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|49:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|50:22",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-loop.test.mjs|83:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|11:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|11:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|12:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|12:31",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|12:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|20:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|20:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|54:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-path-policy.test.mjs|56:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-public-tool-errors.test.mjs|10:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-public-tool-errors.test.mjs|16:54",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-public-tool-errors.test.mjs|20:60",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-public-tool-errors.test.mjs|23:52",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-public-tool-errors.test.mjs|5:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-public-tool-errors.test.mjs|5:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-public-tool-errors.test.mjs|6:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-public-tool-errors.test.mjs|6:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-read-tools.test.mjs|18:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-read-tools.test.mjs|18:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-read-tools.test.mjs|18:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-read-tools.test.mjs|60:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-read-tools.test.mjs|61:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-read-tools.test.mjs|67:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-read-tools.test.mjs|9:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-read-tools.test.mjs|9:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|176:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|176:44",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|19:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|19:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|237:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|238:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|337:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|337:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-receipt.test.mjs|50:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-tools.test.mjs|7:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-tools.test.mjs|7:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-write-tool.test.mjs|20:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-write-tool.test.mjs|20:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-write-tool.test.mjs|29:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-write-tool.test.mjs|29:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/agent-write-tool.test.mjs|29:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|16:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|16:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|25:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|35:26",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|35:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|75:14",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|76:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|78:14",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|79:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|81:14",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/generated-app-fixture.test.mjs|82:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/oaf-init.test.mjs|14:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/oaf-init.test.mjs|14:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|14:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|14:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|22:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|22:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|22:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|254:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|254:30",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|31:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|31:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|31:49",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|380:52",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|457:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|457:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|52:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|52:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|58:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|58:29",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/openai-compatible-provider.test.mjs|91:57",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/sandbox.test.mjs|17:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/sandbox.test.mjs|17:23",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/stack-snapshot.test.mjs|16:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/stack-snapshot.test.mjs|16:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/stack-snapshot.test.mjs|25:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/stack-snapshot.test.mjs|25:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7006|tests/stack-snapshot.test.mjs|25:34",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7019|lib/agent/path-policy.mjs|16:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7019|lib/agent/path-policy.mjs|17:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7023|lib/agent/tool-execution.mjs|294:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7023|lib/agent/tool-execution.mjs|360:16",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7023|tests/generated-app-fixture.test.mjs|25:10",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/context.mjs|160:42",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/diagnostics.mjs|120:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/diagnostics.mjs|120:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/diagnostics.mjs|120:47",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/diagnostics.mjs|120:60",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/diagnostics.mjs|137:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/diagnostics.mjs|137:56",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/loop.mjs|142:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/loop.mjs|143:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/loop.mjs|144:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/loop.mjs|146:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/loop.mjs|147:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|281:35",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|281:40",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|281:49",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|281:55",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|321:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|321:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|321:53",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|321:62",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/openai-compatible-provider.mjs|321:68",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|215:25",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|215:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|215:49",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|215:56",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|215:65",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|215:75",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|242:32",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|242:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|326:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|326:53",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|341:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|342:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|343:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|344:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|345:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|346:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|347:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/receipt.mjs|348:3",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|185:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|185:52",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|185:58",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|185:69",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|219:44",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|219:59",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|219:65",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|234:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|234:53",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|234:59",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|317:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|317:52",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|385:37",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|385:52",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/agent/tool-execution.mjs|385:73",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|121:27",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|121:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|121:42",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|121:51",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|121:61",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|121:71",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|121:80",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|121:89",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|138:110",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|138:119",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|138:129",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|138:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|138:42",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|138:48",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|138:56",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|138:73",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|201:36",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|203:152",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|203:170",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|203:179",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|203:188",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|42:46",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|lib/sandbox.mjs|42:72",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|110:109",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|110:124",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|110:98",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|114:137",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|114:148",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|114:163",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|118:469",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|118:480",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|118:495",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|122:652",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|122:663",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|122:678",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|126:300",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|126:311",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|126:326",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|132:398",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|132:409",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|156:652",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|156:663",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|156:678",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|167:292",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|167:303",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|177:297",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|177:308",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|192:618",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|192:629",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|204:469",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|204:480",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|220:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|220:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|240:104",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|240:119",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|240:93",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|265:67",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|265:78",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|277:122",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|277:133",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|288:149",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|288:160",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|299:116",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|299:127",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|336:287",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|336:298",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|348:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|348:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|355:101",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|355:90",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|365:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|365:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|90:110",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|90:84",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-cli.test.mjs|90:95",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-command-authorization.test.mjs|118:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-command-authorization.test.mjs|118:33",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-command-authorization.test.mjs|131:164",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-command-authorization.test.mjs|134:162",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-command-authorization.test.mjs|140:149",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-command-authorization.test.mjs|140:154",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-command-authorization.test.mjs|143:242",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7031|tests/agent-command-authorization.test.mjs|143:252",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|lib/agent/events.mjs|141:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-cli.test.mjs|155:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-cli.test.mjs|41:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-command-authorization.test.mjs|142:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-command-authorization.test.mjs|142:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-command-tool.test.mjs|33:9",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-diagnostics.test.mjs|12:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|103:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|12:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|164:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|183:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|21:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|219:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|243:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|269:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-event-privacy.test.mjs|47:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-loop.test.mjs|281:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-loop.test.mjs|34:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-loop.test.mjs|35:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/agent-receipt.test.mjs|40:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/openai-compatible-provider.test.mjs|101:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/openai-compatible-provider.test.mjs|148:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/openai-compatible-provider.test.mjs|366:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/openai-compatible-provider.test.mjs|68:7",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7034|tests/openai-compatible-provider.test.mjs|78:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/cli.mjs|88:21",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/events.mjs|37:8",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/events.mjs|38:8",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/events.mjs|50:20",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/loop.mjs|247:61",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/loop.mjs|255:57",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/loop.mjs|266:38",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/loop.mjs|277:24",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/loop.mjs|90:5",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/openai-compatible-provider.mjs|143:43",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/provider.mjs|126:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/provider.mjs|127:18",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/provider.mjs|128:17",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/provider.mjs|94:5",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/receipt.mjs|113:28",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/receipt.mjs|113:5",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/tool-errors.mjs|15:11",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/agent/tool-errors.mjs|23:76",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|lib/sandbox.mjs|62:19",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|tests/agent-receipt.test.mjs|29:88",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|tests/agent-tools.test.mjs|36:13",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|tests/agent-tools.test.mjs|55:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|tests/agent-tools.test.mjs|56:15",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|tests/agent-tools.test.mjs|72:41",
+      "count": 1
+    },
+    {
+      "fingerprint": "TS7053|tests/generated-app-fixture.test.mjs|66:80",
+      "count": 1
+    }
+  ]
+}

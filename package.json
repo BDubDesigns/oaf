@@ -8,10 +8,16 @@
   },
   "packageManager": "pnpm@11.5.2",
   "engines": {
-    "node": ">=18"
+    "node": "24.16.0"
   },
   "scripts": {
     "test": "node tests/oaf-init.test.mjs && node tests/sandbox.test.mjs",
-    "doctor": "node bin/oaf.mjs doctor"
+    "doctor": "node bin/oaf.mjs doctor",
+    "typecheck": "node scripts/typecheck-baseline.mjs",
+    "typecheck:raw": "tsc --pretty false"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.2",
+    "typescript": "6.0.3"
   }
 }
