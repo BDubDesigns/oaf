@@ -8,7 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const configPath = resolve(root, "tsconfig.json");
 const baselinePath = resolve(root, "config", "typecheck-baseline.json");
 const BASELINE_ERROR = "Typecheck baseline is invalid.";
-const FINGERPRINT = /^TS\d+\|(Warning|Error|Suggestion|Message)\|(?:<config>|[A-Za-z0-9._/-]+)\|[a-f0-9]{64}$/;
+const CATEGORIES = new Set(["Warning", "Error", "Suggestion", "Message"]);
 
 /** @typedef {{ fingerprint: string, count: number }} FingerprintCount */
 /** @typedef {{ version: 2, diagnostics: FingerprintCount[] }} Baseline */
@@ -42,7 +42,27 @@ function fingerprint(diagnostic) {
 /** @param {string} filePath */
 function normalizePath(filePath) {
   const normalized = relative(root, filePath).replaceAll("\\", "/");
-  return normalized.startsWith("../") || normalized === ".." || normalized.startsWith("/") ? "<config>" : normalized;
+  return isProjectRelativePath(normalized) ? normalized : "<config>";
+}
+
+/** @param {string} fingerprint */
+export function isValidFingerprint(fingerprint) {
+  const [code, category, path, hash, ...extra] = fingerprint.split("|");
+  return (
+    extra.length === 0 &&
+    /^TS\d+$/.test(code) &&
+    CATEGORIES.has(category) &&
+    (path === "<config>" || isProjectRelativePath(path)) &&
+    /^[a-f0-9]{64}$/.test(hash)
+  );
+}
+
+/** @param {string} path */
+function isProjectRelativePath(path) {
+  if (!path || path.startsWith("/") || path.startsWith("\\") || path.includes("\\") || path.includes(":") || path.endsWith("/")) {
+    return false;
+  }
+  return path.split("/").every((segment) => segment !== "" && segment !== "." && segment !== "..");
 }
 
 /** @param {string[]} fingerprints @returns {FingerprintCount[]} */
@@ -70,7 +90,7 @@ export function validateBaseline(value) {
       !isRecord(diagnostic) ||
       !hasExactKeys(diagnostic, ["fingerprint", "count"]) ||
       typeof diagnostic.fingerprint !== "string" ||
-      !FINGERPRINT.test(diagnostic.fingerprint) ||
+      !isValidFingerprint(diagnostic.fingerprint) ||
       typeof diagnostic.count !== "number" ||
       !Number.isSafeInteger(diagnostic.count) ||
       diagnostic.count <= 0 ||

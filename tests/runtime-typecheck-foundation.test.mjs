@@ -7,6 +7,7 @@ import {
   collectDiagnosticFingerprints,
   collectDiagnostics,
   countFingerprints,
+  isValidFingerprint,
   parseBaseline,
   validateBaseline,
   verifyBaseline,
@@ -37,6 +38,11 @@ function throws(action, message) {
   }
 }
 
+/** @param {string} path @param {string} [hash] */
+function fingerprintForPath(path, hash = "a") {
+  return `TS9999|Error|${path}|${hash.repeat(64)}`;
+}
+
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const runtime = JSON.parse(readFileSync(join(root, "config", "runtime", "oaf-runtime.json"), "utf8"));
 const marker = readFileSync(join(root, ".node-version"), "utf8").trim();
@@ -55,8 +61,8 @@ const current = countFingerprints(collectDiagnosticFingerprints());
 assert(existsSync(join(root, "config", "typecheck-baseline.json")), "machine-readable typecheck baseline exists");
 assert(verifyBaseline(current, baseline).length === 0, "baseline accepts current or reduced diagnostics");
 assert(
-  verifyBaseline([{ fingerprint: `${fingerprint}b`, count: 1 }], { version: 2, diagnostics: [] }).length === 1,
-  "baseline rejects a new fingerprint",
+  verifyBaseline([{ fingerprint: fingerprintForPath("tests/new-example.mjs", "b"), count: 1 }], { version: 2, diagnostics: [] }).length === 1,
+  "baseline rejects a valid new fingerprint",
 );
 assert(
   verifyBaseline([{ fingerprint, count: 2 }], { version: 2, diagnostics: [{ fingerprint, count: 1 }] }).length === 1,
@@ -74,6 +80,13 @@ throws(() => validateBaseline({ version: 2, diagnostics: [], extra: true }), "ex
 throws(() => validateBaseline({ version: 2, diagnostics: [{ fingerprint, count: 1, extra: true }] }), "extra baseline record fields are rejected");
 throws(() => validateBaseline({ version: 2, diagnostics: [{ fingerprint, count: 1 }, { fingerprint, count: 1 }] }), "duplicate fingerprint record is rejected");
 throws(() => parseBaseline("{"), "malformed baseline JSON is rejected");
+for (const path of ["/home/user/oaf/lib/file.mjs", "../outside.mjs", "lib/../../outside.mjs", "lib//file.mjs", "lib\\file.mjs", "C:/repo/file.mjs", "lib/"]) {
+  throws(() => validateBaseline({ version: 2, diagnostics: [{ fingerprint: fingerprintForPath(path), count: 1 }] }), `invalid fingerprint path is rejected: ${path}`);
+}
+for (const path of ["bin/oaf.mjs", "lib/agent/provider.mjs", "scripts/typecheck-baseline.mjs", "tests/fixtures/example.ts", ".config/example.mjs"]) {
+  assert(isValidFingerprint(fingerprintForPath(path)), `valid project-relative fingerprint path is accepted: ${path}`);
+}
+assert(baseline.diagnostics.every((diagnostic) => isValidFingerprint(diagnostic.fingerprint)), "every committed baseline fingerprint is valid");
 
 const tempRoot = mkdtempSync(join(tmpdir(), "oaf-typecheck-config-"));
 try {
