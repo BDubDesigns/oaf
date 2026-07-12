@@ -13,7 +13,8 @@ try {
   const path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic: buildDiagnostic({ run, usage: { provider: "openai-compatible", model: "test/model" }, receiptPath: "oaf/receipts/a.json" }) });
   const text = readFileSync(join(fixture.workspace, path), "utf8");
   assert(path.startsWith("oaf/diagnostics/") && readdirSync(join(fixture.workspace, "oaf/diagnostics")).length === 1, "enabled diagnostics writes exactly one project-relative file");
-  assert(!text.includes(raw) && !text.includes("README.md") && text.includes("execution_error") && text.includes("rate_limited") && text.includes("429"), "diagnostic uses allowlisted recorded provider and tool fields only");
+  const diagnostic = JSON.parse(text);
+  assert(!text.includes(raw) && !text.includes("README.md") && text.includes("execution_error") && text.includes("rate_limited") && text.includes("429") && diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].durationMs >= 0 && diagnostic.status === "failed", "diagnostic uses allowlisted recorded provider and tool fields only");
 } finally { fixture.cleanup(); }
 if (failures) process.exit(1);
 console.log("All agent diagnostics checks passed.");

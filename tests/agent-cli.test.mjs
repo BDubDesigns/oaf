@@ -56,7 +56,7 @@ const server = createServer((req, res) => {
 await new Promise((resolveServer) => server.listen(0, "127.0.0.1", resolveServer));
 try {
   const port = server.address().port;
-  const env = { ...process.env, OAF_PROVIDER: "openai-compatible", OAF_PROVIDER_BASE_URL: `http://127.0.0.1:${port}`, OAF_MODEL: "test/model", OAF_API_KEY_ENV: "OAF_TEST_SECRET", OAF_TEST_SECRET: secret, OAF_MAX_TURNS: "4" };
+  const env = { ...process.env, OAF_PROVIDER: "openai-compatible", OAF_PROVIDER_BASE_URL: `http://127.0.0.1:${port}`, OAF_MODEL: "test/model", OAF_API_KEY_ENV: "OAF_TEST_SECRET", OAF_TEST_SECRET: secret, OAF_MAX_TURNS: "4", OAF_DIAGNOSTICS: "1" };
   const success = await runCli([join(repo, "bin/oaf.mjs"), "agent", "write", "a", "file"], { cwd: fixture.workspace, env });
   const output = success.stdout + success.stderr;
   assert(success.status === 0, "successful CLI round trip exits 0");
@@ -74,6 +74,8 @@ try {
   assert(!output.includes(secret), "API key sentinel absent from CLI output");
   const receipts = readdirSync(join(fixture.workspace, "oaf/receipts")).filter((name) => name.endsWith(".json"));
   assert(receipts.length === 1, "successful CLI writes exactly one receipt");
+  const diagnostics = readdirSync(join(fixture.workspace, "oaf/diagnostics")).filter((name) => name.endsWith(".json"));
+  assert(diagnostics.length === 1 && /Diagnostics: oaf\/diagnostics\//.test(output), "successful diagnostics-enabled CLI writes exactly one diagnostic");
   const receipt = JSON.parse(readFileSync(join(fixture.workspace, "oaf/receipts", receipts[0]), "utf8"));
   assert(receipt.status === "success" && receipt.terminalReason === "assistant_terminal", "receipt records successful terminal run");
   assert(receipt.usage.provider === "openai-compatible" && receipt.usage.model === "test/model" && receipt.usage.calls === 2 && receipt.usage.tokensIn === 8 && receipt.usage.tokensOut === 6, "receipt records trusted provider usage");
@@ -123,8 +125,9 @@ await scenario((_req, res, _body, number) => { const payload = number === 1 ? { 
 });
 await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "receipt failure" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env, requests: count }) => {
   rmSync(join(workspace, "oaf", "receipts"), { recursive: true }); writeFileSync(join(workspace, "oaf", "receipts"), "blocked");
-  const result = await runCli([bin, "agent", "receipt"], { cwd: workspace, env });
-  assert(result.status === 1 && count() === 1 && receiptFiles(workspace).length === 0 && /receipt could not be written/.test(result.stderr) && !/Receipt:/.test(result.stdout) && !`${result.stdout}${result.stderr}`.includes(workspace) && !`${result.stdout}${result.stderr}`.includes(env.OAF_TEST_SECRET) && !`${result.stdout}${result.stderr}`.includes(env.OAF_PROVIDER_BASE_URL) && !`${result.stdout}${result.stderr}`.includes("Authorization"), "receipt-write failure is bounded with no receipt claim or retry");
+  const result = await runCli([bin, "agent", "receipt"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diagnostics = readdirSync(join(workspace, "oaf", "diagnostics")).filter((name) => name.endsWith(".json"));
+  assert(result.status === 1 && count() === 1 && receiptFiles(workspace).length === 0 && diagnostics.length === 1 && /Diagnostics: oaf\/diagnostics\//.test(result.stdout) && /receipt could not be written/.test(result.stderr) && !/Receipt:/.test(result.stdout) && !`${result.stdout}${result.stderr}`.includes(workspace) && !`${result.stdout}${result.stderr}`.includes(env.OAF_TEST_SECRET) && !`${result.stdout}${result.stderr}`.includes(env.OAF_PROVIDER_BASE_URL) && !`${result.stdout}${result.stderr}`.includes("Authorization"), "receipt-write failure is bounded with no receipt claim or retry");
 });
 await scenario((_req, res) => { const content = `safe \x1b[31mRED\x1b[0m \x1b]title\x07 \x1b]st\x1b\\ \x1bX\0a\bb\u0085\r\n\t😀${"z".repeat(9000)}`; res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env }) => {
   const result = await runCli([bin, "agent", "sanitize"], { cwd: workspace, env }); const response = result.stdout.split("Response:\n")[1] ?? "";
