@@ -7,7 +7,7 @@ import {
   MAX_BODY_BYTES,
 } from "../lib/agent/openai-compatible-provider.mjs";
 import { runAgentLoop } from "../lib/agent/loop.mjs";
-import { buildToolProtocol } from "../lib/agent/provider.mjs";
+import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.mjs";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;
@@ -25,6 +25,15 @@ async function rejects(action, pattern, message) {
     assert(false, message);
   } catch (error) {
     assert(pattern.test(error.message), message);
+  }
+}
+
+async function rejectsProvider(action, outcome, message) {
+  try {
+    await action();
+    assert(false, message);
+  } catch (error) {
+    assert(error instanceof ProviderFailure && error.outcome === outcome && error.message === outcome, message);
   }
 }
 
@@ -184,15 +193,15 @@ try {
   {
     const errors = [];
     const non2xx = createOpenAICompatibleProvider({ ...config, transport: async () => ({ status: 401, body: `remote ${API_KEY} Authorization: Bearer ${API_KEY}` }) });
-    try { await non2xx.complete(request({ messages: [{ role: "user", content: "PROMPT_SENTINEL" }] })); } catch (error) { errors.push(error.message); }
+    try { await non2xx.complete(request({ messages: [{ role: "user", content: "PROMPT_SENTINEL" }] })); } catch (error) { errors.push(error); }
     const badJson = createOpenAICompatibleProvider({ ...config, transport: async () => ({ status: 200, body: `{${API_KEY}` }) });
-    try { await badJson.complete(request()); } catch (error) { errors.push(error.message); }
+    try { await badJson.complete(request()); } catch (error) { errors.push(error); }
     const failedTransport = createOpenAICompatibleProvider({ ...config, transport: async () => { throw new Error(`remote error ${API_KEY}`); } });
-    try { await failedTransport.complete(request()); } catch (error) { errors.push(error.message); }
+    try { await failedTransport.complete(request()); } catch (error) { errors.push(error); }
     const serializedErrors = JSON.stringify(errors);
-    assert(errors[0] === "OpenAI-compatible provider request failed with HTTP status 401.", "non-2xx response exposes only safe status facts");
-    assert(errors[1] === "OpenAI-compatible provider returned invalid JSON.", "invalid JSON has a bounded generic error");
-    assert(errors[2] === "OpenAI-compatible provider request failed.", "transport failure has a bounded generic error");
+    assert(errors[0]?.outcome === "authentication_failed" && errors[0]?.httpStatus === 401 && errors[0]?.message === "authentication_failed", "non-2xx response exposes only safe status facts");
+    assert(errors[1]?.outcome === "invalid_json" && errors[1]?.httpStatus === null && errors[1]?.message === "invalid_json", "invalid JSON has a bounded generic error");
+    assert(errors[2]?.outcome === "network_error" && errors[2]?.httpStatus === null && errors[2]?.message === "network_error", "transport failure has a bounded generic error");
     assert(!serializedErrors.includes(API_KEY) && !serializedErrors.includes("PROMPT_SENTINEL") && !serializedErrors.includes("Authorization"),
       "provider errors and serialized test output omit API-key and authorization sentinels");
   }
@@ -200,22 +209,22 @@ try {
   // 6. Strict response validation rejects malformed protocol data before dispatch.
   {
     const cases = [
-      [response({ role: "user", content: "wrong role" }, undefined, "stop"), /malformed assistant message/, "malformed assistant message"],
-      [response({ role: "assistant", content: 3 }, undefined, "stop"), /invalid assistant content/, "non-string assistant content"],
-      [response({ role: "assistant", content: null, tool_calls: [{}] }, undefined, "tool_calls"), /malformed function tool call/, "malformed tool-call shape"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "custom", function: { name: "read", arguments: "{}" } }] }, undefined, "tool_calls"), /malformed function tool call/, "non-function tool-call type"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "", type: "function", function: { name: "read", arguments: "{}" } }] }, undefined, "tool_calls"), /malformed function tool call/, "empty tool-call ID"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "", arguments: "{}" } }] }, undefined, "tool_calls"), /malformed function tool call/, "empty function name"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: 3 } }] }, undefined, "tool_calls"), /malformed function tool call/, "non-string function arguments"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: "{" } }] }, undefined, "tool_calls"), /invalid function arguments JSON/, "malformed tool argument JSON"],
-      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: "[]" } }] }, undefined, "tool_calls"), /plain object/, "non-object parsed tool arguments"],
+      [response({ role: "user", content: "wrong role" }, undefined, "stop"), "invalid_response", "malformed assistant message"],
+      [response({ role: "assistant", content: 3 }, undefined, "stop"), "invalid_response", "non-string assistant content"],
+      [response({ role: "assistant", content: null, tool_calls: [{}] }, undefined, "tool_calls"), "invalid_response", "malformed tool-call shape"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "custom", function: { name: "read", arguments: "{}" } }] }, undefined, "tool_calls"), "invalid_response", "non-function tool-call type"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "", type: "function", function: { name: "read", arguments: "{}" } }] }, undefined, "tool_calls"), "invalid_response", "empty tool-call ID"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "", arguments: "{}" } }] }, undefined, "tool_calls"), "invalid_response", "empty function name"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: 3 } }] }, undefined, "tool_calls"), "invalid_response", "non-string function arguments"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: "{" } }] }, undefined, "tool_calls"), "invalid_response", "malformed tool argument JSON"],
+      [response({ role: "assistant", content: null, tool_calls: [{ id: "x", type: "function", function: { name: "read", arguments: "[]" } }] }, undefined, "tool_calls"), "invalid_response", "non-object parsed tool arguments"],
       [response({ role: "assistant", content: null, tool_calls: [
         { id: "same", type: "function", function: { name: "read", arguments: "{}" } },
         { id: "same", type: "function", function: { name: "list", arguments: "{}" } },
-      ] }, undefined, "tool_calls"), /duplicate tool-call IDs/, "duplicate IDs in one provider response"],
+      ] }, undefined, "tool_calls"), "invalid_response", "duplicate IDs in one provider response"],
     ];
-    for (const [body, pattern, label] of cases) {
-      await rejects(() => providerWith(body).complete(request()), pattern, `${label} is rejected`);
+    for (const [body, outcome, label] of cases) {
+      await rejectsProvider(() => providerWith(body).complete(request()), outcome, `${label} is rejected`);
     }
   }
 
@@ -229,7 +238,7 @@ try {
         signal.addEventListener("abort", () => { aborted = true; reject(new Error(`aborted ${API_KEY}`)); }, { once: true });
       }),
     });
-    await rejects(() => timeoutProvider.complete(request()), /request timed out/, "timeout produces a bounded error");
+    await rejectsProvider(() => timeoutProvider.complete(request()), "timeout", "timeout produces a bounded error");
     assert(aborted, "timeout aborts the in-flight transport signal");
     let timeoutError = "";
     try { await timeoutProvider.complete(request()); } catch (error) { timeoutError = error.message; }
@@ -251,17 +260,17 @@ try {
     ] }, "tool_calls");
     assert(tools.toolCalls.length === 1, "tool_calls finish reason with valid calls continues");
 
-    await rejects(() => finish({ role: "assistant", content: "partial" }, "length"), /maximum length/, "length does not succeed");
-    await rejects(() => finish({ role: "assistant", content: "blocked" }, "content_filter"), /content filter/, "content_filter does not succeed");
-    await rejects(() => finish({ role: "assistant", content: "I cannot help", refusal: "I cannot help with that" }, "stop"), /model refusal/, "refusal does not succeed");
-    await rejects(() => finish({ role: "assistant", content: null }, "stop"), /no terminal content/, "null content with no tool calls does not succeed");
-    await rejects(() => finish({ role: "assistant", content: "   " }, "stop"), /no terminal content/, "whitespace-only content with no tool calls does not succeed");
-    await rejects(() => finish({ role: "assistant", content: null, tool_calls: [] }, "tool_calls"), /no tool calls/, "tool_calls finish reason with no calls fails");
-    await rejects(() => finish({ role: "assistant", content: "hi", tool_calls: [
+    await rejectsProvider(() => finish({ role: "assistant", content: "partial" }, "length"), "invalid_response", "length does not succeed");
+    await rejectsProvider(() => finish({ role: "assistant", content: "blocked" }, "content_filter"), "invalid_response", "content_filter does not succeed");
+    await rejectsProvider(() => finish({ role: "assistant", content: "I cannot help", refusal: "I cannot help with that" }, "stop"), "invalid_response", "refusal does not succeed");
+    await rejectsProvider(() => finish({ role: "assistant", content: null }, "stop"), "invalid_response", "null content with no tool calls does not succeed");
+    await rejectsProvider(() => finish({ role: "assistant", content: "   " }, "stop"), "invalid_response", "whitespace-only content with no tool calls does not succeed");
+    await rejectsProvider(() => finish({ role: "assistant", content: null, tool_calls: [] }, "tool_calls"), "invalid_response", "tool_calls finish reason with no calls fails");
+    await rejectsProvider(() => finish({ role: "assistant", content: "hi", tool_calls: [
       { id: "t1", type: "function", function: { name: "read", arguments: '{"path":"README.md"}' } },
-    ] }, "stop"), /inconsistent finish_reason/, "inconsistent stop-plus-tool-calls fails");
-    await rejects(() => finish({ role: "assistant", content: "hi" }, null), /unsupported or missing finish_reason/, "missing finish reason fails closed");
-    await rejects(() => finish({ role: "assistant", content: "hi" }, "weird_reason"), /unsupported or missing finish_reason/, "unknown finish reason fails closed");
+    ] }, "stop"), "invalid_response", "inconsistent stop-plus-tool-calls fails");
+    await rejectsProvider(() => finish({ role: "assistant", content: "hi" }, null), "invalid_response", "missing finish reason fails closed");
+    await rejectsProvider(() => finish({ role: "assistant", content: "hi" }, "weird_reason"), "invalid_response", "unknown finish reason fails closed");
   }
 
   // 9. BLOCKER 2: requested and reported model identity are preserved separately.
@@ -471,9 +480,9 @@ try {
         async cancel() { bodyCancelled = true; },
       };
       globalThis.fetch = async () => ({ status: 401, body: fakeBody });
-      let non2xxError = "";
-      try { await okProvider.complete(request()); } catch (error) { non2xxError = error.message; }
-      assert(non2xxError === "OpenAI-compatible provider request failed with HTTP status 401.", "non-2xx error is generic and status-only");
+      let non2xxError;
+      try { await okProvider.complete(request()); } catch (error) { non2xxError = error; }
+      assert(non2xxError?.outcome === "authentication_failed" && non2xxError?.httpStatus === 401 && non2xxError?.message === "authentication_failed", "non-2xx error is generic and status-only");
       assert(!bodyRead, "non-2xx response body is never read");
       assert(bodyCancelled, "non-2xx response body is cancelled without reading");
 
@@ -489,23 +498,23 @@ try {
         }),
       });
       let oversizeError = "";
-      try { await okProvider.complete(request()); } catch (error) { oversizeError = error.message; }
-      assert(/exceeded the maximum allowed size/.test(oversizeError), "oversized successful body is rejected while reading");
+      try { await okProvider.complete(request()); } catch (error) { oversizeError = error; }
+      assert(oversizeError?.outcome === "response_too_large" && oversizeError?.httpStatus === null, "oversized successful body is rejected while reading");
       assert(cancelled, "response stream is cancelled/aborted at the limit");
-      assert(!oversizeError.includes(sentinel), "oversize error omits remote body fragments");
+      assert(!oversizeError.message.includes(sentinel), "oversize error omits remote body fragments");
 
       // Oversized injected-transport string is rejected before JSON parsing.
       let injectedError = "";
-      try { await providerWith("x".repeat(MAX_BODY_BYTES + 1)).complete(request()); } catch (error) { injectedError = error.message; }
-      assert(/exceeded the maximum allowed size/.test(injectedError), "oversized injected body is rejected before JSON parsing");
+      try { await providerWith("x".repeat(MAX_BODY_BYTES + 1)).complete(request()); } catch (error) { injectedError = error; }
+      assert(injectedError?.outcome === "response_too_large" && injectedError?.httpStatus === null, "oversized injected body is rejected before JSON parsing");
 
       // Multibyte UTF-8 body whose JS string length is within the limit but
       // whose byte length exceeds it is rejected before JSON parsing.
       let multibyteError = "";
       const emoji = "🖂".repeat(300_000); // length 600000 (<= limit), bytes 1200000 (> 1 MiB)
-      try { await providerWith(emoji).complete(request()); } catch (error) { multibyteError = error.message; }
-      assert(/exceeded the maximum allowed size/.test(multibyteError), "multibyte UTF-8 body exceeds the byte limit");
-      assert(!multibyteError.includes("🖂"), "multibyte oversize error omits body fragments");
+      try { await providerWith(emoji).complete(request()); } catch (error) { multibyteError = error; }
+      assert(multibyteError?.outcome === "response_too_large" && multibyteError?.httpStatus === null, "multibyte UTF-8 body exceeds the byte limit");
+      assert(!multibyteError.message.includes("🖂"), "multibyte oversize error omits body fragments");
     // 15. BLOCKER 1: malformed providerCall metadata takes the provider-error path.
     {
       const badShape = {

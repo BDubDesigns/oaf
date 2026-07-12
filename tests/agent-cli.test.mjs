@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 import { sanitizeTerminal, usageFrom } from "../lib/agent/cli.mjs";
@@ -56,7 +56,7 @@ const server = createServer((req, res) => {
 await new Promise((resolveServer) => server.listen(0, "127.0.0.1", resolveServer));
 try {
   const port = server.address().port;
-  const env = { ...process.env, OAF_PROVIDER: "openai-compatible", OAF_PROVIDER_BASE_URL: `http://127.0.0.1:${port}`, OAF_MODEL: "test/model", OAF_API_KEY_ENV: "OAF_TEST_SECRET", OAF_TEST_SECRET: secret, OAF_MAX_TURNS: "4" };
+  const env = { ...process.env, OAF_PROVIDER: "openai-compatible", OAF_PROVIDER_BASE_URL: `http://127.0.0.1:${port}`, OAF_MODEL: "test/model", OAF_API_KEY_ENV: "OAF_TEST_SECRET", OAF_TEST_SECRET: secret, OAF_MAX_TURNS: "4", OAF_DIAGNOSTICS: "1" };
   const success = await runCli([join(repo, "bin/oaf.mjs"), "agent", "write", "a", "file"], { cwd: fixture.workspace, env });
   const output = success.stdout + success.stderr;
   assert(success.status === 0, "successful CLI round trip exits 0");
@@ -74,6 +74,8 @@ try {
   assert(!output.includes(secret), "API key sentinel absent from CLI output");
   const receipts = readdirSync(join(fixture.workspace, "oaf/receipts")).filter((name) => name.endsWith(".json"));
   assert(receipts.length === 1, "successful CLI writes exactly one receipt");
+  const diagnostics = readdirSync(join(fixture.workspace, "oaf/diagnostics")).filter((name) => name.endsWith(".json"));
+  assert(diagnostics.length === 1 && /Diagnostics: oaf\/diagnostics\//.test(output), "successful diagnostics-enabled CLI writes exactly one diagnostic");
   const receipt = JSON.parse(readFileSync(join(fixture.workspace, "oaf/receipts", receipts[0]), "utf8"));
   assert(receipt.status === "success" && receipt.terminalReason === "assistant_terminal", "receipt records successful terminal run");
   assert(receipt.usage.provider === "openai-compatible" && receipt.usage.model === "test/model" && receipt.usage.calls === 2 && receipt.usage.tokensIn === 8 && receipt.usage.tokensOut === 6, "receipt records trusted provider usage");
@@ -123,8 +125,9 @@ await scenario((_req, res, _body, number) => { const payload = number === 1 ? { 
 });
 await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "receipt failure" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env, requests: count }) => {
   rmSync(join(workspace, "oaf", "receipts"), { recursive: true }); writeFileSync(join(workspace, "oaf", "receipts"), "blocked");
-  const result = await runCli([bin, "agent", "receipt"], { cwd: workspace, env });
-  assert(result.status === 1 && count() === 1 && receiptFiles(workspace).length === 0 && /receipt could not be written/.test(result.stderr) && !/Receipt:/.test(result.stdout) && !`${result.stdout}${result.stderr}`.includes(workspace) && !`${result.stdout}${result.stderr}`.includes(env.OAF_TEST_SECRET) && !`${result.stdout}${result.stderr}`.includes(env.OAF_PROVIDER_BASE_URL) && !`${result.stdout}${result.stderr}`.includes("Authorization"), "receipt-write failure is bounded with no receipt claim or retry");
+  const result = await runCli([bin, "agent", "receipt"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diagnostics = readdirSync(join(workspace, "oaf", "diagnostics")).filter((name) => name.endsWith(".json"));
+  assert(result.status === 1 && count() === 1 && receiptFiles(workspace).length === 0 && diagnostics.length === 1 && /Diagnostics: oaf\/diagnostics\//.test(result.stdout) && /receipt could not be written/.test(result.stderr) && !/Receipt:/.test(result.stdout) && !`${result.stdout}${result.stderr}`.includes(workspace) && !`${result.stdout}${result.stderr}`.includes(env.OAF_TEST_SECRET) && !`${result.stdout}${result.stderr}`.includes(env.OAF_PROVIDER_BASE_URL) && !`${result.stdout}${result.stderr}`.includes("Authorization"), "receipt-write failure is bounded with no receipt claim or retry");
 });
 await scenario((_req, res) => { const content = `safe \x1b[31mRED\x1b[0m \x1b]title\x07 \x1b]st\x1b\\ \x1bX\0a\bb\u0085\r\n\t😀${"z".repeat(9000)}`; res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env }) => {
   const result = await runCli([bin, "agent", "sanitize"], { cwd: workspace, env }); const response = result.stdout.split("Response:\n")[1] ?? "";
@@ -156,5 +159,222 @@ for (const [name, tool, args, code, error] of [
     assert(result.status === 1 && count() === 2 && files.length === 1 && receipt.status === "partial" && wire?.code === code && wire?.error === error && !all.includes(workspace) && !all.includes(env.OAF_TEST_SECRET) && !all.includes(env.OAF_PROVIDER_BASE_URL) && !all.includes("Authorization"), `provider wire ${name} uses exact bounded pair`);
   });
 }
+// ---------------------------------------------------------------------------
+// A-D: diagnostics-enabled CLI scenarios (OAF_DIAGNOSTICS=1)
+// ---------------------------------------------------------------------------
+
+// A. DIAGNOSTICS DISABLED (no OAF_DIAGNOSTICS)
+await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "no diag" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env }) => {
+  const envNoDiag = { ...env }; delete envNoDiag.OAF_DIAGNOSTICS;
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: envNoDiag });
+  assert(result.status === 0, "A(CLI): exit 0");
+  assert(!existsSync(join(workspace, "oaf", "diagnostics")), "A(CLI): no diagnostics dir/file");
+  assert(!result.stdout.includes("Diagnostics:"), "A(CLI): no Diagnostics: line");
+  assert(receiptFiles(workspace).length === 1, "A(CLI): exactly one receipt");
+});
+
+// B. SUCCESS + diagnostic written
+await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "success diag" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+  const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+  assert(result.status === 0 && diags.length === 1 && diag !== null, "B(CLI): exactly 1 diagnostic");
+  assert(receiptFiles(workspace).length === 1, "B(CLI): exactly one receipt");
+  assert(diag.schemaVersion === "0.1.0" && diag.status === "success" && diag.terminalReason === "assistant_terminal" && diag.turns === 1, "B(CLI): schemaVersion, status, terminalReason, turns");
+  assert(diag.providerAttempts.length === 1 && diag.providerAttempts[0].outcome === "success", "B(CLI): 1 successful attempt");
+  assert(diag.provider === "openai-compatible" && diag.requestedModel === "test/model", "B(CLI): provider and model");
+  assert(diag.receiptPath !== null && diag.receiptPath.startsWith("oaf/receipts/"), "B(CLI): receiptPath set");
+  assert(diag.tools.length === 0, "B(CLI): no tools");
+  assert(!`${result.stdout}${result.stderr}${JSON.stringify(diag)}`.includes(env.OAF_TEST_SECRET) && !`${result.stdout}${result.stderr}${JSON.stringify(diag)}`.includes(env.OAF_PROVIDER_BASE_URL) && !`${result.stdout}${result.stderr}${JSON.stringify(diag)}`.includes("Authorization"), "B(CLI): sentinels absent");
+});
+
+// C. PARTIAL + diagnostic written
+await scenario((_req, res, _body, number) => { const payload = number === 1 ? { choices: [{ finish_reason: "tool_calls", message: { role: "assistant", content: null, tool_calls: [{ id: "nope_1", type: "function", function: { name: "nonexistent", arguments: "{}" } }] } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } } : { choices: [{ finish_reason: "stop", message: { role: "assistant", content: "partial done" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }; res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(payload)); }, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+  const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+  assert(result.status === 1 && diags.length === 1 && diag !== null, "C(CLI): partial triggers diagnostic");
+  assert(receiptFiles(workspace).length === 1, "C(CLI): exactly one receipt");
+  assert(diag.status === "partial" && diag.terminalReason === "assistant_terminal", "C(CLI): partial status");
+  assert(diag.tools.length === 1 && diag.tools[0].outcome === "rejected" && diag.tools[0].toolName === null, "C(CLI): rejected tool");
+  assert(diag.providerAttempts.length === 2 && diag.providerAttempts.every((a) => a.outcome === "success"), "C(CLI): 2 successful attempts");
+});
+
+// D. MAX TURNS + diagnostic written
+await scenario((_req, res, _body, number) => { const payload = { choices: [{ finish_reason: "tool_calls", message: { role: "assistant", content: null, tool_calls: [{ id: `loop_${number}`, type: "function", function: { name: "read", arguments: JSON.stringify({ path: "README.md" }) } }] } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }; res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(payload)); }, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "loop"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1", OAF_MAX_TURNS: "2" } });
+  const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+  const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+  assert(result.status === 3 && diags.length === 1 && diag !== null, "D(CLI): max turns diagnostic");
+  assert(receiptFiles(workspace).length === 1, "D(CLI): exactly one receipt");
+  assert(diag.status === "failed" && diag.terminalReason === "max_turns", "D(CLI): failed + max_turns");
+  assert(diag.turns === 2 && diag.providerAttempts.length === 2, "D(CLI): 2 turns, 2 attempts");
+});
+
+// C(exec): partial with execution_error
+await scenario((_req, res, _body, number) => {
+  const payload = number === 1
+    ? { choices: [{ finish_reason: "tool_calls", message: { role: "assistant", content: null, tool_calls: [{ id: "exec_1", type: "function", function: { name: "read", arguments: JSON.stringify({ path: "nonexistent.ts" }) } }] } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }
+    : { choices: [{ finish_reason: "stop", message: { role: "assistant", content: "done exec" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } };
+  res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(payload));
+}, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+  const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+  assert(result.status === 1 && receiptFiles(workspace).length === 1 && diags.length === 1 && diag !== null, "C(exec): partial + diagnostic");
+  assert(diag.status === "partial" && diag.terminalReason === "assistant_terminal", "C(exec): partial status");
+  assert(diag.tools.length === 1 && diag.tools[0].toolName === "read" && diag.tools[0].outcome === "execution_error", "C(exec): execution_error on read");
+  assert(diag.providerAttempts.length === 2, "C(exec): 2 attempts");
+});
+
+// ---------------------------------------------------------------------------
+// E. HTTP STATUS MATRIX
+// ---------------------------------------------------------------------------
+for (const [label, statusCode, expectedOutcome, expectedMsg, expectedExit, sentinel] of [
+  ["401", 401, "authentication_failed", "authentication failed.", 1, "SENTINEL_401_BODY"],
+  ["403", 403, "authentication_failed", "authentication failed.", 1, "SENTINEL_403_BODY"],
+  ["404", 404, "not_found", "HTTP 404 (not found).", 1, "SENTINEL_404_BODY"],
+  ["429", 429, "rate_limited", "HTTP 429 (rate limited).", 1, "SENTINEL_429_BODY"],
+  ["500", 500, "http_error", "HTTP 500.", 1, "SENTINEL_500_BODY"],
+]) {
+  await scenario((_req, res) => { res.writeHead(statusCode); res.end(sentinel); }, async ({ workspace, env, requests: count }) => {
+    const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+    const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+    const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+    const receipts = receiptFiles(workspace);
+    const receipt = receipts.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf/receipts", receipts[0]), "utf8")) : null;
+    assert(result.status === expectedExit && receipts.length === 1 && diags.length === 1 && diag !== null && receipt !== null && count() === 1, `E(${label}): 1 request, 1 receipt, 1 diagnostic`);
+    assert(diag.status === "failed" && diag.terminalReason === "provider_error", `E(${label}): failed + provider_error`);
+    assert(diag.providerAttempts.length === 1 && diag.providerAttempts[0].outcome === expectedOutcome && diag.providerAttempts[0].httpStatus === statusCode, `E(${label}): outcome ${expectedOutcome}, httpStatus ${statusCode}`);
+    assert(diag.tools.length === 0, `E(${label}): no tools`);
+    assert(diag.receiptPath !== null && diag.receiptPath.startsWith("oaf/receipts/"), `E(${label}): receiptPath set`);
+    assert(receipt.status === "failed" && receipt.terminalReason === "provider_error", `E(${label}): receipt matches`);
+    const output = `${result.stdout}${result.stderr}`;
+    assert(output.includes(`Provider error: ${expectedMsg}`), `E(${label}): CLI prints "${expectedMsg}"`);
+    const all = `${output}${JSON.stringify(diag)}${JSON.stringify(receipt)}`;
+    assert(!all.includes(sentinel), `E(${label}): body sentinel absent`);
+    assert(!all.includes(env.OAF_TEST_SECRET) && !all.includes(env.OAF_PROVIDER_BASE_URL) && !all.includes("Authorization") && !all.includes(workspace), `E(${label}): sentinels absent`);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// F. PROVIDER FAILURE MATRIX
+// ---------------------------------------------------------------------------
+
+// F1: network failure (server destroys socket immediately)
+await scenario((_req, res) => { res.socket.destroy(); }, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+  const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+  const receipts = receiptFiles(workspace);
+  assert(result.status === 1 && receipts.length === 1 && diags.length === 1 && diag !== null, "F(net): 1 receipt + 1 diagnostic");
+  assert(diag.status === "failed" && diag.terminalReason === "provider_error", "F(net): failed + provider_error");
+  assert(diag.providerAttempts.length === 1 && diag.providerAttempts[0].outcome === "network_error", "F(net): network_error outcome");
+  assert(diag.providerAttempts[0].httpStatus === null, "F(net): httpStatus null");
+});
+
+// F2: invalid JSON (200 with non-JSON body)
+await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end("{bad"); }, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+  const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+  const receipts = receiptFiles(workspace);
+  assert(result.status === 1 && receipts.length === 1 && diags.length === 1 && diag !== null, "F(json): 1 receipt + 1 diagnostic");
+  assert(diag.providerAttempts[0].outcome === "invalid_json", "F(json): invalid_json outcome");
+  assert(diag.providerAttempts[0].httpStatus === null, "F(json): httpStatus null");
+});
+
+// F3: malformed provider response (valid JSON but missing choices)
+await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ no: "choices" })); }, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+  const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+  const receipts = receiptFiles(workspace);
+  assert(result.status === 1 && receipts.length === 1 && diags.length === 1 && diag !== null, "F(malformed): 1 receipt + 1 diagnostic");
+  assert(diag.providerAttempts[0].outcome === "invalid_response", "F(malformed): invalid_response outcome");
+  assert(diag.providerAttempts[0].httpStatus === null, "F(malformed): httpStatus null");
+});
+
+// F4: empty body (parses as invalid JSON)
+await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end(); }, async ({ workspace, env }) => {
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  const diags = readdirSync(join(workspace, "oaf", "diagnostics")).filter((n) => n.endsWith(".json"));
+  const diag = diags.length === 1 ? JSON.parse(readFileSync(join(workspace, "oaf", "diagnostics", diags[0]), "utf8")) : null;
+  const receipts = receiptFiles(workspace);
+  assert(result.status === 1 && receipts.length === 1 && diags.length === 1 && diag !== null, "F(empty): 1 receipt + 1 diagnostic");
+  assert(diag.providerAttempts[0].outcome === "invalid_json", "F(empty): invalid_json outcome");
+  assert(diag.providerAttempts[0].httpStatus === null, "F(empty): httpStatus null");
+});
+
+// ---------------------------------------------------------------------------
+// H. DIAGNOSTIC-WRITE FAILURE MATRIX (blocked diagnostics, spawned CLI)
+// ---------------------------------------------------------------------------
+function blockDiagnostics(ws) {
+  rmSync(join(ws, "oaf", "diagnostics"), { recursive: true, force: true });
+  writeFileSync(join(ws, "oaf", "diagnostics"), "blocked");
+  mkdirSync(join(ws, "oaf", "receipts"), { recursive: true });
+}
+
+function assertBlockedDiag(result, ws, expExit, expStatus, expReason, env) {
+  assert(result.status === expExit, `H: exit ${expExit}`);
+  assert(receiptFiles(ws).length === 1, "H: exactly one receipt");
+  const receipts = receiptFiles(ws);
+  const receipt = JSON.parse(readFileSync(join(ws, "oaf/receipts", receipts[0]), "utf8"));
+  assert(receipt.status === expStatus, `H: receipt status ${expStatus}`);
+  assert(receipt.terminalReason === expReason, `H: receipt reason ${expReason}`);
+  const diagStat = statSync(join(ws, "oaf/diagnostics"), { throwIfNoEntry: false });
+  assert(diagStat === undefined || !diagStat.isDirectory(), "H: no diagnostic JSON file");
+  const warningCount = (result.stderr.match(/Warning: diagnostics could not be written\./g) || []).length;
+  assert(warningCount === 1, `H: exactly 1 warning (got ${warningCount})`);
+  assert(!result.stdout.includes("Diagnostics:"), "H: no Diagnostics: success line");
+  assert(!/EEXIST|ENOTDIR|EACCES/.test(result.stderr), "H: no raw fs error text");
+  const all = `${result.stdout}${result.stderr}${JSON.stringify(receipt)}`;
+  assert(!all.includes(env.OAF_TEST_SECRET) && !all.includes(env.OAF_PROVIDER_BASE_URL) && !all.includes("Authorization") && !all.includes(ws), "H: sentinels absent");
+}
+
+// H1: success
+await scenario((_req, res) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "ok" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } })); }, async ({ workspace, env }) => {
+  blockDiagnostics(workspace);
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  assertBlockedDiag(result, workspace, 0, "success", "assistant_terminal", env);
+});
+
+// H2: partial
+await scenario((_req, res, _body, number) => {
+  const payload = number === 1
+    ? { choices: [{ finish_reason: "tool_calls", message: { role: "assistant", content: null, tool_calls: [{ id: "h2_1", type: "function", function: { name: "nonexistent", arguments: "{}" } }] } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }
+    : { choices: [{ finish_reason: "stop", message: { role: "assistant", content: "partial done" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } };
+  res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(payload));
+}, async ({ workspace, env }) => {
+  blockDiagnostics(workspace);
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  assertBlockedDiag(result, workspace, 1, "partial", "assistant_terminal", env);
+});
+
+// H3: provider failure (HTTP 500)
+await scenario((_req, res) => { res.writeHead(500); res.end("server error"); }, async ({ workspace, env }) => {
+  blockDiagnostics(workspace);
+  const result = await runCli([bin, "agent", "task"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1" } });
+  assertBlockedDiag(result, workspace, 1, "failed", "provider_error", env);
+});
+
+// H4: max turns
+await scenario((_req, res, _body, number) => {
+  const payload = { choices: [{ finish_reason: "tool_calls", message: { role: "assistant", content: null, tool_calls: [{ id: `h4_${number}`, type: "function", function: { name: "read", arguments: JSON.stringify({ path: "README.md" }) } }] } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } };
+  res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(payload));
+}, async ({ workspace, env }) => {
+  blockDiagnostics(workspace);
+  const result = await runCli([bin, "agent", "loop"], { cwd: workspace, env: { ...env, OAF_DIAGNOSTICS: "1", OAF_MAX_TURNS: "2" } });
+  assertBlockedDiag(result, workspace, 3, "failed", "max_turns", env);
+});
+
+// ---------------------------------------------------------------------------
+// EXIT CODE VERIFICATION
+// ---------------------------------------------------------------------------
+// Exit codes are already verified by existing tests:
+//   - 0: success (B, H1, A)
+//   - 1: partial (C, C(exec)), provider failure (E, F, H2, H3)
+//   - 3: max turns (D, H4)
+
 if (failures) process.exit(1);
 console.log("All agent CLI checks passed.");

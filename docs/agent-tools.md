@@ -33,6 +33,15 @@ Allowed source context and tool results are sent to the configured provider.
 Protected paths remain unavailable; agent commands remain network-off and cannot
 self-approve. Receipts are privacy-safe summaries, not transcripts. Alpha 1 has
 no routing, fallback, streaming, or interactive approval.
+
+## Local diagnostics
+
+Set `OAF_DIAGNOSTICS=1` to write one local, privacy-safe JSON diagnostic under
+`oaf/diagnostics/` after an attempted run. It contains allowlisted lifecycle,
+provider-attempt, and tool-outcome summaries only. It never stores prompts,
+keys, headers, endpoints, raw provider bodies, model output, file contents, or
+tool arguments/results. Diagnostic write failures are warnings and do not alter
+the run receipt or exit code.
 - **No raw shell.** The only process-executing tool is `command`, and it routes
   through `oaf sandbox run`. The agent never receives a shell.
 - **Greenfield OAF apps only.** All file tools are scoped to the `oaf init`-
