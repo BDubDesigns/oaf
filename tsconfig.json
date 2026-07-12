@@ -14,9 +14,13 @@
   },
   "include": [
     "bin/**/*.mjs",
+    "bin/**/*.ts",
     "lib/**/*.mjs",
+    "lib/**/*.ts",
+    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
     "tests/**/*.mjs",
-    "tests/fixtures/node24-native-ts-smoke.ts"
+    "tests/**/*.ts"
   ],
   "exclude": [
     "node_modules",

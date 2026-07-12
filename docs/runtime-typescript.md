@@ -31,14 +31,17 @@ is intended only for no-emit or declaration-only projects. Node itself ignores
 `tsconfig.json`, requires explicit relative file extensions, and does not run
 `.tsx` files.
 
-The existing checked JavaScript has 991 strict diagnostics at this foundation
-point, principally implicit parameters/destructuring, unsafe `unknown` access,
-and incomplete object-contract inference. `config/typecheck-baseline.json`
-stores normalized `TS code | relative path | line:column` fingerprints without
-source text or machine paths. `pnpm typecheck` uses the TypeScript compiler API
-to fail on any new fingerprint or larger count while allowing debt to shrink;
-`pnpm typecheck:raw` prints the unfiltered compiler inventory. This temporary
-baseline is removed by the #69/#70 migration work.
+The checked JavaScript has legacy strict diagnostics, principally implicit
+parameters/destructuring, unsafe `unknown` access, and incomplete
+object-contract inference. `config/typecheck-baseline.json` schema version 2
+stores normalized `TS code | category | project-relative path or <config> |
+SHA-256(message)` fingerprints and counts. It contains no raw messages, source
+text, absolute paths, or machine-specific data. The compiler API retains
+read-config errors, parsed-config errors, and program diagnostics without
+deduplicating them before counting. `pnpm typecheck` fails on a new fingerprint
+or larger count while allowing debt to shrink; `pnpm typecheck:raw` prints the
+unfiltered compiler inventory. This temporary baseline is removed by the
+#69/#70 migration work.
 
 Issue #71 will add compiled JavaScript for installed distribution. Generated
 OAF apps remain unchanged here and are tracked by #72. Issues #69 and #70 own

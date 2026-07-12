@@ -1,13 +1,4 @@
-export interface SmokeInput {
-  value: string;
-}
+import { formatSmoke, type SmokeInput } from "./node24-native-ts-smoke-helper.ts";
 
-export type SmokeOutput = {
-  message: string;
-};
-
-export function formatSmoke({ value }: SmokeInput): SmokeOutput {
-  return { message: `native-typescript:${value}` };
-}
-
-console.log(formatSmoke({ value: "ok" }).message);
+const input: SmokeInput = { value: "ok" };
+console.log(formatSmoke(input).message);
