@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "rewriteRelativeImportExtensions": true,
+    "types": ["node"]
+  },
+  "include": [
+    "bin/**/*.mjs",
+    "bin/**/*.ts",
+    "lib/**/*.mjs",
+    "lib/**/*.ts",
+    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
+    "tests/**/*.mjs",
+    "tests/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests/fixtures/generated-app/**",
+    "docs-packs/**",
+    ".oaf/**",
+    "coverage",
+    "dist",
+    "build",
+    "out"
+  ]
+}
