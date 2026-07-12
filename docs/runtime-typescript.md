@@ -18,7 +18,9 @@ Node executes directly. Node strips types but does not type-check, so
 `pnpm typecheck` performs strict checking. The current `.mjs` runtime modules
 remain unchanged in issue #68, and there is no development build or runtime
 loader. `typescript@6.0.3` (released 2026-04-16) and
-`@types/node@24.13.2` (released 2026-06-10) are exact, aged pins.
+`@types/node@24.13.2` (released 2026-06-10) are exact, aged pins. On
+2026-07-12, TypeScript was 87 full days old and the Node type definitions were
+31 full days old, meeting the foundational 30-day preference.
 
 `tsconfig.json` follows Node's native type-stripping recommendation: NodeNext,
 ESNext, erasable syntax, verbatim module syntax, and relative-extension
