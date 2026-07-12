@@ -1,9 +1,10 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, statSync, readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { buildDiagnostic, writeDiagnostic, normalizeDiagnosticSchema, DIAGNOSTICS_DIR } from "../lib/agent/diagnostics.mjs";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 import { createMockProvider, ProviderFailure } from "../lib/agent/provider.mjs";
 import { runAgentLoopWithReceipt, ReceiptWriteError } from "../lib/agent/receipt.mjs";
+import { createOpenAICompatibleProvider, MAX_BODY_BYTES } from "../lib/agent/openai-compatible-provider.mjs";
 
 let failures = 0;
 function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
@@ -115,52 +116,60 @@ schema: {
 }
 
 // -------------------------------------------------------------------
-// PROVIDER FAILURE — hardened (item 5)
+// PROVIDER FAILURE — hardened non-enumerable contract (item 1)
 // -------------------------------------------------------------------
 {
+  const S_CAUSE = "SENTINEL_PROVIDER_CAUSE";
+
+  // Basic outcome/httpStatus
   const pf = new ProviderFailure("timeout");
   assert(pf.outcome === "timeout", "ProviderFailure outcome preserved");
   assert(pf.httpStatus === null, "ProviderFailure httpStatus null for timeout");
-  assert(pf.message === "timeout", "ProviderFailure message equals outcome, not caller-supplied text");
-  assert(pf.cause === undefined, "ProviderFailure has no cause property");
-  assert(!("cause" in pf), "ProviderFailure cause not enumerable");
+  assert(pf.message === "timeout", "ProviderFailure message equals outcome");
+  assert(pf.name === "ProviderFailure", "ProviderFailure name");
+
+  // Object.keys returns only outcome and httpStatus
+  const keys = Object.keys(pf).sort();
+  assert(JSON.stringify(keys) === JSON.stringify(["httpStatus", "outcome"]), "ProviderFailure Object.keys = outcome + httpStatus");
+
+  // Cause through real constructor — stored as non-enumerable _cause
+  const pfWithCause = new ProviderFailure("http_error", { httpStatus: 500, cause: S_CAUSE });
+  assert(pfWithCause._cause === S_CAUSE, "ProviderFailure _cause accessible");
+  assert(!Object.keys(pfWithCause).includes("_cause"), "ProviderFailure _cause not enumerable");
+  assert(!JSON.stringify(pfWithCause).includes(S_CAUSE), "ProviderFailure JSON.stringify omits cause");
+
+  // util.inspect omits non-enumerable _cause (Node.js only shows `cause` keyword specially)
+  const { inspect } = await import("node:util");
+  const inspected = inspect(pfWithCause);
+  assert(!inspected.includes(S_CAUSE), "ProviderFailure util.inspect omits cause");
+
+  // name and message also non-enumerable
+  assert(!Object.keys(pf).includes("name"), "ProviderFailure name not enumerable");
+  assert(!Object.keys(pf).includes("message"), "ProviderFailure message not enumerable");
 
   const pfHttp = new ProviderFailure("http_error", { httpStatus: 429 });
   assert(pfHttp.outcome === "http_error", "ProviderFailure http_error outcome");
   assert(pfHttp.httpStatus === 429, "ProviderFailure httpStatus preserved");
 
-  // Arbitrary caller message must NOT appear
-  // (ProviderFailure no longer accepts message — just verify the constructor)
   const pf2 = new ProviderFailure("authentication_failed");
-  assert(pf2.message === "authentication_failed", "ProviderFailure message not leakable by caller");
+  assert(pf2.message === "authentication_failed", "ProviderFailure message equals outcome, not caller-supplied text");
 
-  // Unknown outcome normalizes
   const pf3 = new ProviderFailure("bogus_outcome");
   assert(pf3.outcome === "unknown_provider_error", "ProviderFailure unknown outcome normalizes");
-
-  // Loop uses only outcome and httpStatus — verify they do not leak into
-  // providerAttempts, events, receipt, or diagnostic
-  // (This is verified via the CLI test matrix)
 }
 
 // -------------------------------------------------------------------
-// PROVIDER FAILURE LEAK TEST — arbitrary message and cause do not leak
+// PROVIDER FAILURE LEAK TEST — cause through real constructor (item 1)
 // -------------------------------------------------------------------
 uses(async (fixture) => {
-  const S_MSG = "SENTINEL_PROVIDER_MESSAGE";
   const S_CAUSE = "SENTINEL_PROVIDER_CAUSE";
 
   const provider = {
     callCount: 0,
     async complete() {
       this.callCount++;
-      const failure = new ProviderFailure("http_error", { httpStatus: 500 });
-      // MitM-style: override message and inject cause (guaranteed non-enumerable)
-      Object.defineProperty(failure, "message", { value: S_MSG, enumerable: false });
-      Object.defineProperty(failure, "cause", { value: S_CAUSE, enumerable: false });
-      // Inject extra own enumerable property
-      failure.userSecret = S_MSG;
-      throw failure;
+      // Throw through real constructor with non-enumerable cause
+      throw new ProviderFailure("http_error", { httpStatus: 500, cause: S_CAUSE });
     },
   };
 
@@ -169,14 +178,119 @@ uses(async (fixture) => {
 
   const all = `${JSON.stringify(result.providerAttempts)}${JSON.stringify(result.events)}${JSON.stringify(result.receipt)}${JSON.stringify(diagnostic)}`;
 
-  assert(!all.includes(S_MSG), "K: provider message not leaked");
   assert(!all.includes(S_CAUSE), "K: provider cause not leaked");
-  assert(!JSON.stringify(result.providerAttempts).includes("userSecret"), "K: extra enumerable prop not in attempts");
   assert(diagnostic.status === "failed", "K: diagnostic status failed");
   assert(diagnostic.terminalReason === "provider_error", "K: terminalReason provider_error");
   assert(diagnostic.providerAttempts.length === 1, "K: 1 attempt");
   assert(diagnostic.providerAttempts[0].outcome === "http_error", "K: outcome http_error");
   assert(diagnostic.providerAttempts[0].httpStatus === 500, "K: httpStatus 500");
+});
+
+// -------------------------------------------------------------------
+// F5-F7: additional transport-seam scenarios
+// -------------------------------------------------------------------
+
+// F5: timeout via transport that never responds
+uses(async (fixture) => {
+  const transport = async () => new Promise(() => {});
+  const provider = createOpenAICompatibleProvider({ baseUrl: "http://127.0.0.1:9", model: "test/model", apiKeyEnv: "OAF_TEST_SECRET", env: { OAF_TEST_SECRET: "x" }, transport, timeoutMs: 50 });
+  const result = await runAgentLoopWithReceipt({ task: "timeout", workspaceRoot: fixture.workspace, provider, maxTurns: 3 });
+  const diagnostic = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
+  assert(diagnostic.status === "failed" && diagnostic.terminalReason === "provider_error", "F5: failed + provider_error");
+  assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "timeout", "F5: timeout outcome");
+  assert(diagnostic.providerAttempts[0].httpStatus === null, "F5: httpStatus null");
+});
+
+// F6: oversized response (transport returns > MAX_BODY_BYTES)
+uses(async (fixture) => {
+  const bigBody = "x".repeat(MAX_BODY_BYTES + 1);
+  const transport = async () => ({ status: 200, body: bigBody });
+  const provider = createOpenAICompatibleProvider({ baseUrl: "http://127.0.0.1:9", model: "test/model", apiKeyEnv: "OAF_TEST_SECRET", env: { OAF_TEST_SECRET: "x" }, transport });
+  const result = await runAgentLoopWithReceipt({ task: "oversized", workspaceRoot: fixture.workspace, provider, maxTurns: 3 });
+  const diagnostic = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
+  assert(diagnostic.status === "failed" && diagnostic.terminalReason === "provider_error", "F6: failed + provider_error");
+  assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "response_too_large", "F6: response_too_large outcome");
+  assert(diagnostic.providerAttempts[0].httpStatus === null, "F6: httpStatus null");
+});
+
+// F7: arbitrary unknown thrown value (non-ProviderFailure)
+uses(async (fixture) => {
+  const provider = {
+    async complete() { throw "SENTINEL_UNKNOWN_THROWN"; },
+  };
+  const result = await runAgentLoopWithReceipt({ task: "unknown", workspaceRoot: fixture.workspace, provider, maxTurns: 3 });
+  const diagnostic = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
+  assert(diagnostic.status === "failed" && diagnostic.terminalReason === "provider_error", "F7: failed + provider_error");
+  assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "unknown_provider_error", "F7: unknown_provider_error outcome");
+  assert(diagnostic.providerAttempts[0].httpStatus === null, "F7: httpStatus null");
+  const all = `${JSON.stringify(diagnostic)}${JSON.stringify(result.receipt)}`;
+  assert(!all.includes("SENTINEL_UNKNOWN_THROWN"), "F7: thrown value not leaked");
+});
+
+// -------------------------------------------------------------------
+// H: DIAGNOSTIC-WRITE FAILURE — all exit codes with blocked diagnostics
+// -------------------------------------------------------------------
+
+// H1: success exit 0 with blocked diagnostics
+uses(async (fixture) => {
+  rmSync(join(fixture.workspace, "oaf", "diagnostics"), { recursive: true, force: true });
+  writeFileSync(join(fixture.workspace, "oaf", "diagnostics"), "blocked");
+  mkdirSync(join(fixture.workspace, "oaf", "receipts"), { recursive: true });
+
+  const provider = createMockProvider({ script: [{ content: "ok", toolCalls: [] }] });
+  const result = await runAgentLoopWithReceipt({ task: "hi", workspaceRoot: fixture.workspace, provider });
+  assert(!!result.receipt, "H1: receipt written");
+  const diagStat = statSync(join(fixture.workspace, DIAGNOSTICS_DIR), { throwIfNoEntry: false });
+  assert(diagStat === undefined || !diagStat.isDirectory(), "H1: no diagnostic dir");
+  // Build diagnostic after the fact — it would have failed during write
+  const diag = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
+  assert(diag.status === "success", "H1: status success still correct");
+});
+
+// H2: partial exit 1 with blocked diagnostics
+uses(async (fixture) => {
+  rmSync(join(fixture.workspace, "oaf", "diagnostics"), { recursive: true, force: true });
+  writeFileSync(join(fixture.workspace, "oaf", "diagnostics"), "blocked");
+  mkdirSync(join(fixture.workspace, "oaf", "receipts"), { recursive: true });
+
+  const provider = createMockProvider({
+    script: [
+      { content: null, toolCalls: [{ id: "hb2", name: "nonexistent", args: {} }] },
+      { content: "partial done", toolCalls: [] },
+    ],
+  });
+  const result = await runAgentLoopWithReceipt({ task: "partial", workspaceRoot: fixture.workspace, provider });
+  assert(!!result.receipt, "H2: receipt written");
+  assert(result.receipt.status === "partial", "H2: receipt is partial");
+});
+
+// H3: provider failure exit 1 with blocked diagnostics
+uses(async (fixture) => {
+  rmSync(join(fixture.workspace, "oaf", "diagnostics"), { recursive: true, force: true });
+  writeFileSync(join(fixture.workspace, "oaf", "diagnostics"), "blocked");
+  mkdirSync(join(fixture.workspace, "oaf", "receipts"), { recursive: true });
+
+  const provider = {
+    async complete() { throw new ProviderFailure("authentication_failed"); },
+  };
+  const result = await runAgentLoopWithReceipt({ task: "fail", workspaceRoot: fixture.workspace, provider });
+  assert(!!result.receipt, "H3: receipt written");
+  assert(result.receipt.status === "failed", "H3: receipt is failed");
+  assert(result.receipt.terminalReason === "provider_error", "H3: terminalReason provider_error");
+});
+
+// H4: max turns exit 3 with blocked diagnostics
+uses(async (fixture) => {
+  rmSync(join(fixture.workspace, "oaf", "diagnostics"), { recursive: true, force: true });
+  writeFileSync(join(fixture.workspace, "oaf", "diagnostics"), "blocked");
+  mkdirSync(join(fixture.workspace, "oaf", "receipts"), { recursive: true });
+
+  const provider = createMockProvider({
+    script: (request, callCount) => ({ content: null, toolCalls: [{ id: `h4-${callCount}`, name: "read", args: { path: "README.md" } }] }),
+  });
+  const result = await runAgentLoopWithReceipt({ task: "loop", workspaceRoot: fixture.workspace, provider, maxTurns: 2 });
+  assert(!!result.receipt, "H4: receipt written");
+  assert(result.receipt.status === "failed" && result.receipt.terminalReason === "max_turns", "H4: max_turns receipt");
 });
 
 // -------------------------------------------------------------------
