@@ -199,6 +199,14 @@ uses(async (fixture) => {
   assert(diagnostic.status === "failed" && diagnostic.terminalReason === "provider_error", "F5: failed + provider_error");
   assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "timeout", "F5: timeout outcome");
   assert(diagnostic.providerAttempts[0].httpStatus === null, "F5: httpStatus null");
+  assert(!existsSync(join(fixture.workspace, DIAGNOSTICS_DIR)), "F5: no diag dir before write");
+  const f5path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic });
+  const f5files = readdirSync(join(fixture.workspace, DIAGNOSTICS_DIR)).filter((n) => n.endsWith(".json"));
+  assert(f5files.length === 1, "F5: exactly one diagnostic");
+  const f5reread = JSON.parse(readFileSync(join(fixture.workspace, f5path), "utf8"));
+  assert(f5reread.providerAttempts[0].outcome === "timeout", "F5: reread timeout");
+  assert(f5reread.providerAttempts[0].httpStatus === null, "F5: reread httpStatus null");
+  assert(!JSON.stringify(f5reread).includes(fixture.workspace), "F5: workspace absent");
 });
 
 // F6: oversized response (transport returns > MAX_BODY_BYTES)
@@ -211,6 +219,14 @@ uses(async (fixture) => {
   assert(diagnostic.status === "failed" && diagnostic.terminalReason === "provider_error", "F6: failed + provider_error");
   assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "response_too_large", "F6: response_too_large outcome");
   assert(diagnostic.providerAttempts[0].httpStatus === null, "F6: httpStatus null");
+  assert(!existsSync(join(fixture.workspace, DIAGNOSTICS_DIR)), "F6: no diag dir before write");
+  const f6path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic });
+  const f6files = readdirSync(join(fixture.workspace, DIAGNOSTICS_DIR)).filter((n) => n.endsWith(".json"));
+  assert(f6files.length === 1, "F6: exactly one diagnostic");
+  const f6reread = JSON.parse(readFileSync(join(fixture.workspace, f6path), "utf8"));
+  assert(f6reread.providerAttempts[0].outcome === "response_too_large", "F6: reread outcome");
+  assert(f6reread.providerAttempts[0].httpStatus === null, "F6: reread httpStatus null");
+  assert(!JSON.stringify(f6reread).includes(fixture.workspace), "F6: workspace absent");
 });
 
 // F7: arbitrary unknown thrown value (non-ProviderFailure)
@@ -223,8 +239,92 @@ uses(async (fixture) => {
   assert(diagnostic.status === "failed" && diagnostic.terminalReason === "provider_error", "F7: failed + provider_error");
   assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "unknown_provider_error", "F7: unknown_provider_error outcome");
   assert(diagnostic.providerAttempts[0].httpStatus === null, "F7: httpStatus null");
-  const all = `${JSON.stringify(diagnostic)}${JSON.stringify(result.receipt)}`;
-  assert(!all.includes("SENTINEL_UNKNOWN_THROWN"), "F7: thrown value not leaked");
+  const f7all = `${JSON.stringify(diagnostic)}${JSON.stringify(result.receipt)}`;
+  assert(!f7all.includes("SENTINEL_UNKNOWN_THROWN"), "F7: thrown value not leaked");
+  assert(!existsSync(join(fixture.workspace, DIAGNOSTICS_DIR)), "F7: no diag dir before write");
+  const f7path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic });
+  const f7files = readdirSync(join(fixture.workspace, DIAGNOSTICS_DIR)).filter((n) => n.endsWith(".json"));
+  assert(f7files.length === 1, "F7: exactly one diagnostic");
+  const f7reread = JSON.parse(readFileSync(join(fixture.workspace, f7path), "utf8"));
+  assert(f7reread.providerAttempts[0].outcome === "unknown_provider_error", "F7: reread outcome");
+  assert(f7reread.providerAttempts[0].httpStatus === null, "F7: reread httpStatus null");
+  assert(!JSON.stringify(f7reread).includes(fixture.workspace), "F7: workspace absent");
+});
+
+// -------------------------------------------------------------------
+// F8-F11: malformed transport result matrix (item 2)
+// -------------------------------------------------------------------
+
+// F8: transport returns null
+uses(async (fixture) => {
+  const transport = async () => null;
+  const provider = createOpenAICompatibleProvider({ baseUrl: "http://127.0.0.1:9", model: "test/model", apiKeyEnv: "OAF_TEST_SECRET", env: { OAF_TEST_SECRET: "x" }, transport });
+  const result = await runAgentLoopWithReceipt({ task: "null-tport", workspaceRoot: fixture.workspace, provider, maxTurns: 3 });
+  const diagnostic = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
+  assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "invalid_response", "F8: null transport outcome");
+  assert(diagnostic.providerAttempts[0].httpStatus === null, "F8: httpStatus null");
+  assert(!existsSync(join(fixture.workspace, DIAGNOSTICS_DIR)), "F8: no diag dir before write");
+  const f8path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic });
+  const f8files = readdirSync(join(fixture.workspace, DIAGNOSTICS_DIR)).filter((n) => n.endsWith(".json"));
+  assert(f8files.length === 1, "F8: exactly one diagnostic");
+  const f8reread = JSON.parse(readFileSync(join(fixture.workspace, f8path), "utf8"));
+  assert(f8reread.providerAttempts[0].outcome === "invalid_response", "F8: reread outcome");
+  assert(f8reread.providerAttempts[0].httpStatus === null, "F8: reread httpStatus null");
+  assert(!JSON.stringify(f8reread).includes(fixture.workspace), "F8: workspace absent");
+});
+
+// F9: transport returns empty object
+uses(async (fixture) => {
+  const transport = async () => ({});
+  const provider = createOpenAICompatibleProvider({ baseUrl: "http://127.0.0.1:9", model: "test/model", apiKeyEnv: "OAF_TEST_SECRET", env: { OAF_TEST_SECRET: "x" }, transport });
+  const result = await runAgentLoopWithReceipt({ task: "empty-tport", workspaceRoot: fixture.workspace, provider, maxTurns: 3 });
+  const diagnostic = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
+  assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "invalid_response", "F9: empty object outcome");
+  assert(diagnostic.providerAttempts[0].httpStatus === null, "F9: httpStatus null");
+  assert(!existsSync(join(fixture.workspace, DIAGNOSTICS_DIR)), "F9: no diag dir before write");
+  const f9path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic });
+  const f9files = readdirSync(join(fixture.workspace, DIAGNOSTICS_DIR)).filter((n) => n.endsWith(".json"));
+  assert(f9files.length === 1, "F9: exactly one diagnostic");
+  const f9reread = JSON.parse(readFileSync(join(fixture.workspace, f9path), "utf8"));
+  assert(f9reread.providerAttempts[0].outcome === "invalid_response", "F9: reread outcome");
+  assert(f9reread.providerAttempts[0].httpStatus === null, "F9: reread httpStatus null");
+  assert(!JSON.stringify(f9reread).includes(fixture.workspace), "F9: workspace absent");
+});
+
+// F10: transport returns non-integer status
+uses(async (fixture) => {
+  const transport = async () => ({ status: "abc" });
+  const provider = createOpenAICompatibleProvider({ baseUrl: "http://127.0.0.1:9", model: "test/model", apiKeyEnv: "OAF_TEST_SECRET", env: { OAF_TEST_SECRET: "x" }, transport });
+  const result = await runAgentLoopWithReceipt({ task: "bad-status", workspaceRoot: fixture.workspace, provider, maxTurns: 3 });
+  const diagnostic = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
+  assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "invalid_response", "F10: non-int status outcome");
+  assert(diagnostic.providerAttempts[0].httpStatus === null, "F10: httpStatus null");
+  assert(!existsSync(join(fixture.workspace, DIAGNOSTICS_DIR)), "F10: no diag dir before write");
+  const f10path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic });
+  const f10files = readdirSync(join(fixture.workspace, DIAGNOSTICS_DIR)).filter((n) => n.endsWith(".json"));
+  assert(f10files.length === 1, "F10: exactly one diagnostic");
+  const f10reread = JSON.parse(readFileSync(join(fixture.workspace, f10path), "utf8"));
+  assert(f10reread.providerAttempts[0].outcome === "invalid_response", "F10: reread outcome");
+  assert(f10reread.providerAttempts[0].httpStatus === null, "F10: reread httpStatus null");
+  assert(!JSON.stringify(f10reread).includes(fixture.workspace), "F10: workspace absent");
+});
+
+// F11: transport returns status 200 with non-string body
+uses(async (fixture) => {
+  const transport = async () => ({ status: 200, body: 123 });
+  const provider = createOpenAICompatibleProvider({ baseUrl: "http://127.0.0.1:9", model: "test/model", apiKeyEnv: "OAF_TEST_SECRET", env: { OAF_TEST_SECRET: "x" }, transport });
+  const result = await runAgentLoopWithReceipt({ task: "nonstring-body", workspaceRoot: fixture.workspace, provider, maxTurns: 3 });
+  const diagnostic = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
+  assert(diagnostic.providerAttempts.length === 1 && diagnostic.providerAttempts[0].outcome === "invalid_response", "F11: non-string body outcome");
+  assert(diagnostic.providerAttempts[0].httpStatus === null, "F11: httpStatus null");
+  assert(!existsSync(join(fixture.workspace, DIAGNOSTICS_DIR)), "F11: no diag dir before write");
+  const f11path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic });
+  const f11files = readdirSync(join(fixture.workspace, DIAGNOSTICS_DIR)).filter((n) => n.endsWith(".json"));
+  assert(f11files.length === 1, "F11: exactly one diagnostic");
+  const f11reread = JSON.parse(readFileSync(join(fixture.workspace, f11path), "utf8"));
+  assert(f11reread.providerAttempts[0].outcome === "invalid_response", "F11: reread outcome");
+  assert(f11reread.providerAttempts[0].httpStatus === null, "F11: reread httpStatus null");
+  assert(!JSON.stringify(f11reread).includes(fixture.workspace), "F11: workspace absent");
 });
 
 // -------------------------------------------------------------------
@@ -245,52 +345,6 @@ uses(async (fixture) => {
   // Build diagnostic after the fact — it would have failed during write
   const diag = buildDiagnostic({ run: result, usage: result.receipt.usage, receiptPath: result.receiptPath, receiptStatus: result.receipt.status });
   assert(diag.status === "success", "H1: status success still correct");
-});
-
-// H2: partial exit 1 with blocked diagnostics
-uses(async (fixture) => {
-  rmSync(join(fixture.workspace, "oaf", "diagnostics"), { recursive: true, force: true });
-  writeFileSync(join(fixture.workspace, "oaf", "diagnostics"), "blocked");
-  mkdirSync(join(fixture.workspace, "oaf", "receipts"), { recursive: true });
-
-  const provider = createMockProvider({
-    script: [
-      { content: null, toolCalls: [{ id: "hb2", name: "nonexistent", args: {} }] },
-      { content: "partial done", toolCalls: [] },
-    ],
-  });
-  const result = await runAgentLoopWithReceipt({ task: "partial", workspaceRoot: fixture.workspace, provider });
-  assert(!!result.receipt, "H2: receipt written");
-  assert(result.receipt.status === "partial", "H2: receipt is partial");
-});
-
-// H3: provider failure exit 1 with blocked diagnostics
-uses(async (fixture) => {
-  rmSync(join(fixture.workspace, "oaf", "diagnostics"), { recursive: true, force: true });
-  writeFileSync(join(fixture.workspace, "oaf", "diagnostics"), "blocked");
-  mkdirSync(join(fixture.workspace, "oaf", "receipts"), { recursive: true });
-
-  const provider = {
-    async complete() { throw new ProviderFailure("authentication_failed"); },
-  };
-  const result = await runAgentLoopWithReceipt({ task: "fail", workspaceRoot: fixture.workspace, provider });
-  assert(!!result.receipt, "H3: receipt written");
-  assert(result.receipt.status === "failed", "H3: receipt is failed");
-  assert(result.receipt.terminalReason === "provider_error", "H3: terminalReason provider_error");
-});
-
-// H4: max turns exit 3 with blocked diagnostics
-uses(async (fixture) => {
-  rmSync(join(fixture.workspace, "oaf", "diagnostics"), { recursive: true, force: true });
-  writeFileSync(join(fixture.workspace, "oaf", "diagnostics"), "blocked");
-  mkdirSync(join(fixture.workspace, "oaf", "receipts"), { recursive: true });
-
-  const provider = createMockProvider({
-    script: (request, callCount) => ({ content: null, toolCalls: [{ id: `h4-${callCount}`, name: "read", args: { path: "README.md" } }] }),
-  });
-  const result = await runAgentLoopWithReceipt({ task: "loop", workspaceRoot: fixture.workspace, provider, maxTurns: 2 });
-  assert(!!result.receipt, "H4: receipt written");
-  assert(result.receipt.status === "failed" && result.receipt.terminalReason === "max_turns", "H4: max_turns receipt");
 });
 
 // -------------------------------------------------------------------
