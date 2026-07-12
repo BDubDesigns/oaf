@@ -323,8 +323,10 @@ function assertBlockedDiag(result, ws, expExit, expStatus, expReason, env) {
   assert(receipt.status === expStatus, `H: receipt status ${expStatus}`);
   assert(receipt.terminalReason === expReason, `H: receipt reason ${expReason}`);
   const diagStat = statSync(join(ws, "oaf/diagnostics"), { throwIfNoEntry: false });
-  assert(diagStat === undefined || !diagStat.isDirectory(), "H: no diagnostic dir");
-  assert(result.stderr.includes("Warning: diagnostics could not be written."), "H: stderr has warning");
+  assert(diagStat === undefined || !diagStat.isDirectory(), "H: no diagnostic JSON file");
+  const warningCount = (result.stderr.match(/Warning: diagnostics could not be written\./g) || []).length;
+  assert(warningCount === 1, `H: exactly 1 warning (got ${warningCount})`);
+  assert(!result.stdout.includes("Diagnostics:"), "H: no Diagnostics: success line");
   assert(!/EEXIST|ENOTDIR|EACCES/.test(result.stderr), "H: no raw fs error text");
   const all = `${result.stdout}${result.stderr}${JSON.stringify(receipt)}`;
   assert(!all.includes(env.OAF_TEST_SECRET) && !all.includes(env.OAF_PROVIDER_BASE_URL) && !all.includes("Authorization") && !all.includes(ws), "H: sentinels absent");
