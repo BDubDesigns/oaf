@@ -4,12 +4,14 @@ import { join, resolve, dirname, isAbsolute } from "node:path";
 import { getAppTemplates } from "../lib/templates.mjs";
 import { checkApp } from "../lib/doctor.mjs";
 import { runSandbox, sandboxStatus } from "../lib/sandbox.mjs";
+import { runAgentCli } from "../lib/agent/cli.mjs";
 
 const USAGE = `OAF — Opinionated App Factory (Alpha 0)
 
 Usage:
   oaf init <app-name>   Create a new OAF app skeleton
   oaf doctor            Check the current directory is an OAF app
+  oaf agent <task>      Run one configured agent task
   oaf --help            Show this help`;
 
 function fail(msg) {
@@ -103,9 +105,18 @@ switch (cmd) {
   case "doctor":
     doctor();
     break;
-  case "sandbox":
-    runSandboxCli(process.argv.slice(3));
-    break;
+    case "sandbox":
+      runSandboxCli(process.argv.slice(3));
+      break;
+    case "agent": {
+      const taskParts = process.argv.slice(3);
+      const result = taskParts.some((part) => part.startsWith("--"))
+        ? { code: 2, message: "Error: agent command does not support options." }
+        : await runAgentCli({ taskParts });
+      if (result.message) console.error(result.message);
+      process.exitCode = result.code;
+      break;
+    }
   case "--help":
   case "-h":
   case undefined:

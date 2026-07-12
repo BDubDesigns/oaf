@@ -9,7 +9,8 @@ import {
   writeReceipt,
   receiptFileName,
   RECEIPT_SCHEMA_VERSION,
-  OAF_VERSION,
+   OAF_VERSION,
+   validateReceiptUsage,
 } from "../lib/agent/receipt.mjs";
 import { createMockProvider } from "../lib/agent/provider.mjs";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
@@ -23,6 +24,18 @@ function assert(condition, message) {
     failures++;
   }
 }
+const validUsage = { provider: "openai-compatible", model: "test/model", runMode: "agent", calls: 1, tokensIn: null, tokensOut: 2 };
+assert(validateReceiptUsage(validUsage).calls === 1, "valid receipt usage is retained");
+for (const field of Object.keys(validUsage)) { const value = { ...validUsage }; delete value[field]; try { validateReceiptUsage(value); assert(false, `missing receipt usage ${field} rejected`); } catch { assert(true, `missing receipt usage ${field} rejected`); } }
+const invalidUsage = [
+  null, false, 0, "", { ...validUsage, extra: true },
+  { ...validUsage, provider: "x".repeat(65) }, { ...validUsage, provider: "bad value" },
+  { ...validUsage, model: "x".repeat(129) }, { ...validUsage, model: "bad value" },
+  { ...validUsage, runMode: "wrong" },
+  ...[-1, 1.5, "1", Number.MAX_SAFE_INTEGER + 1].map((calls) => ({ ...validUsage, calls })),
+  ...[-1, 1.5, "1", Number.MAX_SAFE_INTEGER + 1].flatMap((tokensIn) => [{ ...validUsage, tokensIn }, { ...validUsage, tokensOut: tokensIn }]),
+];
+for (const invalid of invalidUsage) { try { validateReceiptUsage(invalid); assert(false, "invalid explicit usage rejected"); } catch { assert(true, "invalid explicit usage rejected"); } }
 
 const fixtures = [];
 const outsideDirs = [];
@@ -436,6 +449,12 @@ try {
       "returned run preserves loop fields (runId/status/turns)");
     assert(Array.isArray(result.receipt.eventSummary.byType) === false && typeof result.receipt.eventSummary.byType === "object",
       "raw AgentEvent stream is summarized, not dumped");
+  }
+  {
+    const workspace = withFixture();
+    let threw = false;
+    try { await runAgentLoopWithReceipt({ task: "hi", workspaceRoot: workspace, provider: createMockProvider({ script: [{ content: "ok", toolCalls: [] }] }), receiptUsage: false }); } catch { threw = true; }
+    assert(threw && readdirSync(join(workspace, "oaf", "receipts")).filter((name) => name.endsWith(".json")).length === 0, "malformed supplied usage rejects before receipt writing");
   }
 } finally {
   for (const fixture of fixtures) fixture.cleanup();
