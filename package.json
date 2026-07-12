@@ -11,7 +11,7 @@
     "node": "24.16.0"
   },
   "scripts": {
-    "test": "node tests/oaf-init.test.mjs && node tests/sandbox.test.mjs",
+    "test": "node scripts/run-tests.mjs",
     "doctor": "node bin/oaf.mjs doctor",
     "typecheck": "node scripts/typecheck-baseline.mjs",
     "typecheck:raw": "tsc --pretty false"
