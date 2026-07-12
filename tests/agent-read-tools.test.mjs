@@ -86,32 +86,32 @@ try {
   // 4. absolute paths and parent traversal fail for every read-only tool.
   await rejects(
     () => executeRead({ workspaceRoot: workspace, path: outsideFile }),
-    /absolute paths are not allowed/,
+    /requested path is outside the workspace/,
     "read rejects absolute paths",
   );
   await rejects(
     () => executeList({ workspaceRoot: workspace, path: outsideFile }),
-    /absolute paths are not allowed/,
+    /requested path is outside the workspace/,
     "list rejects absolute paths",
   );
   await rejects(
     () => executeGrep({ workspaceRoot: workspace, pattern: "needle", path: outsideFile }),
-    /absolute paths are not allowed/,
+    /requested path is outside the workspace/,
     "grep rejects absolute paths",
   );
   await rejects(
     () => executeRead({ workspaceRoot: workspace, path: "../outside/secret.txt" }),
-    /parent traversal is not allowed/,
+    /requested path is outside the workspace/,
     "read rejects parent traversal",
   );
   await rejects(
     () => executeList({ workspaceRoot: workspace, path: "../outside" }),
-    /parent traversal is not allowed/,
+    /requested path is outside the workspace/,
     "list rejects parent traversal",
   );
   await rejects(
     () => executeGrep({ workspaceRoot: workspace, pattern: "needle", path: "../outside" }),
-    /parent traversal is not allowed/,
+    /requested path is outside the workspace/,
     "grep rejects parent traversal",
   );
 
@@ -121,17 +121,17 @@ try {
     symlinkSync(outsideFile, escape);
     await rejects(
       () => executeRead({ workspaceRoot: workspace, path: "escape.txt" }),
-      /outside the workspace through a symlink/,
+      /requested path is outside the workspace/,
       "read rejects symlink escape",
     );
     await rejects(
       () => executeList({ workspaceRoot: workspace, path: "escape.txt" }),
-      /outside the workspace through a symlink/,
+      /requested path is outside the workspace/,
       "list rejects symlink escape",
     );
     await rejects(
       () => executeGrep({ workspaceRoot: workspace, pattern: "needle", path: "escape.txt" }),
-      /outside the workspace through a symlink/,
+      /requested path is outside the workspace/,
       "grep rejects symlink escape",
     );
   } catch (error) {

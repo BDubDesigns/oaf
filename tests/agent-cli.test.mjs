@@ -139,5 +139,22 @@ try {
 } finally { commandFixture.cleanup(); }
 const initParent = copyGeneratedAppFixture();
 try { const target = join(initParent.workspace, "new-app"); const init = await runCli([bin, "init", "new-app"], { cwd: initParent.workspace, env: process.env }); const doctor = await runCli([bin, "doctor"], { cwd: target, env: process.env }); assert(init.status === 0 && existsSync(join(target, "oaf", "app.json")) && doctor.status === 0, "init creates marked app and doctor succeeds"); } finally { initParent.cleanup(); }
+for (const [name, tool, args, code, error] of [
+  ["missing read", "read", { path: "app/does-not-exist.ts" }, "PATH_NOT_FOUND", "requested path does not exist"],
+  ["missing list", "list", { path: "app/does-not-exist" }, "PATH_NOT_FOUND", "requested path does not exist"],
+  ["missing grep", "grep", { path: "app/does-not-exist", pattern: "x" }, "PATH_NOT_FOUND", "requested path does not exist"],
+  ["protected read", "read", { path: ".env.missing" }, "AGENT_PATH_DENIED", "requested project path is not available to the agent"],
+  ["read directory", "read", { path: "app" }, "NOT_A_FILE", "requested path is not a file"],
+  ["list file", "list", { path: "README.md" }, "NOT_A_DIRECTORY", "requested path is not a directory"],
+  ["invalid range", "read", { path: "README.md", startLine: 2, endLine: 1 }, "INVALID_LINE_RANGE", "requested line range is invalid"],
+  ["invalid args", "read", { path: 1 }, "INVALID_TOOL_ARGUMENTS", "tool arguments are invalid"],
+]) {
+  const requests = [];
+  await scenario((_req, res, body, number) => { requests.push(JSON.parse(body)); const payload = number === 1 ? { choices: [{ finish_reason: "tool_calls", message: { role: "assistant", content: null, tool_calls: [{ id: "error_1", type: "function", function: { name: tool, arguments: JSON.stringify(args) } }] } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } } : { choices: [{ finish_reason: "stop", message: { role: "assistant", content: "done" } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }; res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify(payload)); }, async ({ workspace, env, requests: count }) => {
+    const result = await runCli([bin, "agent", name], { cwd: workspace, env }); const files = receiptFiles(workspace); const receipt = JSON.parse(readFileSync(join(workspace, "oaf/receipts", files[0]), "utf8")); const toolMessage = requests[1].messages.find((message) => message.role === "tool" && message.tool_call_id === "error_1"); let wire; try { wire = JSON.parse(toolMessage.content); } catch {}
+    const all = `${JSON.stringify(requests)}${result.stdout}${result.stderr}${JSON.stringify(receipt)}`;
+    assert(result.status === 1 && count() === 2 && files.length === 1 && receipt.status === "partial" && wire?.code === code && wire?.error === error && !all.includes(workspace) && !all.includes(env.OAF_TEST_SECRET) && !all.includes(env.OAF_PROVIDER_BASE_URL) && !all.includes("Authorization"), `provider wire ${name} uses exact bounded pair`);
+  });
+}
 if (failures) process.exit(1);
 console.log("All agent CLI checks passed.");

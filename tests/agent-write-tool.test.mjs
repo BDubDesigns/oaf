@@ -95,17 +95,17 @@ try {
   );
   await rejects(
     () => executeWrite({ workspaceRoot: workspace, path: outsideFile, content: "x" }),
-    /absolute paths are not allowed/,
+    /requested path is outside the workspace/,
     "write rejects absolute paths",
   );
   await rejects(
     () => executeWrite({ workspaceRoot: workspace, path: "C:\\outside\\blocked.txt", content: "x" }),
-    /absolute paths are not allowed/,
+    /requested path is outside the workspace/,
     "write rejects Windows-style absolute paths",
   );
   await rejects(
     () => executeWrite({ workspaceRoot: workspace, path: "../outside/blocked.txt", content: "x" }),
-    /parent traversal is not allowed/,
+    /requested path is outside the workspace/,
     "write rejects parent traversal",
   );
 
