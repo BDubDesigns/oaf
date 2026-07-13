@@ -4,7 +4,11 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createCommandExecutor, executeCommand } from "../lib/agent/tool-execution.mjs";
+import { createCommandExecutor as createTypedCommandExecutor, executeCommand as executeTypedCommand } from "../lib/agent/tool-execution.mjs";
+/** @type {Function} */
+const createCommandExecutor = createTypedCommandExecutor;
+/** @type {Function} */
+const executeCommand = executeTypedCommand;
 import { SandboxError } from "../lib/sandbox.mjs";
 
 let failures = 0;
@@ -31,14 +35,16 @@ const workspace = mkdtempSync(join(tmpdir(), "oaf-agent-command-tool-"));
 
 try {
   const calls = [];
+  /** @type {(options: import("../lib/agent/contracts.ts").ContainerStartRecord) => Promise<import("../lib/agent/contracts.ts").SandboxExecutionResult>} */
+  const fakeSandbox = async (options) => {
+    calls.push(options);
+    if (options.command === "pnpm build") {
+      return { exitCode: 17, stdout: "build output\n", stderr: "build error\n", truncated: false };
+    }
+    return { exitCode: 0, stdout: "test output\n", stderr: "", truncated: false };
+  };
   const executeWithFakeSandbox = createCommandExecutor({
-    sandboxRunner: async (options) => {
-      calls.push(options);
-      if (options.command === "pnpm build") {
-        return { exitCode: 17, stdout: "build output\n", stderr: "build error\n", truncated: false };
-      }
-      return { exitCode: 0, stdout: "test output\n", stderr: "", truncated: false };
-    },
+    sandboxRunner: fakeSandbox,
   });
 
   // 1. Command input and workspace root are mandatory before runner access.

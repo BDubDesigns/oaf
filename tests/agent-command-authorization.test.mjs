@@ -3,7 +3,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildContainerRun, createVerificationWorkspace, runAgentSandboxCommand, runHumanSandboxCommand, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.mjs";
-import { runAgentLoop } from "../lib/agent/loop.mjs";
+import { runAgentLoop } from "../lib/agent/loop.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;

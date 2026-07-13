@@ -5,7 +5,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runAgentLoop } from "../lib/agent/loop.mjs";
+import { runAgentLoop as runTypedAgentLoop } from "../lib/agent/loop.ts";
+/** @type {(options: any) => Promise<{ events: any[], [key: string]: any }>} */
+const runAgentLoop = runTypedAgentLoop;
 import { createMockProvider, buildToolProtocol } from "../lib/agent/provider.ts";
 import { TOOL_NAMES } from "../lib/agent/tools.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
@@ -186,7 +188,7 @@ try {
 
   // 8. No real network or provider SDK surfaces in the loop or provider module.
   {
-    const loopSource = readFileSync(join(repoRoot, "lib", "agent", "loop.mjs"), "utf8");
+    const loopSource = readFileSync(join(repoRoot, "lib", "agent", "loop.ts"), "utf8");
     const providerSource = readFileSync(join(repoRoot, "lib", "agent", "provider.ts"), "utf8");
     const forbidden = /(node:(http|https|net)\b|\bfetch\s*\(|from\s+["'](?:axios|undici|openai|anthropic|@anthropic|@openai)["'])/i;
     assert(!forbidden.test(loopSource), "loop module imports no network/provider SDK");

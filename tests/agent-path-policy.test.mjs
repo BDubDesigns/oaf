@@ -2,7 +2,7 @@ import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSyn
 import { join } from "node:path";
 import { executeGrep, executeList, executeRead, executeWrite } from "../lib/agent/tool-execution.mjs";
 import { AgentPathDeniedError, AGENT_PATH_DENIED_MESSAGE } from "../lib/agent/path-policy.mjs";
-import { runAgentLoop } from "../lib/agent/loop.mjs";
+import { runAgentLoop } from "../lib/agent/loop.ts";
 import { runAgentSandboxCommand, SandboxError } from "../lib/sandbox.mjs";
 import { writeReceipt } from "../lib/agent/receipt.mjs";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";

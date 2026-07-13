@@ -2,7 +2,9 @@
 // results, while events and receipts retain only safe audit summaries.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runAgentLoopWithReceipt } from "../lib/agent/receipt.mjs";
+import { runAgentLoopWithReceipt as runTypedAgentLoopWithReceipt } from "../lib/agent/receipt.mjs";
+/** @type {(options: any) => Promise<{ events: any[], receipt: any, [key: string]: any }>} */
+const runAgentLoopWithReceipt = runTypedAgentLoopWithReceipt;
 import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
@@ -61,7 +63,7 @@ try {
     assert(secondTool.toolResults[0].result.stdout === stdout && secondTool.toolResults[0].result.stderr === stderr, "provider receives exact command output ephemerally");
     assert(commandEvent.summary.exitCode === 7 && commandEvent.summary.stdoutBytes === Buffer.byteLength(stdout) && commandEvent.summary.stderrBytes === Buffer.byteLength(stderr), "command event retains exit code and output byte counts");
     assert(!serializedEvents.includes(stdout) && !serializedEvents.includes(stderr) && !serializedReceipt.includes(stdout) && !serializedReceipt.includes(stderr), "command output sentinels absent from events and receipt");
-    assert(result.receipt.checks.some((check) => check.name === "test" && check.exitCode === 7), "canonical recordable test command detected with exit code");
+    assert(result.receipt.checks.some(/** @param {any} check */ (check) => check.name === "test" && check.exitCode === 7), "canonical recordable test command detected with exit code");
   }
 
   // 3. Raw tool args/results/errors cannot leak through safe audit summaries.
@@ -155,7 +157,7 @@ try {
     assert(commands[10].summary.command === "git diff" && commands[10].summary.redacted === false, "canonical git diff is identifiable");
     assert(commands[11].summary.command === "git log --oneline" && commands[11].summary.redacted === false, "canonical git log --oneline is identifiable");
     assert(commands[2].summary.command === "<redacted command>" && commands[2].summary.redacted === true, "pnpm test --unexpected is redacted");
-    assert(!result.receipt.checks.some((c) => c.name === "test" && result.receipt.commands[2].command === "pnpm test"), "non-canonical pnpm test is not a test check");
+    assert(!result.receipt.checks.some(/** @param {any} c */ (c) => c.name === "test" && result.receipt.commands[2].command === "pnpm test"), "non-canonical pnpm test is not a test check");
   }
 
   // 6. Provider ID with control characters does not enter audit data.

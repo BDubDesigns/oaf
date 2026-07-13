@@ -1,5 +1,5 @@
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
-import { runAgentLoop } from "../lib/agent/loop.mjs";
+import { runAgentLoop } from "../lib/agent/loop.ts";
 
 let failures = 0;
 function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }

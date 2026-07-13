@@ -118,7 +118,7 @@ export type AgentEvent =
   | { type: "receipt_emitted"; runId: string; receiptId: string; path: string }
   | ({ type: "agent_end"; runId: string; turns: number } & RunTerminal);
 export type RecordedAgentEvent = AgentEvent & { seq: number; ts: string };
-export type AgentEventFields<Type extends AgentEventType> = Omit<Extract<AgentEvent, { type: Type }>, "type">;
+export type AgentEventFields<Type extends AgentEventType> = Type extends AgentEventType ? Omit<Extract<AgentEvent, { type: Type }>, "type"> : never;
 export interface EventCollector { record(event: AgentEvent): RecordedAgentEvent; all(): RecordedAgentEvent[]; clear(): void; }
 export interface AgentContext { documents: { source: string; path: string; content: string }[]; docsPack?: { id?: string; oafStack?: string }; }
 export type AgentRunResultDetails = { runId: string; turns: number; providerCalls: ({ turn: number } & ProviderCallMetadata)[]; providerAttempts: ProviderAttempt[]; context: AgentContext; events: RecordedAgentEvent[] };

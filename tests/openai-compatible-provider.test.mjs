@@ -6,7 +6,9 @@ import {
   createOpenAICompatibleProvider,
   MAX_BODY_BYTES,
 } from "../lib/agent/openai-compatible-provider.ts";
-import { runAgentLoop } from "../lib/agent/loop.mjs";
+import { runAgentLoop as runTypedAgentLoop } from "../lib/agent/loop.ts";
+/** @type {(options: any) => Promise<{ events: any[], [key: string]: any }>} */
+const runAgentLoop = runTypedAgentLoop;
 import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 /** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */

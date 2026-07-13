@@ -14,7 +14,9 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { executeWrite } from "../lib/agent/tool-execution.mjs";
+import { executeWrite as executeTypedWrite } from "../lib/agent/tool-execution.mjs";
+/** @type {Function} */
+const executeWrite = executeTypedWrite;
 
 let failures = 0;
 function assert(condition, message) {

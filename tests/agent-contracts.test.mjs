@@ -1,7 +1,7 @@
 import { deepEqual, strictEqual } from "node:assert";
 import { spawnSync } from "node:child_process";
 import { AGENT_EVENT_TYPES, COMMAND_ORIGINS, PROVIDER_ATTEMPT_OUTCOMES, PROVIDER_FAILURE_OUTCOMES, RUN_TERMINALS, SANDBOX_MODES, TOOL_ERROR_MESSAGES, TOOL_NAMES } from "../lib/agent/contracts.ts";
-import { createEvent } from "../lib/agent/events.mjs";
+import { createEvent } from "../lib/agent/events.ts";
 import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure } from "../lib/agent/provider.ts";
 import { publicToolError, PUBLIC_TOOL_ERRORS } from "../lib/agent/tool-errors.mjs";
 import { getToolDefinition, TOOLS } from "../lib/agent/tools.ts";

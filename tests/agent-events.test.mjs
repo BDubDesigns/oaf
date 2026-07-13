@@ -1,6 +1,15 @@
 // Strict event-safe audit schema coverage.
 import { strictEqual, deepEqual, throws } from "node:assert";
-import { AGENT_EVENT_TYPES, createEvent, createEventCollector, recordContinuation } from "../lib/agent/events.mjs";
+import { AGENT_EVENT_TYPES as typedAgentEventTypes, createEvent as createTypedEvent, createEventCollector as createTypedEventCollector, recordContinuation as recordTypedContinuation } from "../lib/agent/events.ts";
+
+/** @type {any} */
+const AGENT_EVENT_TYPES = typedAgentEventTypes;
+/** @type {any} */
+const createEvent = createTypedEvent;
+/** @type {() => { all: () => any[], clear: () => void, record: (...args: any[]) => any }} */
+const createEventCollector = createTypedEventCollector;
+/** @type {any} */
+const recordContinuation = recordTypedContinuation;
 
 let failures = 0;
 function assert(condition, message) { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
@@ -129,8 +138,8 @@ collector.record(createEvent("agent_start", safeStart()));
 collector.record(createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md" } }));
 collector.record(createEvent("agent_end", safeEnd()));
 const all = collector.all();
-assert(all.map((event) => event.seq).join(",") === "1,2,3", "collector assigns contiguous sequence numbers");
-assert(all.every((event) => typeof event.ts === "string" && !Number.isNaN(Date.parse(event.ts))), "collector assigns ISO timestamps");
+assert(all.map(/** @param {any} event */ (event) => event.seq).join(",") === "1,2,3", "collector assigns contiguous sequence numbers");
+assert(all.every(/** @param {any} event */ (event) => typeof event.ts === "string" && !Number.isNaN(Date.parse(event.ts))), "collector assigns ISO timestamps");
 JSON.parse(JSON.stringify(all));
 assert(true, "safe events are JSON-serializable");
 
