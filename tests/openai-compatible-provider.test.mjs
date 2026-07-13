@@ -6,9 +6,7 @@ import {
   createOpenAICompatibleProvider,
   MAX_BODY_BYTES,
 } from "../lib/agent/openai-compatible-provider.ts";
-import { runAgentLoop as typedRunAgentLoop } from "../lib/agent/loop.ts";
-/** @param {unknown[]} args */
-function runAgentLoop(...args) { return Reflect.apply(typedRunAgentLoop, undefined, args); }
+import { runAgentLoop } from "../lib/agent/loop.ts";
 import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 /** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */

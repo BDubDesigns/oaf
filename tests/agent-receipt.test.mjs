@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  runAgentLoopWithReceipt as typedRunAgentLoopWithReceipt,
+  runAgentLoopWithReceipt,
   buildReceipt,
   writeReceipt,
   receiptFileName,
@@ -12,12 +12,13 @@ import {
    OAF_VERSION,
    validateReceiptUsage,
 } from "../lib/agent/receipt.mjs";
-/** @param {unknown[]} args */
-function runAgentLoopWithReceipt(...args) { return Reflect.apply(typedRunAgentLoopWithReceipt, undefined, args); }
 import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 /** @typedef {import("../lib/agent/contracts.ts").ReceiptCheck} ReceiptCheck */
 /** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
+
+/** @param {RecordedAgentEvent} event @returns {event is Extract<RecordedAgentEvent, { type: "receipt_emitted" }>} */
+function isReceiptEmitted(event) { return event.type === "receipt_emitted"; }
 
 let failures = 0;
 function assert(condition, message) {
@@ -416,12 +417,12 @@ try {
     const iAgentEnd = types.lastIndexOf("agent_end");
     const iReceipt = types.indexOf("receipt_emitted");
     assert(iAgentEnd > -1 && iReceipt > -1 && iAgentEnd < iReceipt, "receipt_emitted follows agent_end");
-    const emitted = result.events[iReceipt];
-    assert(emitted.path === result.receiptPath && emitted.receiptId === result.receipt.id,
+    const emitted = result.events.find(isReceiptEmitted);
+    assert(emitted?.path === result.receiptPath && emitted.receiptId === result.receipt.id,
       "receipt_emitted carries the written path and receipt id");
-    assert(emitted.seq === result.events[iAgentEnd].seq + 1,
+    assert(emitted?.seq === result.events[iAgentEnd].seq + 1,
       "receipt_emitted.seq is exactly one greater than the previous event sequence");
-    assert(typeof emitted.ts === "string" && !Number.isNaN(Date.parse(emitted.ts)),
+    assert(typeof emitted?.ts === "string" && !Number.isNaN(Date.parse(emitted.ts)),
       "receipt_emitted.ts is a parseable ISO timestamp");
   }
 

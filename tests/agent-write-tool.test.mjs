@@ -14,9 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { executeWrite as typedExecuteWrite } from "../lib/agent/tool-execution.mjs";
-/** @param {unknown[]} args */
-function executeWrite(...args) { return Reflect.apply(typedExecuteWrite, undefined, args); }
+import { executeWrite } from "../lib/agent/tool-execution.mjs";
 
 let failures = 0;
 function assert(condition, message) {
@@ -91,7 +89,7 @@ try {
 
   // 3. workspaceRoot and path boundaries fail closed.
   await rejects(
-    () => executeWrite({ path: "missing-root.txt", content: "x" }),
+    () => Reflect.apply(executeWrite, undefined, [{ path: "missing-root.txt", content: "x" }]),
     /workspaceRoot is required/,
     "write requires workspaceRoot",
   );
