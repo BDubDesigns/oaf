@@ -12,6 +12,7 @@ import {
   type AgentAuthorization,
   type AgentEvent,
   type CommandOrigin,
+  type DiagnosticLifecycle,
   type PublicToolError,
   type ProviderAttempt,
   type ProviderFailureOutcome,
@@ -33,6 +34,12 @@ type NonHttpStatusRejected = Assert<Equal<Assignable<{ turn: number; durationMs:
 type PublicErrorMessageCorrelates = Assert<Equal<Assignable<{ code: "PATH_NOT_FOUND"; message: "requested path is not a file" }, PublicToolError>, false>>;
 type FailedRunHasNoContent = Assert<Equal<Extract<AgentRunResult, { status: "failed" }>["content"], null>>;
 type ExhaustedRunHasNoContent = Assert<Equal<Extract<AgentRunResult, { status: "exhausted" }>["content"], null>>;
+type ExhaustedMaxTurnsAccepted = Assert<Equal<Assignable<{ status: "exhausted"; terminalReason: "max_turns" }, DiagnosticLifecycle>, true>>;
+type FailedMaxTurnsAccepted = Assert<Equal<Assignable<{ status: "failed"; terminalReason: "max_turns" }, DiagnosticLifecycle>, true>>;
+type SuccessMaxTurnsRejected = Assert<Equal<Assignable<{ status: "success"; terminalReason: "max_turns" }, DiagnosticLifecycle>, false>>;
+type PartialMaxTurnsRejected = Assert<Equal<Assignable<{ status: "partial"; terminalReason: "max_turns" }, DiagnosticLifecycle>, false>>;
+type ExhaustedAssistantRejected = Assert<Equal<Assignable<{ status: "exhausted"; terminalReason: "assistant_terminal" }, DiagnosticLifecycle>, false>>;
+type ExhaustedProviderRejected = Assert<Equal<Assignable<{ status: "exhausted"; terminalReason: "provider_error" }, DiagnosticLifecycle>, false>>;
 
 function assertNever(value: never): never { throw new Error(`Unhandled contract value: ${String(value)}`); }
 

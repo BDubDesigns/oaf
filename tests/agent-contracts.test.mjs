@@ -54,6 +54,9 @@ const diagnostic = normalizeDiagnosticSchema({ schemaVersion: "0.1.0", createdAt
 deepEqual(diagnostic.providerAttempts, [{ turn: 1, durationMs: 1, outcome: "unknown_provider_error", httpStatus: null }], "diagnostic JSON normalizes invalid durable attempts");
 deepEqual(normalizeDiagnosticSchema({ ...diagnostic, status: "success", terminalReason: "provider_error" }).status, "failed", "diagnostic status follows provider failure terminal reason");
 deepEqual(normalizeDiagnosticSchema({ ...diagnostic, status: "partial", terminalReason: "max_turns" }), { ...diagnostic, status: "failed", terminalReason: "max_turns" }, "diagnostic lifecycle normalizes max-turn pairs deterministically");
+deepEqual(normalizeDiagnosticSchema({ ...diagnostic, status: "exhausted", terminalReason: "max_turns" }), { ...diagnostic, status: "exhausted", terminalReason: "max_turns" }, "diagnostic lifecycle preserves exhausted max-turn runs");
+deepEqual(normalizeDiagnosticSchema({ ...diagnostic, status: "failed", terminalReason: "max_turns" }), { ...diagnostic, status: "failed", terminalReason: "max_turns" }, "diagnostic lifecycle preserves receipt-level failed max-turn runs");
+deepEqual(normalizeDiagnosticSchema({ ...diagnostic, status: "exhausted", terminalReason: "provider_error" }), { ...diagnostic, status: "failed", terminalReason: "provider_error" }, "diagnostic lifecycle normalizes exhausted provider failures");
 
 const direct = spawnSync(process.execPath, ["--input-type=module", "--eval", 'import { TOOL_NAMES } from "./lib/agent/contracts.ts"; process.stdout.write(TOOL_NAMES.join(","));'], { cwd: process.cwd(), encoding: "utf8" });
 strictEqual(direct.status, 0, "native TypeScript contracts load without a loader");

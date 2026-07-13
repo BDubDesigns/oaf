@@ -149,7 +149,8 @@ export const DIAGNOSTIC_PROVIDER_IDENTIFIERS = ["openai-compatible"] as const;
 export type DiagnosticProviderIdentifier = (typeof DIAGNOSTIC_PROVIDER_IDENTIFIERS)[number];
 export type DiagnosticLifecycle =
   | { status: "success" | "partial"; terminalReason: "assistant_terminal" }
-  | { status: "failed"; terminalReason: "provider_error" | "max_turns" };
+  | { status: "failed"; terminalReason: "provider_error" | "max_turns" }
+  | { status: "exhausted"; terminalReason: "max_turns" };
 export type Diagnostic = DiagnosticLifecycle & { schemaVersion: "0.1.0"; createdAt: string; runId: string; provider: DiagnosticProviderIdentifier | null; requestedModel: string | null; turns: number; receiptPath: string | null; providerAttempts: ProviderAttempt[]; tools: { toolName: ToolName | null; outcome: DiagnosticToolOutcome }[]; };
 export interface BuildDiagnosticOptions { run: AgentRunResult; usage: ReceiptUsage | undefined; receiptPath: string | null; receiptStatus: ReceiptStatus | undefined; }
 export interface WriteDiagnosticOptions { workspaceRoot: string; diagnostic: Diagnostic; }
