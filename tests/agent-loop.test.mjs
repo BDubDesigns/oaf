@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Focused test for the minimal Alpha 1 agent loop with a mock provider seam.
 // Uses only Node built-ins; no real provider, API key, or network.
 import { deepEqual } from "node:assert";

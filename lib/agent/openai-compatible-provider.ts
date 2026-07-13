@@ -1,4 +1,4 @@
-import { type JsonObject, type NormalizedProviderRequest, type NormalizedProviderResponse, type Provider, type ToolErrorCode } from "./contracts.ts";
+import { type JsonObject, type NormalizedProviderRequest, type NormalizedProviderResponse, type ProviderCallMetadata, type ToolErrorCode } from "./contracts.ts";
 import { MAX_MODEL_IDENTIFIER_LENGTH, normalizeProviderIdentifier, ProviderFailure, validateProviderCall } from "./provider.ts";
 import { PUBLIC_TOOL_ERRORS } from "./tool-errors.mjs";
 
@@ -11,9 +11,9 @@ const TOOL_ERROR_CODES = new Set<string>(Object.keys(PUBLIC_TOOL_ERRORS));
 
 export interface ProviderTransportRequest { url: string; method: "POST"; headers: Record<string, string>; body: string; signal: AbortSignal; }
 export interface ProviderTransportResponse { status: number; body: string | null; }
-export type ProviderTransport = (input: ProviderTransportRequest) => Promise<ProviderTransportResponse>;
+export type ProviderTransport = (input: ProviderTransportRequest) => Promise<unknown>;
 export interface OpenAICompatibleProviderOptions { baseUrl?: string; model?: string; apiKeyEnv?: string; env?: Readonly<Record<string, string | undefined>>; transport?: ProviderTransport; timeoutMs?: number; }
-export interface OpenAICompatibleProvider extends Provider { complete(request: NormalizedProviderRequest): Promise<NormalizedProviderResponse>; }
+export interface OpenAICompatibleProvider { complete(request: NormalizedProviderRequest): Promise<NormalizedProviderResponse & { providerCall: ProviderCallMetadata }>; }
 
 interface OpenAIMessage { role: "system" | "user" | "assistant" | "tool"; content: string | null; tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[]; tool_call_id?: string; }
 interface OpenAITool { type: "function"; function: { name: string; description: string; parameters: Record<string, unknown> }; }
@@ -155,7 +155,7 @@ function translateResponse(payload: unknown, configuredModel: string, apiKey: st
   return { content, toolCalls, providerCall: { provider: "openai-compatible", requestedModel: configuredModel, reportedModel: sanitizeReportedModel(payload, apiKey), usage: translateUsage(payload.usage) } };
 }
 
-const defaultTransport: ProviderTransport = async ({ url, headers, body, signal }) => {
+const defaultTransport = async ({ url, headers, body, signal }: ProviderTransportRequest): Promise<ProviderTransportResponse> => {
   let response: Response;
   try { response = await fetch(url, { method: "POST", headers, body, signal }); } catch { throw new ProviderFailure("network_error"); }
   if (response.status < 200 || response.status > 299) { await response.body?.cancel().catch(() => {}); return { status: response.status, body: null }; }
@@ -174,7 +174,7 @@ const defaultTransport: ProviderTransport = async ({ url, headers, body, signal 
   chunks.push(decoder.decode());
   return { status: response.status, body: chunks.join("") };
 };
-async function requestWithTimeout(input: Omit<ProviderTransportRequest, "method" | "signal"> & { transport: ProviderTransport; timeoutMs: number }): Promise<ProviderTransportResponse> {
+async function requestWithTimeout(input: Omit<ProviderTransportRequest, "method" | "signal"> & { transport: ProviderTransport; timeoutMs: number }): Promise<unknown> {
   const controller = new AbortController();
   let rejectTimeout: () => void = () => {};
   const timeout = new Promise<never>((_, reject) => { rejectTimeout = () => { controller.abort(); reject(new Error("timeout")); }; });
@@ -194,7 +194,7 @@ export function createOpenAICompatibleProvider({ baseUrl, model, apiKeyEnv, env 
   const configuredTimeout = validateTimeout(timeoutMs);
   if (typeof transport !== "function") throw new ProviderFailure("invalid_response");
   return {
-    async complete(request: NormalizedProviderRequest): Promise<NormalizedProviderResponse> {
+    async complete(request: NormalizedProviderRequest): Promise<NormalizedProviderResponse & { providerCall: ProviderCallMetadata }> {
       const body = JSON.stringify({ model: configuredModel, messages: translateMessages(request), tools: translateTools(request.tools) });
       const responseValue: unknown = await requestWithTimeout({ transport, url: endpoint, headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` }, body, timeoutMs: configuredTimeout });
       if (!isPlainObject(responseValue) || typeof responseValue.status !== "number" || !Number.isInteger(responseValue.status)) throw new ProviderFailure("invalid_response");

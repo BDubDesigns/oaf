@@ -1,4 +1,3 @@
-// @ts-nocheck
 // End-to-end privacy boundary tests: providers receive exact ephemeral tool
 // results, while events and receipts retain only safe audit summaries.
 import { readFileSync, writeFileSync } from "node:fs";
