@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runAgentLoop } from "../lib/agent/loop.mjs";
 import { createMockProvider, buildToolProtocol } from "../lib/agent/provider.mjs";
-import { TOOL_NAMES } from "../lib/agent/tools.mjs";
+import { TOOL_NAMES } from "../lib/agent/tools.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;

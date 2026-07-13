@@ -1,7 +1,7 @@
 // Focused test for the fixed Alpha 1 tool-set registry.
 // Uses only Node built-ins; no third-party dependencies.
 import { strictEqual, deepEqual, ok, throws, doesNotThrow } from "node:assert";
-import { TOOLS, TOOL_NAMES } from "../lib/agent/tools.mjs";
+import { TOOLS, TOOL_NAMES } from "../lib/agent/tools.ts";
 
 let failures = 0;
 function assert(cond, msg) {

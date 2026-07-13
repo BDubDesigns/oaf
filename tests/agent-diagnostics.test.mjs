@@ -104,7 +104,7 @@ schema: {
 
   // Invalid HTTP status normalizes to null
   const badHttp = normalizeDiagnosticSchema({ ...mk(), providerAttempts: [{ turn: 1, durationMs: 10, outcome: "http_error", httpStatus: 999 }] });
-  assert(badHttp.providerAttempts[0].httpStatus === null, "httpStatus 999 normalizes to null");
+  assert(badHttp.providerAttempts[0].outcome === "unknown_provider_error" && badHttp.providerAttempts[0].httpStatus === null, "invalid HTTP status normalizes to a non-HTTP failure");
 
   // Provider attempts and tools default to empty array
   const noAttempts = normalizeDiagnosticSchema({ ...mk(), providerAttempts: null });

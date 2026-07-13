@@ -8,18 +8,24 @@ import {
   type AgentAuthorization,
   type AgentEvent,
   type CommandOrigin,
+  type PublicToolError,
   type ProviderAttempt,
   type ProviderFailureOutcome,
   type ProviderAttemptOutcome,
   type ToolName,
 } from "../../lib/agent/contracts.ts";
+import { PUBLIC_TOOL_ERRORS } from "../../lib/agent/tool-errors.mjs";
 
 type Equal<Left, Right> = (<Value>() => Value extends Left ? 1 : 2) extends (<Value>() => Value extends Right ? 1 : 2) ? true : false;
 type Assert<Value extends true> = Value;
+type Assignable<From, To> = From extends To ? true : false;
 type AllToolsHaveDefinitions = Assert<Equal<ToolName, (typeof TOOL_NAMES)[number]>>;
 type FailureIsNotSuccess = Assert<Equal<Extract<ProviderFailureOutcome, "success">, never>>;
 type AttemptIncludesFailure = Assert<Equal<Exclude<ProviderFailureOutcome, ProviderAttemptOutcome>, never>>;
 type AgentCannotGrantHumanCapabilities = Assert<Equal<keyof AgentAuthorization, "origin" | "approvalGranted" | "networkGranted">>;
+type PublicErrorUsesCanonicalOwner = Assert<Equal<typeof PUBLIC_TOOL_ERRORS, typeof import("../../lib/agent/contracts.ts").TOOL_ERROR_MESSAGES>>;
+type MissingHttpStatusRejected = Assert<Equal<Assignable<{ turn: number; durationMs: number; outcome: "http_error"; httpStatus: null }, ProviderAttempt>, false>>;
+type NonHttpStatusRejected = Assert<Equal<Assignable<{ turn: number; durationMs: number; outcome: "timeout"; httpStatus: number }, ProviderAttempt>, false>>;
 
 function assertNever(value: never): never { throw new Error(`Unhandled contract value: ${String(value)}`); }
 
@@ -76,5 +82,5 @@ function commandOriginLabel(origin: CommandOrigin): string {
 const httpFailure: ProviderAttempt = { turn: 1, durationMs: 1, outcome: "http_error", httpStatus: 500 };
 const localFailure: ProviderAttempt = { turn: 1, durationMs: 1, outcome: "timeout", httpStatus: null };
 const successfulAttempt: ProviderAttempt = { turn: 1, durationMs: 1, outcome: "success", httpStatus: null };
-
-void [AGENT_EVENT_TYPES, COMMAND_ORIGINS, PROVIDER_ATTEMPT_OUTCOMES, PROVIDER_FAILURE_OUTCOMES, TOOL_NAMES, providerOutcomeLabel, terminalLabel, eventLabel, commandOriginLabel, httpFailure, localFailure, successfulAttempt];
+const publicError: PublicToolError = { code: "PATH_NOT_FOUND", message: "requested path does not exist" };
+void [AGENT_EVENT_TYPES, COMMAND_ORIGINS, PROVIDER_ATTEMPT_OUTCOMES, PROVIDER_FAILURE_OUTCOMES, TOOL_NAMES, providerOutcomeLabel, terminalLabel, eventLabel, commandOriginLabel, httpFailure, localFailure, successfulAttempt, publicError];
