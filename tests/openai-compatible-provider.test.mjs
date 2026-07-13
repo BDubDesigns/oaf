@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Focused coverage for the first real OpenAI-compatible provider adapter.
 // Every transport here is injected unless a test explicitly exercises the
 // built-in fetch transport with an overridden global fetch (no real network).
@@ -5,9 +6,9 @@ import { deepEqual } from "node:assert";
 import {
   createOpenAICompatibleProvider,
   MAX_BODY_BYTES,
-} from "../lib/agent/openai-compatible-provider.mjs";
+} from "../lib/agent/openai-compatible-provider.ts";
 import { runAgentLoop } from "../lib/agent/loop.mjs";
-import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.mjs";
+import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;

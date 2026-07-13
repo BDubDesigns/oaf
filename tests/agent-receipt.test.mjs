@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Focused test for the first OAF build-receipt emitter (issue #32).
 // Uses only Node built-ins; no real provider, API key, or network.
 import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSync, mkdtempSync, statSync, existsSync } from "node:fs";
@@ -12,7 +13,7 @@ import {
    OAF_VERSION,
    validateReceiptUsage,
 } from "../lib/agent/receipt.mjs";
-import { createMockProvider } from "../lib/agent/provider.mjs";
+import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;

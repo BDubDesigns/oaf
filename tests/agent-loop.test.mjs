@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Focused test for the minimal Alpha 1 agent loop with a mock provider seam.
 // Uses only Node built-ins; no real provider, API key, or network.
 import { deepEqual } from "node:assert";
@@ -6,7 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runAgentLoop } from "../lib/agent/loop.mjs";
-import { createMockProvider, buildToolProtocol } from "../lib/agent/provider.mjs";
+import { createMockProvider, buildToolProtocol } from "../lib/agent/provider.ts";
 import { TOOL_NAMES } from "../lib/agent/tools.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
@@ -187,7 +188,7 @@ try {
   // 8. No real network or provider SDK surfaces in the loop or provider module.
   {
     const loopSource = readFileSync(join(repoRoot, "lib", "agent", "loop.mjs"), "utf8");
-    const providerSource = readFileSync(join(repoRoot, "lib", "agent", "provider.mjs"), "utf8");
+    const providerSource = readFileSync(join(repoRoot, "lib", "agent", "provider.ts"), "utf8");
     const forbidden = /(node:(http|https|net)\b|\bfetch\s*\(|from\s+["'](?:axios|undici|openai|anthropic|@anthropic|@openai)["'])/i;
     assert(!forbidden.test(loopSource), "loop module imports no network/provider SDK");
     assert(!loopSource.includes("openai-compatible-provider"), "loop imports no concrete OpenAI-compatible adapter");

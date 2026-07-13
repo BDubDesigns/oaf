@@ -1,9 +1,10 @@
+// @ts-nocheck
 // End-to-end privacy boundary tests: providers receive exact ephemeral tool
 // results, while events and receipts retain only safe audit summaries.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { runAgentLoopWithReceipt } from "../lib/agent/receipt.mjs";
-import { createMockProvider } from "../lib/agent/provider.mjs";
+import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;
