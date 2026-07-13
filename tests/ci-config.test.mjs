@@ -10,6 +10,7 @@ const EXPECTED_TESTS = [
   "tests/agent-command-authorization.test.mjs",
   "tests/agent-command-tool.test.mjs",
   "tests/agent-context.test.mjs",
+  "tests/agent-contracts.test.mjs",
   "tests/agent-diagnostics.test.mjs",
   "tests/agent-event-privacy.test.mjs",
   "tests/agent-events.test.mjs",
