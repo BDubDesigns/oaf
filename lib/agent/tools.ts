@@ -1,7 +1,7 @@
 // Fixed Alpha 1 tool-set registry for the OAF-owned agent loop.
 // This module is metadata-only: command execution always routes through the sandbox.
 
-import { TOOL_NAMES as TOOL_NAME_VALUES, type ToolRegistry } from "./contracts.ts";
+import { TOOL_NAMES as TOOL_NAME_VALUES, type ToolDefinition, type ToolName, type ToolRegistry } from "./contracts.ts";
 
 export const TOOL_NAMES = TOOL_NAME_VALUES;
 
@@ -17,6 +17,10 @@ const REGISTRY = {
   command: definition("command", "Propose a shell command for OAF to run. Routes through `oaf sandbox run`; never a raw shell. Mutating, sandbox-required.", "command", true, true, "write", ["command"], { command: { type: "string", description: "Shell command to propose" }, mode: { type: "string", enum: ["plan", "edit", "test", "browser", "install", "research"], description: "Sandbox mode from docs/sandbox.md" } }, ["exitCode"], { exitCode: { type: ["integer", "null"] }, stdout: { type: "string" }, stderr: { type: "string" }, truncated: { type: "boolean" } }),
 } as const satisfies ToolRegistry;
 
-// JavaScript consumers intentionally retain the registry's existing dynamic
-// lookup behavior; REGISTRY above is the checked source of truth.
-export const TOOLS = Object.freeze(REGISTRY) as Readonly<Record<string, any>>;
+export const TOOLS: ToolRegistry = Object.freeze(REGISTRY);
+
+// Narrows untrusted provider/JavaScript names before a registry lookup.
+export function getToolDefinition(name: string): ToolDefinition<ToolName> | undefined {
+  const toolName = TOOL_NAMES.find((candidate) => candidate === name);
+  return toolName === undefined ? undefined : TOOLS[toolName];
+}

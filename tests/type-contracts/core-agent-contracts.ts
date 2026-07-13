@@ -1,10 +1,14 @@
 import {
   AGENT_EVENT_TYPES,
   COMMAND_ORIGINS,
+  DIAGNOSTIC_PROVIDER_IDENTIFIERS,
+  DIAGNOSTIC_STATUSES,
   PROVIDER_ATTEMPT_OUTCOMES,
   PROVIDER_FAILURE_OUTCOMES,
+  RECEIPT_STATUSES,
   RUN_TERMINALS,
   TOOL_NAMES,
+  type AgentRunResult,
   type AgentAuthorization,
   type AgentEvent,
   type CommandOrigin,
@@ -26,6 +30,9 @@ type AgentCannotGrantHumanCapabilities = Assert<Equal<keyof AgentAuthorization, 
 type PublicErrorUsesCanonicalOwner = Assert<Equal<typeof PUBLIC_TOOL_ERRORS, typeof import("../../lib/agent/contracts.ts").TOOL_ERROR_MESSAGES>>;
 type MissingHttpStatusRejected = Assert<Equal<Assignable<{ turn: number; durationMs: number; outcome: "http_error"; httpStatus: null }, ProviderAttempt>, false>>;
 type NonHttpStatusRejected = Assert<Equal<Assignable<{ turn: number; durationMs: number; outcome: "timeout"; httpStatus: number }, ProviderAttempt>, false>>;
+type PublicErrorMessageCorrelates = Assert<Equal<Assignable<{ code: "PATH_NOT_FOUND"; message: "requested path is not a file" }, PublicToolError>, false>>;
+type FailedRunHasNoContent = Assert<Equal<Extract<AgentRunResult, { status: "failed" }>["content"], null>>;
+type ExhaustedRunHasNoContent = Assert<Equal<Extract<AgentRunResult, { status: "exhausted" }>["content"], null>>;
 
 function assertNever(value: never): never { throw new Error(`Unhandled contract value: ${String(value)}`); }
 
@@ -83,4 +90,4 @@ const httpFailure: ProviderAttempt = { turn: 1, durationMs: 1, outcome: "http_er
 const localFailure: ProviderAttempt = { turn: 1, durationMs: 1, outcome: "timeout", httpStatus: null };
 const successfulAttempt: ProviderAttempt = { turn: 1, durationMs: 1, outcome: "success", httpStatus: null };
 const publicError: PublicToolError = { code: "PATH_NOT_FOUND", message: "requested path does not exist" };
-void [AGENT_EVENT_TYPES, COMMAND_ORIGINS, PROVIDER_ATTEMPT_OUTCOMES, PROVIDER_FAILURE_OUTCOMES, TOOL_NAMES, providerOutcomeLabel, terminalLabel, eventLabel, commandOriginLabel, httpFailure, localFailure, successfulAttempt, publicError];
+void [AGENT_EVENT_TYPES, COMMAND_ORIGINS, DIAGNOSTIC_PROVIDER_IDENTIFIERS, DIAGNOSTIC_STATUSES, PROVIDER_ATTEMPT_OUTCOMES, PROVIDER_FAILURE_OUTCOMES, RECEIPT_STATUSES, TOOL_NAMES, providerOutcomeLabel, terminalLabel, eventLabel, commandOriginLabel, httpFailure, localFailure, successfulAttempt, publicError];

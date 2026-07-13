@@ -36,6 +36,8 @@ export interface ProviderToolDefinition { name: ToolName; description: string; a
 export interface NormalizedProviderRequest { system: string; messages: ProviderMessage[]; tools: ProviderToolDefinition[]; }
 export interface NormalizedProviderResponse { content: string | null; toolCalls: NormalizedProviderToolCall[]; providerCall?: ProviderCallMetadata; }
 export interface Provider { complete(request: NormalizedProviderRequest): Promise<NormalizedProviderResponse>; }
+export type MockProviderScript = readonly unknown[] | ((request: NormalizedProviderRequest, callCount: number) => unknown | Promise<unknown>);
+export interface MockProvider { readonly callCount: number; readonly remaining: number; complete(request: NormalizedProviderRequest): Promise<unknown>; }
 
 export const TOOL_NAMES = ["read", "list", "grep", "write", "command"] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
@@ -55,6 +57,8 @@ export type ToolExecutorResults = {
   write: { path: string; bytes: number };
   command: { exitCode: number | null; stdout: string; stderr: string; truncated: boolean };
 };
+export type ToolExecutorInput<Name extends ToolName> = ToolArguments[Name] & { workspaceRoot: string };
+export type ToolExecutorMap = { [Name in ToolName]: (input: ToolExecutorInput<Name>) => Promise<ToolExecutorResults[Name]> };
 export type ToolCallSummary = {
   read: { path?: string };
   list: { path?: string; recursive: boolean };
@@ -74,7 +78,9 @@ export type ToolRegistry = Readonly<{ [Name in ToolName]: ToolDefinition<Name> }
 
 export const TOOL_ERROR_MESSAGES = { AGENT_PATH_DENIED: "requested project path is not available to the agent", PATH_NOT_FOUND: "requested path does not exist", NOT_A_FILE: "requested path is not a file", NOT_A_DIRECTORY: "requested path is not a directory", INVALID_LINE_RANGE: "requested line range is invalid", INVALID_TOOL_ARGUMENTS: "tool arguments are invalid", PATH_OUTSIDE_WORKSPACE: "requested path is outside the workspace", TOOL_EXECUTION_FAILED: "tool execution failed" } as const;
 export type ToolErrorCode = keyof typeof TOOL_ERROR_MESSAGES;
-export interface PublicToolError { code: ToolErrorCode; message: (typeof TOOL_ERROR_MESSAGES)[ToolErrorCode]; }
+export type PublicToolError = {
+  [Code in ToolErrorCode]: { code: Code; message: (typeof TOOL_ERROR_MESSAGES)[Code] }
+}[ToolErrorCode];
 
 export const AGENT_EVENT_TYPES = ["agent_start", "turn_start", "message_start", "message_end", "tool_call", "tool_execution_start", "tool_execution_end", "tool_result", "receipt_emitted", "agent_end"] as const;
 export type AgentEventType = (typeof AGENT_EVENT_TYPES)[number];
@@ -109,8 +115,14 @@ export type AgentEvent =
   | { type: "receipt_emitted"; runId: string; receiptId: string; path: string }
   | ({ type: "agent_end"; runId: string; turns: number } & RunTerminal);
 export type RecordedAgentEvent = AgentEvent & { seq: number; ts: string };
+export type AgentEventFields<Type extends AgentEventType> = Omit<Extract<AgentEvent, { type: Type }>, "type">;
+export interface EventCollector { record(event: AgentEvent): RecordedAgentEvent; all(): RecordedAgentEvent[]; clear(): void; }
 export interface AgentContext { documents: { source: string; path: string; content: string }[]; docsPack?: { id?: string; oafStack?: string }; }
-export type AgentRunResult = RunTerminal & { runId: string; turns: number; content: string | null; providerCalls: ({ turn: number } & ProviderCallMetadata)[]; providerAttempts: ProviderAttempt[]; context: AgentContext; events: RecordedAgentEvent[] };
+export type AgentRunResultDetails = { runId: string; turns: number; providerCalls: ({ turn: number } & ProviderCallMetadata)[]; providerAttempts: ProviderAttempt[]; context: AgentContext; events: RecordedAgentEvent[] };
+export type AgentRunResult =
+  | (AgentRunResultDetails & { status: "success"; terminalReason: "assistant_terminal"; content: string | null })
+  | (AgentRunResultDetails & { status: "exhausted"; terminalReason: "max_turns"; content: null })
+  | (AgentRunResultDetails & { status: "failed"; terminalReason: "provider_error"; content: null });
 
 export const RECEIPT_STATUSES = ["success", "partial", "failed"] as const;
 export type ReceiptStatus = (typeof RECEIPT_STATUSES)[number];
@@ -119,11 +131,16 @@ export interface ReceiptUsage { model: string | null; provider: string | null; r
 export interface ReceiptCommand { command: string; redacted: boolean; mode: SandboxMode | null; exitCode: number | null; status: "pass" | "fail" | "error"; }
 export interface ReceiptCheck { name: string; type: string; status: "pass" | "fail" | "error"; exitCode: number | null; }
 export type Receipt = ReceiptTerminal & { schemaVersion: "0.1.0"; id: string; createdAt: string; oafVersion: string | null; app: { name: string | null; oafStack: string | null; docsPack: string | null }; task: { summary: string; redacted: boolean }; runId: string; outcome: string; turns: number; eventSummary: { byType: Record<AgentEventType, number | undefined> }; files: { created: string[]; touched: string[] }; commands: ReceiptCommand[]; checks: ReceiptCheck[]; warnings: string[]; assumptions: string[]; usage: ReceiptUsage; humanReview: { required: true; status: "pending"; reviewer: null; approvedAt: null }; nextSteps: string[]; };
+export interface BuildReceiptOptions { run: AgentRunResult; task: string; oafVersion?: string | null; }
 
 export const DIAGNOSTIC_TOOL_OUTCOMES = ["success", "rejected", "execution_error", "unknown"] as const;
 export type DiagnosticToolOutcome = (typeof DIAGNOSTIC_TOOL_OUTCOMES)[number];
-export type DiagnosticStatus = "success" | "partial" | "failed" | "exhausted";
-export interface Diagnostic { schemaVersion: "0.1.0"; createdAt: string; runId: string; provider: "openai-compatible" | null; requestedModel: string | null; status: DiagnosticStatus; terminalReason: TerminalReason; turns: number; receiptPath: string | null; providerAttempts: ProviderAttempt[]; tools: { toolName: ToolName | null; outcome: DiagnosticToolOutcome }[]; }
+export const DIAGNOSTIC_STATUSES = ["success", "partial", "failed", "exhausted"] as const;
+export type DiagnosticStatus = (typeof DIAGNOSTIC_STATUSES)[number];
+export const DIAGNOSTIC_PROVIDER_IDENTIFIERS = ["openai-compatible"] as const;
+export type DiagnosticProviderIdentifier = (typeof DIAGNOSTIC_PROVIDER_IDENTIFIERS)[number];
+export interface Diagnostic { schemaVersion: "0.1.0"; createdAt: string; runId: string; provider: DiagnosticProviderIdentifier | null; requestedModel: string | null; status: DiagnosticStatus; terminalReason: TerminalReason; turns: number; receiptPath: string | null; providerAttempts: ProviderAttempt[]; tools: { toolName: ToolName | null; outcome: DiagnosticToolOutcome }[]; }
+export interface BuildDiagnosticOptions { run: AgentRunResult; usage: ReceiptUsage | undefined; receiptPath: string | null; receiptStatus: ReceiptStatus | undefined; }
 
 export const COMMAND_ORIGINS = ["agent", "human_cli"] as const;
 export type CommandOrigin = (typeof COMMAND_ORIGINS)[number];
@@ -136,3 +153,8 @@ export type CommandAuthorization = AgentAuthorization | HumanCliAuthorization;
 export interface PackageScriptVerification { script: string; command: string; definition: string; }
 export interface SandboxExecutionResult { exitCode: number; stdout: string; stderr: string; truncated: boolean; }
 export interface ContainerStartRecord { command: string; network: boolean; runtime: string; cwd: string; }
+export interface SandboxExecutionCallbacks { onStart?: (record: ContainerStartRecord) => void; onStdout?: (chunk: Buffer) => void; onStderr?: (chunk: Buffer) => void; }
+export interface VerificationWorkspace { directory: string; nodeModulesMount: string | null; cleanup(): Promise<void>; }
+export interface SandboxDependencies { detectRuntime?: () => string | null; createVerificationWorkspace?: (workspaceRoot: string) => Promise<VerificationWorkspace>; runContainer?: (options: ContainerStartRecord & SandboxExecutionCallbacks & { argv: string[] }) => Promise<SandboxExecutionResult>; }
+export interface AgentSandboxCommandOptions extends SandboxExecutionCallbacks { command?: string; mode?: SandboxMode; cwd?: string; dependencies?: SandboxDependencies; }
+export interface HumanSandboxCommandOptions extends AgentSandboxCommandOptions { approvalGranted?: boolean; networkGranted?: boolean; }
