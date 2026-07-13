@@ -6,7 +6,7 @@ import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure } from "..
 import { publicToolError, PUBLIC_TOOL_ERRORS } from "../lib/agent/tool-errors.mjs";
 import { getToolDefinition, TOOLS } from "../lib/agent/tools.ts";
 import { buildReceipt, RECEIPT_SCHEMA_VERSION } from "../lib/agent/receipt.mjs";
-import { DIAGNOSTICS_DIR, normalizeDiagnosticSchema } from "../lib/agent/diagnostics.mjs";
+import { DIAGNOSTICS_DIR, normalizeDiagnosticSchema } from "../lib/agent/diagnostics.ts";
 import { SANDBOX_MODES as SANDBOX_RUNTIME_MODES } from "../lib/sandbox.mjs";
 
 deepEqual(TOOL_NAMES, ["read", "list", "grep", "write", "command"], "tool vocabulary remains ordered and canonical");

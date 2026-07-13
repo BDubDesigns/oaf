@@ -1,16 +1,28 @@
 import { existsSync, statSync, readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { buildDiagnostic, writeDiagnostic, normalizeDiagnosticSchema, DIAGNOSTICS_DIR } from "../lib/agent/diagnostics.mjs";
+import { buildDiagnostic, writeDiagnostic, normalizeDiagnosticSchema, DIAGNOSTICS_DIR } from "../lib/agent/diagnostics.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 import { createMockProvider, ProviderFailure } from "../lib/agent/provider.ts";
 import { runAgentLoopWithReceipt, ReceiptWriteError } from "../lib/agent/receipt.mjs";
 import { createOpenAICompatibleProvider, MAX_BODY_BYTES } from "../lib/agent/openai-compatible-provider.ts";
+import { createEvent, createEventCollector } from "../lib/agent/events.ts";
 
 let failures = 0;
+/** @param {unknown} ok @param {string} message */
 function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
 
+/** @typedef {ReturnType<typeof copyGeneratedAppFixture>} Fixture */
+/** @type {Promise<void>[]} */
 const pending = [];
+/** @param {(fixture: Fixture) => Promise<void>} fn */
 function uses(fn) { const f = copyGeneratedAppFixture(); const p = fn(f).finally(() => f.cleanup()); pending.push(p); }
+
+/** @param {...import("../lib/agent/contracts.ts").AgentEvent} events */
+function createRecordedEvents(...events) {
+  const collector = createEventCollector();
+  for (const event of events) collector.record(event);
+  return collector.all();
+}
 
 // -------------------------------------------------------------------
 // DIAGNOSTIC SCHEMA — normalizeDiagnosticSchema
@@ -134,7 +146,7 @@ schema: {
 
   // Cause through real constructor — stored as non-enumerable _cause
   const pfWithCause = new ProviderFailure("http_error", { httpStatus: 500, cause: S_CAUSE });
-  assert(pfWithCause._cause === S_CAUSE, "ProviderFailure _cause accessible");
+  assert(Object.getOwnPropertyDescriptor(pfWithCause, "_cause")?.value === S_CAUSE, "ProviderFailure _cause accessible");
   assert(!Object.keys(pfWithCause).includes("_cause"), "ProviderFailure _cause not enumerable");
   assert(!JSON.stringify(pfWithCause).includes(S_CAUSE), "ProviderFailure JSON.stringify omits cause");
 
@@ -441,23 +453,25 @@ uses(async (fixture) => {
 // G. TOOL OUTCOMES — direct buildDiagnostic with structured events
 // -------------------------------------------------------------------
 {
-  const base = (events) => ({ runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, context: { docsPack: {} }, providerAttempts: [], events, providerCalls: [] });
-  const usage = { provider: null, model: null };
+  /** @param {import("../lib/agent/contracts.ts").RecordedAgentEvent[]} events @returns {import("../lib/agent/contracts.ts").AgentRunResult} */
+  const base = (events) => ({ runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, context: { documents: [], docsPack: {} }, providerAttempts: [], events, providerCalls: [] });
+  /** @type {import("../lib/agent/contracts.ts").ReceiptUsage} */
+  const usage = { provider: null, model: null, runMode: null, calls: null, tokensIn: null, tokensOut: null };
 
   // success
-  const s = buildDiagnostic({ run: base([{ type: "tool_call", toolCallId: "t1", toolName: "read", summary: { path: "x" } }, { type: "tool_execution_end", toolCallId: "t1", toolName: "read", success: true }, { type: "tool_result", toolCallId: "t1", toolName: "read", summary: { path: "x", bytes: 10, truncated: false }, errorCode: null }]), usage, receiptPath: null, receiptStatus: "success" });
+  const s = buildDiagnostic({ run: base(createRecordedEvents(createEvent("tool_call", { toolCallId: "t1", toolName: "read", summary: { path: "x" } }), createEvent("tool_execution_end", { toolCallId: "t1", toolName: "read", success: true }), createEvent("tool_result", { toolCallId: "t1", toolName: "read", summary: { path: "x", bytes: 10, truncated: false }, errorCode: null }))), usage, receiptPath: null, receiptStatus: "success" });
   assert(s.tools.length === 1 && s.tools[0].outcome === "success", "G: success outcome");
 
   // rejected
-  const r = buildDiagnostic({ run: base([{ type: "tool_call", toolCallId: "t2", toolName: "read", summary: { path: "x" } }, { type: "tool_result", toolCallId: "t2", toolName: "read", summary: {}, errorCode: "rejected" }]), usage, receiptPath: null, receiptStatus: "partial" });
+  const r = buildDiagnostic({ run: base(createRecordedEvents(createEvent("tool_call", { toolCallId: "t2", toolName: "read", summary: { path: "x" } }), createEvent("tool_result", { toolCallId: "t2", toolName: "read", summary: {}, errorCode: "rejected" }))), usage, receiptPath: null, receiptStatus: "partial" });
   assert(r.tools.length === 1 && r.tools[0].outcome === "rejected", "G: rejected outcome");
 
   // execution_error
-  const e = buildDiagnostic({ run: base([{ type: "tool_call", toolCallId: "t3", toolName: "command", summary: { command: "pnpm test", redacted: false, mode: null } }, { type: "tool_execution_end", toolCallId: "t3", toolName: "command", success: false }, { type: "tool_result", toolCallId: "t3", toolName: "command", summary: {}, errorCode: "execution_error" }]), usage, receiptPath: null, receiptStatus: "partial" });
+  const e = buildDiagnostic({ run: base(createRecordedEvents(createEvent("tool_call", { toolCallId: "t3", toolName: "command", summary: { command: "pnpm test", redacted: false, mode: null } }), createEvent("tool_execution_end", { toolCallId: "t3", toolName: "command", success: false }), createEvent("tool_result", { toolCallId: "t3", toolName: "command", summary: {}, errorCode: "execution_error" }))), usage, receiptPath: null, receiptStatus: "partial" });
   assert(e.tools.length === 1 && e.tools[0].outcome === "execution_error", "G: execution_error outcome");
 
   // unknown
-  const u = buildDiagnostic({ run: base([{ type: "tool_call", toolCallId: "t4", toolName: "read", summary: { path: "x" } }]), usage, receiptPath: null, receiptStatus: "partial" });
+  const u = buildDiagnostic({ run: base(createRecordedEvents(createEvent("tool_call", { toolCallId: "t4", toolName: "read", summary: { path: "x" } }))), usage, receiptPath: null, receiptStatus: "partial" });
   assert(u.tools.length === 1 && u.tools[0].outcome === "unknown", "G: unknown outcome");
 
   // exact tool keys
@@ -468,18 +482,18 @@ uses(async (fixture) => {
 // CLOSED DIAGNOSTIC WRITER — writeDiagnostic
 // -------------------------------------------------------------------
 uses(async (fixture) => {
-  const diag = { schemaVersion: "0.1.0", createdAt: "2026-01-01T00:00:00.000Z", runId: "run_test", provider: null, requestedModel: null, status: "success", terminalReason: "assistant_terminal", turns: 1, receiptPath: null, providerAttempts: [], tools: [] };
+  const diag = normalizeDiagnosticSchema({ schemaVersion: "0.1.0", createdAt: "2026-01-01T00:00:00.000Z", runId: "run_test", provider: null, requestedModel: null, status: "success", terminalReason: "assistant_terminal", turns: 1, receiptPath: null, providerAttempts: [], tools: [] });
   const path = await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic: diag });
   assert(path.startsWith("oaf/diagnostics/"), "writeDiagnostic writes valid diagnostic");
 
   // Extra top-level key throws
-  try { await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic: { ...diag, extra: true } }); assert(false, "writeDiagnostic rejects extra key"); } catch { assert(true, "writeDiagnostic rejects extra key"); }
+  try { await Reflect.apply(writeDiagnostic, undefined, [{ workspaceRoot: fixture.workspace, diagnostic: { ...diag, extra: true } }]); assert(false, "writeDiagnostic rejects extra key"); } catch { assert(true, "writeDiagnostic rejects extra key"); }
 
   // Missing keys throw
-  try { await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic: { schemaVersion: "0.1.0" } }); assert(false, "writeDiagnostic rejects missing keys"); } catch { assert(true, "writeDiagnostic rejects missing keys"); }
+  try { await Reflect.apply(writeDiagnostic, undefined, [{ workspaceRoot: fixture.workspace, diagnostic: { schemaVersion: "0.1.0" } }]); assert(false, "writeDiagnostic rejects missing keys"); } catch { assert(true, "writeDiagnostic rejects missing keys"); }
 
   // Wrong schemaVersion throws
-  try { await writeDiagnostic({ workspaceRoot: fixture.workspace, diagnostic: { ...diag, schemaVersion: "0.2.0" } }); assert(false, "writeDiagnostic rejects wrong schemaVersion"); } catch { assert(true, "writeDiagnostic rejects wrong schemaVersion"); }
+  try { await Reflect.apply(writeDiagnostic, undefined, [{ workspaceRoot: fixture.workspace, diagnostic: { ...diag, schemaVersion: "0.2.0" } }]); assert(false, "writeDiagnostic rejects wrong schemaVersion"); } catch { assert(true, "writeDiagnostic rejects wrong schemaVersion"); }
 });
 
 // -------------------------------------------------------------------
@@ -500,13 +514,14 @@ uses(async (fixture) => {
   });
   const executor = async () => {
     const err = new Error(EXEC_ERROR_SENTINEL);
-    err.secretCause = "SENTINEL_CAUSE";
+    Object.defineProperty(err, "secretCause", { value: "SENTINEL_CAUSE" });
     throw err;
   };
   // Block receipt directory
   rmSync(join(fixture.workspace, "oaf", "receipts"), { recursive: true, force: true });
   writeFileSync(join(fixture.workspace, "oaf", "receipts"), "blocked");
 
+  /** @type {unknown} */
   let thrown;
   try {
     await runAgentLoopWithReceipt({ task: `write ${TASK_SENTINEL}`, workspaceRoot: fixture.workspace, provider, commandExecutor: executor });
@@ -515,6 +530,7 @@ uses(async (fixture) => {
   }
 
   assert(thrown instanceof ReceiptWriteError, "I: ReceiptWriteError thrown");
+  if (!(thrown instanceof ReceiptWriteError)) throw new Error("ReceiptWriteError was not thrown");
 
   // Exact enumerable properties: only code and diagnostic
   const ownKeys = Object.keys(thrown).sort();
@@ -570,14 +586,14 @@ uses(async (fixture) => {
   const S_TOOL_ARGS = "SENTINEL_TOOL_ARGUMENTS";
 
   // Every sentinel below is placed in data that buildDiagnostic actually reads.
-  const run = {
+  const rawRun = {
     runId: "sentinel-run-test",
     status: "success",
     terminalReason: "assistant_terminal",
     turns: 2,
     content: S_MODEL_OUTPUT,
     context: {
-      docsPack: { oafStack: null, id: null },
+      docsPack: {},
       documents: [
         { source: "oaf", path: "oaf/config.json", content: S_DOC_CONTENT },
       ],
@@ -588,7 +604,7 @@ uses(async (fixture) => {
       { turn: 2, durationMs: 3, outcome: "success", httpStatus: null },
     ],
     events: [
-      // tool_call: summary.command contains tool arguments
+      // tool_call: summary.command contains tool arguments from malformed runtime input.
       { type: "tool_call", toolCallId: "tool_1_1", toolName: "command", summary: { command: S_TOOL_ARGS, redacted: false, mode: null } },
       { type: "tool_execution_start", toolCallId: "tool_1_1", toolName: "command" },
       { type: "tool_execution_end", toolCallId: "tool_1_1", toolName: "command", success: true },
@@ -596,12 +612,12 @@ uses(async (fixture) => {
     ],
   };
 
-  const diagnostic = buildDiagnostic({
-    run,
-    usage: { provider: "openai-compatible", model: "test/model" },
+  const diagnostic = Reflect.apply(buildDiagnostic, undefined, [{
+    run: rawRun,
+    usage: { provider: "openai-compatible", model: "test/model", runMode: "agent", calls: 1, tokensIn: null, tokensOut: null },
     receiptPath: "oaf/receipts/sentinel-test.json",
     receiptStatus: "success",
-  });
+  }]);
 
   const text = JSON.stringify(diagnostic);
 
