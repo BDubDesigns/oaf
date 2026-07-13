@@ -16,6 +16,7 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = join(root, "tests", "fixtures", "node24-native-ts-smoke.ts");
 const helper = join(root, "tests", "fixtures", "node24-native-ts-smoke-helper.ts");
+const providerFixture = join(root, "tests", "fixtures", "provider-native-typescript.ts");
 const fingerprint = `TS9999|Error|tests/example.mjs|${"a".repeat(64)}`;
 let failures = 0;
 
@@ -55,6 +56,8 @@ assert(output.trim() === "native-typescript:ok", "Node directly executes two era
 const fixtureEntries = readdirSync(dirname(fixture));
 assert(fixtureEntries.includes("node24-native-ts-smoke-helper.ts"), "smoke imports the explicit .ts helper");
 assert(!fixtureEntries.some((name) => /^node24-native-ts-smoke.*\.(?:js|map|tsx)$/.test(name)), "native TypeScript smoke creates no JavaScript, source-map, or TSX output");
+const providerOutput = execFileSync(process.execPath, [providerFixture], { encoding: "utf8" });
+assert(providerOutput.trim() === "provider-native-typescript:ok", "native TypeScript provider modules execute with their explicit .ts imports");
 
 const baseline = parseBaseline(readFileSync(join(root, "config", "typecheck-baseline.json"), "utf8"));
 const current = countFingerprints(collectDiagnosticFingerprints());
@@ -83,7 +86,7 @@ throws(() => parseBaseline("{"), "malformed baseline JSON is rejected");
 for (const path of ["/home/user/oaf/lib/file.mjs", "../outside.mjs", "lib/../../outside.mjs", "lib//file.mjs", "lib\\file.mjs", "C:/repo/file.mjs", "lib/"]) {
   throws(() => validateBaseline({ version: 2, diagnostics: [{ fingerprint: fingerprintForPath(path), count: 1 }] }), `invalid fingerprint path is rejected: ${path}`);
 }
-for (const path of ["bin/oaf.mjs", "lib/agent/provider.mjs", "scripts/typecheck-baseline.mjs", "tests/fixtures/example.ts", ".config/example.mjs"]) {
+for (const path of ["bin/oaf.mjs", "lib/agent/provider.ts", "scripts/typecheck-baseline.mjs", "tests/fixtures/example.ts", ".config/example.mjs"]) {
   assert(isValidFingerprint(fingerprintForPath(path)), `valid project-relative fingerprint path is accepted: ${path}`);
 }
 assert(baseline.diagnostics.every((diagnostic) => isValidFingerprint(diagnostic.fingerprint)), "every committed baseline fingerprint is valid");
@@ -104,6 +107,7 @@ const newFiles = new Set([
   fileURLToPath(import.meta.url),
   fixture,
   helper,
+  providerFixture,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 

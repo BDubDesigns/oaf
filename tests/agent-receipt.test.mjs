@@ -12,7 +12,7 @@ import {
    OAF_VERSION,
    validateReceiptUsage,
 } from "../lib/agent/receipt.mjs";
-import { createMockProvider } from "../lib/agent/provider.mjs";
+import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;

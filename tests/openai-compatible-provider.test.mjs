@@ -5,10 +5,13 @@ import { deepEqual } from "node:assert";
 import {
   createOpenAICompatibleProvider,
   MAX_BODY_BYTES,
-} from "../lib/agent/openai-compatible-provider.mjs";
+} from "../lib/agent/openai-compatible-provider.ts";
 import { runAgentLoop } from "../lib/agent/loop.mjs";
-import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.mjs";
+import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+/** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */
+/** @typedef {import("../lib/agent/contracts.ts").ProviderMessage} ProviderMessage */
+/** @typedef {import("../lib/agent/contracts.ts").ProviderToolDefinition} ProviderToolDefinition */
 
 let failures = 0;
 function assert(condition, message) {
@@ -45,6 +48,10 @@ const config = {
   env: { OAF_TEST_OPENAI_KEY: API_KEY },
 };
 
+/**
+ * @param {{ messages?: ProviderMessage[], tools?: ProviderToolDefinition[] }} options
+ * @returns {NormalizedProviderRequest}
+ */
 function request({ messages = [{ role: "user", content: "hello" }], tools = buildToolProtocol() } = {}) {
   return { system: "OAF system context", messages, tools };
 }
@@ -154,8 +161,8 @@ try {
         { id: "history-b", name: "list", args: { path: "." } },
       ] },
       { role: "tool", toolResults: [
-        { toolCallId: "history-a", toolName: "read", result: { path: "README.md", content: "x" } },
-        { toolCallId: "history-b", toolName: "list", error: "blocked" },
+        { toolCallId: "history-a", toolName: "read", result: { path: "README.md", content: "x", truncated: false } },
+        { toolCallId: "history-b", toolName: "list", error: "blocked", errorCode: "TOOL_EXECUTION_FAILED" },
       ] },
     ] }));
     const messages = JSON.parse(captured[0].body).messages;

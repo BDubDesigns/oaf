@@ -2,9 +2,9 @@ import { existsSync, statSync, readdirSync, readFileSync, writeFileSync, mkdirSy
 import { join } from "node:path";
 import { buildDiagnostic, writeDiagnostic, normalizeDiagnosticSchema, DIAGNOSTICS_DIR } from "../lib/agent/diagnostics.mjs";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
-import { createMockProvider, ProviderFailure } from "../lib/agent/provider.mjs";
+import { createMockProvider, ProviderFailure } from "../lib/agent/provider.ts";
 import { runAgentLoopWithReceipt, ReceiptWriteError } from "../lib/agent/receipt.mjs";
-import { createOpenAICompatibleProvider, MAX_BODY_BYTES } from "../lib/agent/openai-compatible-provider.mjs";
+import { createOpenAICompatibleProvider, MAX_BODY_BYTES } from "../lib/agent/openai-compatible-provider.ts";
 
 let failures = 0;
 function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
