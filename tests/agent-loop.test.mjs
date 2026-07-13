@@ -5,10 +5,20 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runAgentLoop } from "../lib/agent/loop.mjs";
+import { runAgentLoop } from "../lib/agent/loop.ts";
 import { createMockProvider, buildToolProtocol } from "../lib/agent/provider.ts";
 import { TOOL_NAMES } from "../lib/agent/tools.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+/** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
+/** @typedef {import("../lib/agent/contracts.ts").ProviderMessage} ProviderMessage */
+/** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */
+
+/** @param {RecordedAgentEvent} event @returns {event is Extract<RecordedAgentEvent, { type: "tool_result" }>} */
+function isToolResult(event) { return event.type === "tool_result"; }
+/** @param {RecordedAgentEvent} event @returns {event is Extract<RecordedAgentEvent, { type: "tool_result", toolName: "read" }>} */
+function isReadToolResult(event) { return event.type === "tool_result" && event.toolName === "read"; }
+/** @param {RecordedAgentEvent} event @returns {event is Extract<RecordedAgentEvent, { type: "message_end" }>} */
+function isMessageEnd(event) { return event.type === "message_end"; }
 
 let failures = 0;
 function assert(condition, message) {
@@ -68,9 +78,9 @@ try {
       "agent_start,turn_start,message_start,message_end,tool_call,tool_execution_start,tool_execution_end,tool_result,turn_start,message_start,message_end,agent_end",
       "round trip emits AgentEvents in lifecycle order");
 
-    const toolResult = result.events.find((event) => event.type === "tool_result");
-    assert(toolResult.toolName === "read", "read tool result names the tool");
-    assert(toolResult.summary.path === "README.md" && toolResult.summary.bytes > 0 && toolResult.summary.truncated === false,
+    const toolResult = result.events.find(isReadToolResult);
+    assert(toolResult?.toolName === "read", "read tool result names the tool");
+    assert(toolResult?.summary.path === "README.md" && toolResult.summary.bytes > 0 && toolResult.summary.truncated === false,
       "read tool result records path, byte count, and truncation flag");
   }
 
@@ -134,12 +144,12 @@ try {
     });
     const result = await runAgentLoop({ task: "be evil", workspaceRoot: workspace, provider, maxTurns: 4 });
 
-    const badResult = result.events.find((event) => event.type === "tool_result" && event.errorCode === "rejected");
-    assert(!!badResult && badResult.toolName === null,
+    const badResult = result.events.find(isToolResult);
+    assert(badResult?.errorCode === "rejected" && badResult.toolName === null,
       "unknown tool request fails closed without retaining its raw name");
-    assert(!result.events.some((event) => event.type === "tool_result" && event.toolName === "read"),
+    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "read"),
       "unknown tool is never dispatched to a real executor");
-    assert(!result.events.some((event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
+    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
       "rejected unknown tool emits no tool_execution_start/end");
 
     // Malformed call (no name) also fails closed.
@@ -150,9 +160,9 @@ try {
       ],
     });
     const result2 = await runAgentLoop({ task: "be vague", workspaceRoot: withFixture(), provider: provider2 });
-    const malformed = result2.events.find((event) => event.type === "tool_result" && event.errorCode);
+    const malformed = result2.events.find((event) => isToolResult(event) && event.errorCode !== null);
     assert(!!malformed && malformed.toolName === null, "malformed tool call (missing name) fails closed");
-    assert(!result2.events.some((event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
+    assert(!result2.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
       "rejected malformed tool emits no tool_execution_start/end");
   }
 
@@ -177,16 +187,16 @@ try {
 
     assert(result.status === "failed" && result.terminalReason === "provider_error",
       "malformed provider response ends the run as failed");
-    assert(!result.events.some((event) => event.type === "tool_call"),
+    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call"),
       "no tool is dispatched on a failed provider response");
-    const msgEnd = result.events.find((event) => event.type === "message_end");
+    const msgEnd = result.events.find(isMessageEnd);
     assert(!!msgEnd && msgEnd.errorCode === "provider_error",
       "message_end records the provider error before the run ends");
   }
 
   // 8. No real network or provider SDK surfaces in the loop or provider module.
   {
-    const loopSource = readFileSync(join(repoRoot, "lib", "agent", "loop.mjs"), "utf8");
+    const loopSource = readFileSync(join(repoRoot, "lib", "agent", "loop.ts"), "utf8");
     const providerSource = readFileSync(join(repoRoot, "lib", "agent", "provider.ts"), "utf8");
     const forbidden = /(node:(http|https|net)\b|\bfetch\s*\(|from\s+["'](?:axios|undici|openai|anthropic|@anthropic|@openai)["'])/i;
     assert(!forbidden.test(loopSource), "loop module imports no network/provider SDK");
@@ -199,7 +209,7 @@ try {
     const provider = createMockProvider({ script: [{ content: "ok", toolCalls: [] }] });
     let threw = false;
     try {
-      await runAgentLoop({ workspaceRoot: withFixture(), provider });
+      await Reflect.apply(runAgentLoop, undefined, [{ workspaceRoot: withFixture(), provider }]);
     } catch (error) {
       threw = /task is required/.test(error.message);
     }
@@ -231,8 +241,8 @@ try {
     const t = types(result.events);
     assert(t[t.length - 3] === "message_start" && t[t.length - 2] === "message_end" && t[t.length - 1] === "agent_end",
       "events end with message_start, message_end(error), agent_end");
-    const msgEnd = result.events.find((event) => event.type === "message_end");
-    assert(msgEnd.errorCode === "provider_error", "message_end records bounded provider-error classification");
+    const msgEnd = result.events.find(isMessageEnd);
+    assert(msgEnd?.errorCode === "provider_error", "message_end records bounded provider-error classification");
   }
 
   // 12. BLOCKER 1: a read call containing args.workspaceRoot cannot read from
@@ -249,10 +259,10 @@ try {
     });
     const result = await runAgentLoop({ task: "read", workspaceRoot: workspace, provider, maxTurns: 4 });
 
-    const readResult = result.events.find((event) => event.type === "tool_result" && event.toolName === "read");
-    assert(readResult.summary.path === "README.md" && readResult.summary.bytes > 0,
+    const readResult = result.events.find(isReadToolResult);
+    assert(readResult?.summary.path === "README.md" && readResult.summary.bytes > 0,
       "read used the trusted workspace root and records only safe metadata");
-    assert(!result.events.some((event) => JSON.stringify(event).includes("EVIL README CONTENT")),
+    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => JSON.stringify(event).includes("EVIL README CONTENT")),
       "no event leaks the outside file contents");
   }
 
@@ -317,9 +327,9 @@ try {
     });
     const resultA = await runAgentLoop({ task: "a", workspaceRoot: withFixture(), provider: providerA, commandExecutor: neverCalled });
     assert(calls.length === 0, "executor not called when args have an unexpected key");
-    const errA = resultA.events.find((event) => event.type === "tool_result" && event.toolName === "command");
+    const errA = resultA.events.find(isToolResult);
     assert(!!errA && errA.errorCode === "rejected", "unexpected key rejected with a safe error result");
-    assert(!resultA.events.some((event) => event.type === "tool_execution_start"),
+    assert(!resultA.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start"),
       "no tool_execution_start emitted for rejected args");
 
     // Non-object args.
@@ -331,8 +341,29 @@ try {
     });
     const resultB = await runAgentLoop({ task: "b", workspaceRoot: withFixture(), provider: providerB, commandExecutor: neverCalled });
     assert(calls.length === 0, "executor not called when args are non-object");
-    const errB = resultB.events.find((event) => event.type === "tool_result" && event.toolName === "command");
+    const errB = resultB.events.find(isToolResult);
     assert(!!errB && errB.errorCode === "rejected", "non-object args rejected with a safe error result");
+  }
+
+  // 16. A privacy-summary validation failure does not replace the provider's
+  // exact command result or execute the tool a second time.
+  {
+    const workspace = withFixture();
+    /** @type {NormalizedProviderRequest[]} */ const requests = [];
+    const rawResult = { exitCode: null, stdout: "SUMMARY_FAILURE_STDOUT", stderr: "", truncated: false };
+    const provider = createMockProvider({
+      script: [
+        { content: null, toolCalls: [{ id: "summary-failure", name: "command", args: { command: "pnpm test" } }] },
+        { content: "done", toolCalls: [] },
+      ],
+      onRequest: (request) => requests.push(request),
+    });
+    const result = await runAgentLoop({ task: "test", workspaceRoot: workspace, provider, commandExecutor: async () => rawResult });
+    const toolResult = result.events.find(isToolResult);
+    const secondToolMessage = requests[1].messages.find(/** @param {ProviderMessage} message */ (message) => message.role === "tool");
+    assert(toolResult?.errorCode === "rejected", "summary failure records a bounded rejected event");
+    assert(secondToolMessage?.toolResults[0] && "result" in secondToolMessage.toolResults[0] && secondToolMessage.toolResults[0].result === rawResult,
+      "summary failure preserves the exact provider tool result");
   }
 } finally {
   for (const fixture of fixtures) fixture.cleanup();

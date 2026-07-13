@@ -89,7 +89,7 @@ try {
 
   // 3. workspaceRoot and path boundaries fail closed.
   await rejects(
-    () => executeWrite({ path: "missing-root.txt", content: "x" }),
+    () => Reflect.apply(executeWrite, undefined, [{ path: "missing-root.txt", content: "x" }]),
     /workspaceRoot is required/,
     "write requires workspaceRoot",
   );

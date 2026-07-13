@@ -30,7 +30,9 @@ export type ProviderToolResult = {
 }[ToolName] | { toolCallId: string; toolName: string | null; error: string; errorCode: ToolErrorCode };
 export type ProviderMessage =
   | { role: "user"; content: string }
-  | { role: "assistant"; content: string | null; toolCalls?: NormalizedProviderToolCall[] }
+  // Assistant tool calls are retained exactly for the next provider request.
+  // They remain ephemeral and are validated before OAF dispatches them.
+  | { role: "assistant"; content: string | null; toolCalls?: unknown[] }
   | { role: "tool"; toolResults: ProviderToolResult[] };
 export interface ProviderToolDefinition { name: ToolName; description: string; argsSchema: ObjectJsonSchema; }
 export interface NormalizedProviderRequest { system: string; messages: ProviderMessage[]; tools: ProviderToolDefinition[]; }
@@ -94,6 +96,9 @@ export const RUN_TERMINALS = [{ status: "success", terminalReason: "assistant_te
 export type RunStatus = (typeof RUN_TERMINALS)[number]["status"];
 export type TerminalReason = (typeof RUN_TERMINALS)[number]["terminalReason"];
 export type RunTerminal = (typeof RUN_TERMINALS)[number];
+type AgentEndEvent<Terminal extends RunTerminal = RunTerminal> = Terminal extends unknown
+  ? { type: "agent_end"; runId: string; turns: number } & Terminal
+  : never;
 export type AgentEvent =
   | { type: "agent_start"; runId: string; taskBytes: number; taskProvided: boolean }
   | { type: "turn_start"; turn: number }
@@ -116,9 +121,10 @@ export type AgentEvent =
   | { type: "tool_result"; toolCallId: string; toolName: "command"; summary: ToolResultSummary["command"]; errorCode: null }
   | { type: "tool_result"; toolCallId: string; toolName: ToolName | null; summary: {}; errorCode: "rejected" | "execution_error" }
   | { type: "receipt_emitted"; runId: string; receiptId: string; path: string }
-  | ({ type: "agent_end"; runId: string; turns: number } & RunTerminal);
+  | AgentEndEvent;
 export type RecordedAgentEvent = AgentEvent & { seq: number; ts: string };
-export type AgentEventFields<Type extends AgentEventType> = Omit<Extract<AgentEvent, { type: Type }>, "type">;
+type WithoutEventType<Event> = Event extends AgentEvent ? Omit<Event, "type"> : never;
+export type AgentEventFields<Type extends AgentEventType> = WithoutEventType<Extract<AgentEvent, { type: Type }>>;
 export interface EventCollector { record(event: AgentEvent): RecordedAgentEvent; all(): RecordedAgentEvent[]; clear(): void; }
 export interface AgentContext { documents: { source: string; path: string; content: string }[]; docsPack?: { id?: string; oafStack?: string }; }
 export type AgentRunResultDetails = { runId: string; turns: number; providerCalls: ({ turn: number } & ProviderCallMetadata)[]; providerAttempts: ProviderAttempt[]; context: AgentContext; events: RecordedAgentEvent[] };
