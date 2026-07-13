@@ -136,16 +136,26 @@ export interface AgentLoopOptions { task: string; workspaceRoot: string; provide
 
 export const RECEIPT_STATUSES = ["success", "partial", "failed"] as const;
 export type ReceiptStatus = (typeof RECEIPT_STATUSES)[number];
-export type ReceiptTerminal = { status: "success" | "partial"; terminalReason: "assistant_terminal" } | { status: "failed"; terminalReason: "provider_error" | "max_turns" };
+export type ReceiptTerminal =
+  | { status: "success"; terminalReason: "assistant_terminal" }
+  | { status: "partial"; terminalReason: "assistant_terminal" }
+  | { status: "failed"; terminalReason: "provider_error" }
+  | { status: "failed"; terminalReason: "max_turns" };
 export interface ReceiptUsage { model: string | null; provider: string | null; runMode: "agent" | null; calls: number | null; tokensIn: number | null; tokensOut: number | null; }
+export interface ValidatedReceiptUsage { model: string; provider: string; runMode: "agent"; calls: number; tokensIn: number | null; tokensOut: number | null; }
 export interface ReceiptCommand { command: string; redacted: boolean; mode: SandboxMode | null; exitCode: number | null; status: "pass" | "fail" | "error"; }
 export interface ReceiptCheck { name: string; type: string; status: "pass" | "fail" | "error"; exitCode: number | null; }
 export type Receipt = ReceiptTerminal & { schemaVersion: "0.1.0"; id: string; createdAt: string; oafVersion: string | null; app: { name: string | null; oafStack: string | null; docsPack: string | null }; task: { summary: string; redacted: boolean }; runId: string; outcome: string; turns: number; eventSummary: { byType: Record<AgentEventType, number | undefined> }; files: { created: string[]; touched: string[] }; commands: ReceiptCommand[]; checks: ReceiptCheck[]; warnings: string[]; assumptions: string[]; usage: ReceiptUsage; humanReview: { required: true; status: "pending"; reviewer: null; approvedAt: null }; nextSteps: string[]; };
 export interface BuildReceiptOptions { run: AgentRunResult; task: string; oafVersion?: string | null; }
 export interface WriteReceiptOptions { workspaceRoot: string; receipt: Receipt; }
-export type ReceiptUsageInput = ReceiptUsage | ((run: AgentRunResult) => ReceiptUsage);
+export type ReceiptUsageInput = ValidatedReceiptUsage | ((run: AgentRunResult) => ValidatedReceiptUsage);
 export interface AgentLoopWithReceiptOptions extends AgentLoopOptions { receiptUsage?: ReceiptUsageInput; }
-export type AgentRunWithReceiptResult = AgentRunResult & { receipt: Receipt; receiptPath: string; events: RecordedAgentEvent[]; };
+type ReceiptForRun<Run extends AgentRunResult> =
+  Run extends { status: "success" } ? Extract<Receipt, { terminalReason: "assistant_terminal" }>
+    : Run extends { status: "exhausted" } ? Extract<Receipt, { terminalReason: "max_turns" }>
+      : Extract<Receipt, { terminalReason: "provider_error" }>;
+type AgentRunWithReceiptResultFor<Run extends AgentRunResult> = Run extends AgentRunResult ? Run & { receipt: ReceiptForRun<Run>; receiptPath: string; events: RecordedAgentEvent[] } : never;
+export type AgentRunWithReceiptResult = AgentRunWithReceiptResultFor<AgentRunResult>;
 
 export const DIAGNOSTIC_TOOL_OUTCOMES = ["success", "rejected", "execution_error", "unknown"] as const;
 export type DiagnosticToolOutcome = (typeof DIAGNOSTIC_TOOL_OUTCOMES)[number];

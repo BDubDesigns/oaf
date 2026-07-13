@@ -38,6 +38,7 @@ import {
   type ReceiptTerminal,
   type ReceiptUsage,
   type RecordedAgentEvent,
+  type ValidatedReceiptUsage,
   type WriteReceiptOptions,
 } from "./contracts.ts";
 
@@ -75,7 +76,7 @@ function hasReceiptUsageFields(value: object): value is ReceiptUsageFields {
   return Object.keys(value).length === fields.length && fields.every((field) => Object.hasOwn(value, field));
 }
 
-export function validateReceiptUsage(usage: unknown): ReceiptUsage {
+export function validateReceiptUsage(usage: unknown): ValidatedReceiptUsage {
   if (usage === null || typeof usage !== "object" || Array.isArray(usage)) throw new Error("invalid receipt usage");
   if (!hasReceiptUsageFields(usage)) throw new Error("invalid receipt usage");
   const provider = normalizeProviderIdentifier(usage.provider, MAX_PROVIDER_IDENTIFIER_LENGTH);
@@ -413,10 +414,15 @@ export async function runAgentLoopWithReceipt({
     receiptId: receipt.id,
     path: receiptPath,
   });
-  return {
-    ...run,
-    receipt,
-    receiptPath,
-    events: [...run.events, receiptEmitted],
-  };
+  const events = [...run.events, receiptEmitted];
+  if (run.status === "success" && receipt.terminalReason === "assistant_terminal") {
+    return { ...run, receipt, receiptPath, events };
+  }
+  if (run.status === "exhausted" && receipt.terminalReason === "max_turns") {
+    return { ...run, receipt, receiptPath, events };
+  }
+  if (run.status === "failed" && receipt.terminalReason === "provider_error") {
+    return { ...run, receipt, receiptPath, events };
+  }
+  throw new Error("receipt lifecycle correlation failed");
 }
