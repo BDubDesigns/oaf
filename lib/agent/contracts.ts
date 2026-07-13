@@ -35,7 +35,9 @@ export type ProviderMessage =
 export interface ProviderToolDefinition { name: ToolName; description: string; argsSchema: ObjectJsonSchema; }
 export interface NormalizedProviderRequest { system: string; messages: ProviderMessage[]; tools: ProviderToolDefinition[]; }
 export interface NormalizedProviderResponse { content: string | null; toolCalls: NormalizedProviderToolCall[]; providerCall?: ProviderCallMetadata; }
-export interface Provider { complete(request: NormalizedProviderRequest): Promise<NormalizedProviderResponse>; }
+// Providers are untrusted at the loop boundary. Concrete adapters validate
+// their wire data, and the loop validates every returned value before dispatch.
+export interface Provider { complete(request: NormalizedProviderRequest): Promise<unknown>; }
 export type MockProviderScript = readonly unknown[] | ((request: NormalizedProviderRequest, callCount: number) => unknown | Promise<unknown>);
 export interface MockProvider { readonly callCount: number; readonly remaining: number; complete(request: NormalizedProviderRequest): Promise<unknown>; }
 
@@ -94,7 +96,8 @@ export type TerminalReason = (typeof RUN_TERMINALS)[number]["terminalReason"];
 export type RunTerminal = (typeof RUN_TERMINALS)[number];
 export type AgentEvent =
   | { type: "agent_start"; runId: string; taskBytes: number; taskProvided: boolean }
-  | { type: "turn_start" | "message_start"; turn: number }
+  | { type: "turn_start"; turn: number }
+  | { type: "message_start"; turn: number }
   | { type: "message_end"; turn: number; disposition: "terminal"; contentPresent: boolean; contentBytes: number; toolCallCount: 0; errorCode: null }
   | { type: "message_end"; turn: number; disposition: "tool_calls"; contentPresent: boolean; contentBytes: number; toolCallCount: number; errorCode: null }
   | { type: "message_end"; turn: number; disposition: "provider_error"; contentPresent: false; contentBytes: 0; toolCallCount: 0; errorCode: "provider_error" }
@@ -123,6 +126,7 @@ export type AgentRunResult =
   | (AgentRunResultDetails & { status: "success"; terminalReason: "assistant_terminal"; content: string | null })
   | (AgentRunResultDetails & { status: "exhausted"; terminalReason: "max_turns"; content: null })
   | (AgentRunResultDetails & { status: "failed"; terminalReason: "provider_error"; content: null });
+export interface AgentLoopOptions { task: string; workspaceRoot: string; provider: Provider; maxTurns?: number; oafRoot?: string; runId?: string; commandExecutor?: ToolExecutorMap["command"]; }
 
 export const RECEIPT_STATUSES = ["success", "partial", "failed"] as const;
 export type ReceiptStatus = (typeof RECEIPT_STATUSES)[number];
@@ -132,6 +136,10 @@ export interface ReceiptCommand { command: string; redacted: boolean; mode: Sand
 export interface ReceiptCheck { name: string; type: string; status: "pass" | "fail" | "error"; exitCode: number | null; }
 export type Receipt = ReceiptTerminal & { schemaVersion: "0.1.0"; id: string; createdAt: string; oafVersion: string | null; app: { name: string | null; oafStack: string | null; docsPack: string | null }; task: { summary: string; redacted: boolean }; runId: string; outcome: string; turns: number; eventSummary: { byType: Record<AgentEventType, number | undefined> }; files: { created: string[]; touched: string[] }; commands: ReceiptCommand[]; checks: ReceiptCheck[]; warnings: string[]; assumptions: string[]; usage: ReceiptUsage; humanReview: { required: true; status: "pending"; reviewer: null; approvedAt: null }; nextSteps: string[]; };
 export interface BuildReceiptOptions { run: AgentRunResult; task: string; oafVersion?: string | null; }
+export interface WriteReceiptOptions { workspaceRoot: string; receipt: Receipt; }
+export type ReceiptUsageInput = ReceiptUsage | ((run: AgentRunResult) => ReceiptUsage);
+export interface AgentLoopWithReceiptOptions extends AgentLoopOptions { receiptUsage?: ReceiptUsageInput; }
+export type AgentRunWithReceiptResult = AgentRunResult & { receipt: Receipt; receiptPath: string; events: RecordedAgentEvent[]; };
 
 export const DIAGNOSTIC_TOOL_OUTCOMES = ["success", "rejected", "execution_error", "unknown"] as const;
 export type DiagnosticToolOutcome = (typeof DIAGNOSTIC_TOOL_OUTCOMES)[number];
@@ -139,8 +147,12 @@ export const DIAGNOSTIC_STATUSES = ["success", "partial", "failed", "exhausted"]
 export type DiagnosticStatus = (typeof DIAGNOSTIC_STATUSES)[number];
 export const DIAGNOSTIC_PROVIDER_IDENTIFIERS = ["openai-compatible"] as const;
 export type DiagnosticProviderIdentifier = (typeof DIAGNOSTIC_PROVIDER_IDENTIFIERS)[number];
-export interface Diagnostic { schemaVersion: "0.1.0"; createdAt: string; runId: string; provider: DiagnosticProviderIdentifier | null; requestedModel: string | null; status: DiagnosticStatus; terminalReason: TerminalReason; turns: number; receiptPath: string | null; providerAttempts: ProviderAttempt[]; tools: { toolName: ToolName | null; outcome: DiagnosticToolOutcome }[]; }
+export type DiagnosticLifecycle =
+  | { status: "success" | "partial"; terminalReason: "assistant_terminal" }
+  | { status: "failed"; terminalReason: "provider_error" | "max_turns" };
+export type Diagnostic = DiagnosticLifecycle & { schemaVersion: "0.1.0"; createdAt: string; runId: string; provider: DiagnosticProviderIdentifier | null; requestedModel: string | null; turns: number; receiptPath: string | null; providerAttempts: ProviderAttempt[]; tools: { toolName: ToolName | null; outcome: DiagnosticToolOutcome }[]; };
 export interface BuildDiagnosticOptions { run: AgentRunResult; usage: ReceiptUsage | undefined; receiptPath: string | null; receiptStatus: ReceiptStatus | undefined; }
+export interface WriteDiagnosticOptions { workspaceRoot: string; diagnostic: Diagnostic; }
 
 export const COMMAND_ORIGINS = ["agent", "human_cli"] as const;
 export type CommandOrigin = (typeof COMMAND_ORIGINS)[number];
@@ -158,3 +170,4 @@ export interface VerificationWorkspace { directory: string; nodeModulesMount: st
 export interface SandboxDependencies { detectRuntime?: () => string | null; createVerificationWorkspace?: (workspaceRoot: string) => Promise<VerificationWorkspace>; runContainer?: (options: ContainerStartRecord & SandboxExecutionCallbacks & { argv: string[] }) => Promise<SandboxExecutionResult>; }
 export interface AgentSandboxCommandOptions extends SandboxExecutionCallbacks { command?: string; mode?: SandboxMode; cwd?: string; dependencies?: SandboxDependencies; }
 export interface HumanSandboxCommandOptions extends AgentSandboxCommandOptions { approvalGranted?: boolean; networkGranted?: boolean; }
+export type SandboxCommandOptions = (AgentSandboxCommandOptions & { origin: "agent"; approvalGranted?: false; networkGranted?: false }) | (HumanSandboxCommandOptions & { origin: "human_cli"; });

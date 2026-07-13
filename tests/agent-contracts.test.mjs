@@ -52,6 +52,8 @@ const receiptJson = JSON.stringify(receipt);
 for (const sentinel of privateSentinels) strictEqual(receiptJson.includes(sentinel), false, `receipt excludes ${sentinel}`);
 const diagnostic = normalizeDiagnosticSchema({ schemaVersion: "0.1.0", createdAt: "2026-01-01T00:00:00.000Z", runId: "run_contract", provider: null, requestedModel: null, status: "success", terminalReason: "assistant_terminal", turns: 1, receiptPath: null, providerAttempts: [{ turn: 1, durationMs: 1, outcome: "http_error", httpStatus: null }], tools: [] });
 deepEqual(diagnostic.providerAttempts, [{ turn: 1, durationMs: 1, outcome: "unknown_provider_error", httpStatus: null }], "diagnostic JSON normalizes invalid durable attempts");
+deepEqual(normalizeDiagnosticSchema({ ...diagnostic, status: "success", terminalReason: "provider_error" }).status, "failed", "diagnostic status follows provider failure terminal reason");
+deepEqual(normalizeDiagnosticSchema({ ...diagnostic, status: "partial", terminalReason: "max_turns" }), { ...diagnostic, status: "failed", terminalReason: "max_turns" }, "diagnostic lifecycle normalizes max-turn pairs deterministically");
 
 const direct = spawnSync(process.execPath, ["--input-type=module", "--eval", 'import { TOOL_NAMES } from "./lib/agent/contracts.ts"; process.stdout.write(TOOL_NAMES.join(","));'], { cwd: process.cwd(), encoding: "utf8" });
 strictEqual(direct.status, 0, "native TypeScript contracts load without a loader");
