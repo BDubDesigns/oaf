@@ -5,12 +5,15 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runAgentLoop as runTypedAgentLoop } from "../lib/agent/loop.ts";
-/** @type {(options: any) => Promise<{ events: any[], [key: string]: any }>} */
-const runAgentLoop = runTypedAgentLoop;
+import { runAgentLoop as typedRunAgentLoop } from "../lib/agent/loop.ts";
+/** @param {unknown[]} args */
+function runAgentLoop(...args) { return Reflect.apply(typedRunAgentLoop, undefined, args); }
 import { createMockProvider, buildToolProtocol } from "../lib/agent/provider.ts";
 import { TOOL_NAMES } from "../lib/agent/tools.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+/** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
+/** @typedef {import("../lib/agent/contracts.ts").ProviderMessage} ProviderMessage */
+/** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */
 
 let failures = 0;
 function assert(condition, message) {
@@ -70,7 +73,7 @@ try {
       "agent_start,turn_start,message_start,message_end,tool_call,tool_execution_start,tool_execution_end,tool_result,turn_start,message_start,message_end,agent_end",
       "round trip emits AgentEvents in lifecycle order");
 
-    const toolResult = result.events.find((event) => event.type === "tool_result");
+    const toolResult = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result");
     assert(toolResult.toolName === "read", "read tool result names the tool");
     assert(toolResult.summary.path === "README.md" && toolResult.summary.bytes > 0 && toolResult.summary.truncated === false,
       "read tool result records path, byte count, and truncation flag");
@@ -136,12 +139,12 @@ try {
     });
     const result = await runAgentLoop({ task: "be evil", workspaceRoot: workspace, provider, maxTurns: 4 });
 
-    const badResult = result.events.find((event) => event.type === "tool_result" && event.errorCode === "rejected");
+    const badResult = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.errorCode === "rejected");
     assert(!!badResult && badResult.toolName === null,
       "unknown tool request fails closed without retaining its raw name");
-    assert(!result.events.some((event) => event.type === "tool_result" && event.toolName === "read"),
+    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "read"),
       "unknown tool is never dispatched to a real executor");
-    assert(!result.events.some((event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
+    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
       "rejected unknown tool emits no tool_execution_start/end");
 
     // Malformed call (no name) also fails closed.
@@ -152,9 +155,9 @@ try {
       ],
     });
     const result2 = await runAgentLoop({ task: "be vague", workspaceRoot: withFixture(), provider: provider2 });
-    const malformed = result2.events.find((event) => event.type === "tool_result" && event.errorCode);
+    const malformed = result2.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.errorCode);
     assert(!!malformed && malformed.toolName === null, "malformed tool call (missing name) fails closed");
-    assert(!result2.events.some((event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
+    assert(!result2.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
       "rejected malformed tool emits no tool_execution_start/end");
   }
 
@@ -179,9 +182,9 @@ try {
 
     assert(result.status === "failed" && result.terminalReason === "provider_error",
       "malformed provider response ends the run as failed");
-    assert(!result.events.some((event) => event.type === "tool_call"),
+    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call"),
       "no tool is dispatched on a failed provider response");
-    const msgEnd = result.events.find((event) => event.type === "message_end");
+    const msgEnd = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "message_end");
     assert(!!msgEnd && msgEnd.errorCode === "provider_error",
       "message_end records the provider error before the run ends");
   }
@@ -201,7 +204,7 @@ try {
     const provider = createMockProvider({ script: [{ content: "ok", toolCalls: [] }] });
     let threw = false;
     try {
-      await runAgentLoop({ workspaceRoot: withFixture(), provider });
+      await Reflect.apply(typedRunAgentLoop, undefined, [{ workspaceRoot: withFixture(), provider }]);
     } catch (error) {
       threw = /task is required/.test(error.message);
     }
@@ -233,7 +236,7 @@ try {
     const t = types(result.events);
     assert(t[t.length - 3] === "message_start" && t[t.length - 2] === "message_end" && t[t.length - 1] === "agent_end",
       "events end with message_start, message_end(error), agent_end");
-    const msgEnd = result.events.find((event) => event.type === "message_end");
+    const msgEnd = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "message_end");
     assert(msgEnd.errorCode === "provider_error", "message_end records bounded provider-error classification");
   }
 
@@ -251,10 +254,10 @@ try {
     });
     const result = await runAgentLoop({ task: "read", workspaceRoot: workspace, provider, maxTurns: 4 });
 
-    const readResult = result.events.find((event) => event.type === "tool_result" && event.toolName === "read");
+    const readResult = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "read");
     assert(readResult.summary.path === "README.md" && readResult.summary.bytes > 0,
       "read used the trusted workspace root and records only safe metadata");
-    assert(!result.events.some((event) => JSON.stringify(event).includes("EVIL README CONTENT")),
+    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => JSON.stringify(event).includes("EVIL README CONTENT")),
       "no event leaks the outside file contents");
   }
 
@@ -319,9 +322,9 @@ try {
     });
     const resultA = await runAgentLoop({ task: "a", workspaceRoot: withFixture(), provider: providerA, commandExecutor: neverCalled });
     assert(calls.length === 0, "executor not called when args have an unexpected key");
-    const errA = resultA.events.find((event) => event.type === "tool_result" && event.toolName === "command");
+    const errA = resultA.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "command");
     assert(!!errA && errA.errorCode === "rejected", "unexpected key rejected with a safe error result");
-    assert(!resultA.events.some((event) => event.type === "tool_execution_start"),
+    assert(!resultA.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start"),
       "no tool_execution_start emitted for rejected args");
 
     // Non-object args.
@@ -333,8 +336,29 @@ try {
     });
     const resultB = await runAgentLoop({ task: "b", workspaceRoot: withFixture(), provider: providerB, commandExecutor: neverCalled });
     assert(calls.length === 0, "executor not called when args are non-object");
-    const errB = resultB.events.find((event) => event.type === "tool_result" && event.toolName === "command");
+    const errB = resultB.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "command");
     assert(!!errB && errB.errorCode === "rejected", "non-object args rejected with a safe error result");
+  }
+
+  // 16. A privacy-summary validation failure does not replace the provider's
+  // exact command result or execute the tool a second time.
+  {
+    const workspace = withFixture();
+    /** @type {NormalizedProviderRequest[]} */ const requests = [];
+    const rawResult = { exitCode: null, stdout: "SUMMARY_FAILURE_STDOUT", stderr: "", truncated: false };
+    const provider = createMockProvider({
+      script: [
+        { content: null, toolCalls: [{ id: "summary-failure", name: "command", args: { command: "pnpm test" } }] },
+        { content: "done", toolCalls: [] },
+      ],
+      onRequest: (request) => requests.push(request),
+    });
+    const result = await runAgentLoop({ task: "test", workspaceRoot: workspace, provider, commandExecutor: async () => rawResult });
+    const toolResult = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "command");
+    const secondToolMessage = requests[1].messages.find(/** @param {ProviderMessage} message */ (message) => message.role === "tool");
+    assert(toolResult?.errorCode === "rejected", "summary failure records a bounded rejected event");
+    assert(secondToolMessage?.toolResults[0] && "result" in secondToolMessage.toolResults[0] && secondToolMessage.toolResults[0].result === rawResult,
+      "summary failure preserves the exact provider tool result");
   }
 } finally {
   for (const fixture of fixtures) fixture.cleanup();

@@ -4,11 +4,11 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createCommandExecutor as createTypedCommandExecutor, executeCommand as executeTypedCommand } from "../lib/agent/tool-execution.mjs";
-/** @type {Function} */
-const createCommandExecutor = createTypedCommandExecutor;
-/** @type {Function} */
-const executeCommand = executeTypedCommand;
+import { createCommandExecutor as typedCreateCommandExecutor, executeCommand as typedExecuteCommand } from "../lib/agent/tool-execution.mjs";
+/** @param {unknown[]} args */
+function createCommandExecutor(...args) { return Reflect.apply(typedCreateCommandExecutor, undefined, args); }
+/** @param {unknown[]} args */
+function executeCommand(...args) { return Reflect.apply(typedExecuteCommand, undefined, args); }
 import { SandboxError } from "../lib/sandbox.mjs";
 
 let failures = 0;

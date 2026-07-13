@@ -6,14 +6,27 @@ import {
   createOpenAICompatibleProvider,
   MAX_BODY_BYTES,
 } from "../lib/agent/openai-compatible-provider.ts";
-import { runAgentLoop as runTypedAgentLoop } from "../lib/agent/loop.ts";
-/** @type {(options: any) => Promise<{ events: any[], [key: string]: any }>} */
-const runAgentLoop = runTypedAgentLoop;
+import { runAgentLoop as typedRunAgentLoop } from "../lib/agent/loop.ts";
+/** @param {unknown[]} args */
+function runAgentLoop(...args) { return Reflect.apply(typedRunAgentLoop, undefined, args); }
 import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 /** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */
 /** @typedef {import("../lib/agent/contracts.ts").ProviderMessage} ProviderMessage */
 /** @typedef {import("../lib/agent/contracts.ts").ProviderToolDefinition} ProviderToolDefinition */
+/** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
+/** @typedef {import("../lib/agent/openai-compatible-provider.ts").ProviderTransportRequest} ProviderTransportRequest */
+/** @typedef {{ prompt_tokens?: number, completion_tokens?: number, total_tokens?: number }} OpenAIUsage */
+/** @typedef {{ role: unknown, content?: unknown, tool_calls?: unknown }} OpenAIResponseMessage */
+/** @typedef {{ name: string, arguments: string }} OpenAIFunctionCall */
+/** @typedef {{ id: string, type: "function", function: OpenAIFunctionCall }} OpenAIToolCall */
+/** @typedef {{ role: "assistant", content: string | null, tool_calls?: OpenAIToolCall[] } | { role: "tool", tool_call_id: string, content: string } | { role: "user" | "system", content: string }} OpenAIMessage */
+/** @typedef {{ messages: OpenAIMessage[] }} OpenAIRequest */
+
+/** @param {RecordedAgentEvent} event @returns {event is Extract<RecordedAgentEvent, { type: "tool_result", toolName: "read" }>} */
+function isReadToolResult(event) {
+  return event.type === "tool_result" && event.toolName === "read";
+}
 
 let failures = 0;
 function assert(condition, message) {
@@ -58,12 +71,15 @@ function request({ messages = [{ role: "user", content: "hello" }], tools = buil
   return { system: "OAF system context", messages, tools };
 }
 
+/** @param {OpenAIResponseMessage} message @param {OpenAIUsage | undefined} usage @param {string | null} finishReason */
 function response(message, usage, finishReason = "stop") {
+  /** @type {{ message: OpenAIResponseMessage, finish_reason?: string }} */
   const choice = { message };
   if (finishReason !== null) choice.finish_reason = finishReason;
   return JSON.stringify({ choices: [choice], ...(usage === undefined ? {} : { usage }) });
 }
 
+/** @param {string | ((input: ProviderTransportRequest) => string)} body @param {ProviderTransportRequest[]} captured */
 function providerWith(body, captured = []) {
   return createOpenAICompatibleProvider({
     ...config,
@@ -372,7 +388,7 @@ try {
 
   // 10. Integration: adapter -> existing loop -> real registered read -> adapter -> terminal.
   {
-    const requests = [];
+    /** @type {OpenAIRequest[]} */ const requests = [];
     let turn = 0;
     const provider = createOpenAICompatibleProvider({
       ...config,
@@ -387,12 +403,15 @@ try {
     });
     const result = await runAgentLoop({ task: "read the readme", workspaceRoot: withFixture(), provider, maxTurns: 3 });
     const toolMessage = requests[1].messages.find((message) => message.role === "tool" && message.tool_call_id === "real-read");
+    const assistantMessage = requests[1].messages.find((message) => message.role === "assistant");
     assert(result.status === "success" && result.terminalReason === "assistant_terminal" && result.turns === 2,
       "adapter integration ends through the existing loop terminal path");
-    assert(result.events.some((event) => event.type === "tool_result" && event.toolCallId === "tool_1_1" && event.summary.path === "README.md" && event.summary.bytes > 0 && event.summary.truncated === false),
+    assert(result.events.some(/** @param {RecordedAgentEvent} event */ (event) => isReadToolResult(event) && event.toolCallId === "tool_1_1" && event.summary.path === "README.md" && event.summary.bytes > 0 && event.summary.truncated === false),
       "existing registry validates and executes the real workspace read tool safely");
     assert(typeof toolMessage?.content === "string" && toolMessage.content.includes("Opinionated App Factory"),
       "second provider request contains the matching tool result");
+    assert(assistantMessage?.tool_calls?.[0]?.id === "real-read" && assistantMessage.tool_calls[0].function.arguments === '{"path":"README.md"}',
+      "second provider request preserves the raw assistant tool call history");
     deepEqual(result.providerCalls, [
       { turn: 1, provider: "openai-compatible", requestedModel: "test-model", reportedModel: null, usage: { inputTokens: 3, outputTokens: 2, totalTokens: 5 } },
       { turn: 2, provider: "openai-compatible", requestedModel: "test-model", reportedModel: null, usage: { inputTokens: 9, outputTokens: 1, totalTokens: 10 } },
@@ -414,9 +433,9 @@ try {
     const result = await runAgentLoop({ task: "read twice", workspaceRoot: withFixture(), provider, maxTurns: 3 });
     assert(calls === 2 && result.status === "failed" && result.terminalReason === "provider_error",
       "reused ID across turns takes the existing provider-error path");
-    assert(result.events.filter((event) => event.type === "tool_call" && event.toolCallId === "tool_1_1").length === 1,
+    assert(result.events.filter(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call" && event.toolCallId === "tool_1_1").length === 1,
       "reused ID is rejected before a second ambiguous tool dispatch");
-    assert(result.events.some((event) => event.type === "message_end" && event.errorCode === "provider_error"),
+    assert(result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "message_end" && event.errorCode === "provider_error"),
       "duplicate-ID failure is recorded as a bounded provider error");
   }
 
@@ -437,7 +456,7 @@ try {
     });
     const result = await runAgentLoop({ task: "read twice", workspaceRoot: withFixture(), provider, maxTurns: 4 });
     assert(result.status === "success" && result.turns === 3 &&
-      result.events.filter((event) => event.type === "tool_call").map((event) => event.toolCallId).join(",") === "tool_1_1,tool_2_1",
+      result.events.filter(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call").map(/** @param {Extract<RecordedAgentEvent, { type: "tool_call" }>} event */ (event) => event.toolCallId).join(",") === "tool_1_1,tool_2_1",
     "unique IDs across multiple turns dispatch and complete normally");
   }
 

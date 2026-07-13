@@ -2,11 +2,14 @@
 // results, while events and receipts retain only safe audit summaries.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runAgentLoopWithReceipt as runTypedAgentLoopWithReceipt } from "../lib/agent/receipt.mjs";
-/** @type {(options: any) => Promise<{ events: any[], receipt: any, [key: string]: any }>} */
-const runAgentLoopWithReceipt = runTypedAgentLoopWithReceipt;
+import { runAgentLoopWithReceipt as typedRunAgentLoopWithReceipt } from "../lib/agent/receipt.mjs";
+/** @param {unknown[]} args */
+function runAgentLoopWithReceipt(...args) { return Reflect.apply(typedRunAgentLoopWithReceipt, undefined, args); }
 import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+/** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */
+/** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
+/** @typedef {import("../lib/agent/contracts.ts").ReceiptCheck} ReceiptCheck */
 
 let failures = 0;
 function assert(condition, message) { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
@@ -36,7 +39,7 @@ try {
     assert(!serializedEvents.includes(readSentinel) && !serializedReceipt.includes(readSentinel), "read content sentinel absent from events and receipt");
     assert(!serializedEvents.includes("TASK_SENTINEL_53") && !serializedReceipt.includes("TASK_SENTINEL_53"), "task sentinel absent from events and redacted receipt");
     assert(!serializedEvents.includes("TERMINAL_OUTPUT_SENTINEL_53") && !serializedReceipt.includes("TERMINAL_OUTPUT_SENTINEL_53"), "terminal model output absent from events and receipt");
-    const readEvent = result.events.find((event) => event.type === "tool_result" && event.toolName === "read");
+    const readEvent = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "read");
     assert(readEvent.summary.path === "README.md" && readEvent.summary.bytes > 0 && readEvent.summary.truncated === false, "read event retains project-relative path, byte count, and truncation flag");
     assert(!serializedEvents.includes(root), "events contain no absolute workspace path");
   }
@@ -57,13 +60,13 @@ try {
     });
     const result = await runAgentLoopWithReceipt({ task: "run test", workspaceRoot: root, provider, commandExecutor: executor });
     const secondTool = requests[1].messages.find((message) => message.role === "tool");
-    const commandEvent = result.events.find((event) => event.type === "tool_result" && event.toolName === "command");
+    const commandEvent = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "command");
     const serializedEvents = JSON.stringify(result.events);
     const serializedReceipt = JSON.stringify(result.receipt);
     assert(secondTool.toolResults[0].result.stdout === stdout && secondTool.toolResults[0].result.stderr === stderr, "provider receives exact command output ephemerally");
     assert(commandEvent.summary.exitCode === 7 && commandEvent.summary.stdoutBytes === Buffer.byteLength(stdout) && commandEvent.summary.stderrBytes === Buffer.byteLength(stderr), "command event retains exit code and output byte counts");
     assert(!serializedEvents.includes(stdout) && !serializedEvents.includes(stderr) && !serializedReceipt.includes(stdout) && !serializedReceipt.includes(stderr), "command output sentinels absent from events and receipt");
-    assert(result.receipt.checks.some(/** @param {any} check */ (check) => check.name === "test" && check.exitCode === 7), "canonical recordable test command detected with exit code");
+    assert(result.receipt.checks.some(/** @param {ReceiptCheck} check */ (check) => check.name === "test" && check.exitCode === 7), "canonical recordable test command detected with exit code");
   }
 
   // 3. Raw tool args/results/errors cannot leak through safe audit summaries.
@@ -90,9 +93,9 @@ try {
     for (const sentinel of [writeContent, grepPattern, "COMMAND_SECRET_53", errorSentinel, "TASK_AUTH_53"]) {
       assert(!all.includes(sentinel), `sentinel omitted from durable audit data: ${sentinel}`);
     }
-    const writeEvent = result.events.find((event) => event.type === "tool_call" && event.toolName === "write");
-    const grepEvent = result.events.find((event) => event.type === "tool_call" && event.toolName === "grep");
-    const commandEvent = result.events.find((event) => event.type === "tool_call" && event.toolName === "command");
+    const writeEvent = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call" && event.toolName === "write");
+    const grepEvent = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call" && event.toolName === "grep");
+    const commandEvent = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call" && event.toolName === "command");
     assert(writeEvent.summary.path === "notes.txt" && writeEvent.summary.bytes === Buffer.byteLength(writeContent), "write event retains path and byte count only");
     assert(grepEvent.summary.path === "README.md" && !Object.hasOwn(grepEvent.summary, "pattern"), "grep event retains location without pattern");
     assert(commandEvent.summary.command === "<redacted command>" && commandEvent.summary.redacted === true, "suspicious command uses shared redaction marker");
@@ -115,8 +118,8 @@ try {
     const all = `${JSON.stringify(result.events)}${JSON.stringify(result.receipt)}`;
     assert(!all.includes(providerIdSentinel), "provider-supplied tool-call ID absent from events and receipt");
     assert(secondTool.toolResults[0].toolCallId === providerIdSentinel, "provider receives exact original ID in tool result");
-    const readCall = result.events.find((event) => event.type === "tool_call" && event.toolName === "read");
-    const readResult = result.events.find((event) => event.type === "tool_result" && event.toolName === "read");
+    const readCall = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call" && event.toolName === "read");
+    const readResult = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "read");
     assert(readCall.toolCallId === "tool_1_1" && readResult.toolCallId === "tool_1_1", "local audit ID pairs all durable events");
   }
 
@@ -148,7 +151,7 @@ try {
     assert(!all.includes("UNLABELED_SECRET_SENTINEL"), "echo command with unlabeled secret is redacted");
     assert(!all.includes("CHAINED_SENTINEL"), "chained pnpm test command is redacted");
     assert(!all.includes("PRIVATE_SOURCE_SENTINEL"), "node -e command is redacted");
-    const commands = result.events.filter((e) => e.type === "tool_call" && e.toolName === "command");
+    const commands = result.events.filter(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call" && event.toolName === "command");
     assert(commands[5].summary.command === "pnpm test" && commands[5].summary.redacted === false, "canonical pnpm test is identifiable");
     assert(commands[6].summary.command === "pnpm lint" && commands[6].summary.redacted === false, "canonical pnpm lint is identifiable");
     assert(commands[7].summary.command === "pnpm typecheck" && commands[7].summary.redacted === false, "canonical pnpm typecheck is identifiable");
@@ -157,7 +160,7 @@ try {
     assert(commands[10].summary.command === "git diff" && commands[10].summary.redacted === false, "canonical git diff is identifiable");
     assert(commands[11].summary.command === "git log --oneline" && commands[11].summary.redacted === false, "canonical git log --oneline is identifiable");
     assert(commands[2].summary.command === "<redacted command>" && commands[2].summary.redacted === true, "pnpm test --unexpected is redacted");
-    assert(!result.receipt.checks.some(/** @param {any} c */ (c) => c.name === "test" && result.receipt.commands[2].command === "pnpm test"), "non-canonical pnpm test is not a test check");
+    assert(!result.receipt.checks.some(/** @param {ReceiptCheck} check */ (check) => check.name === "test" && result.receipt.commands[2].command === "pnpm test"), "non-canonical pnpm test is not a test check");
   }
 
   // 6. Provider ID with control characters does not enter audit data.
@@ -209,7 +212,7 @@ try {
     });
     const result = await runAgentLoopWithReceipt({ task: "read twice", workspaceRoot: root, provider, maxTurns: 3 });
     assert(result.receipt.status === "failed" && result.receipt.terminalReason === "provider_error", "duplicate provider ID rejected before dispatch");
-    assert(result.events.filter((e) => e.type === "tool_call").length === 1, "only first duplicate ID call recorded");
+    assert(result.events.filter(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call").length === 1, "only first duplicate ID call recorded");
   }
 
   // 9. Large read (>1 MiB): provider receives exact content, events retain only metadata.
@@ -228,8 +231,8 @@ try {
     });
     const result = await runAgentLoopWithReceipt({ task: "read large", workspaceRoot: root, provider });
     const secondTool = requests[1].messages.find((message) => message.role === "tool");
-    const readEvent = result.events.find((event) => event.type === "tool_result" && event.toolName === "read");
-    const executionEnds = result.events.filter((event) => event.type === "tool_execution_end");
+    const readEvent = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "read");
+    const executionEnds = result.events.filter(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_end");
     const all = `${JSON.stringify(result.events)}${JSON.stringify(result.receipt)}`;
     assert(secondTool.toolResults[0].result.content === largeContent, "provider receives exact large content ephemerally");
     assert(!all.includes(sentinel), "large read content sentinel absent from audit data");
@@ -253,8 +256,8 @@ try {
     const result = await runAgentLoopWithReceipt({ task: "write large", workspaceRoot: root, provider });
     const secondTool = requests[1].messages.find((message) => message.role === "tool");
     const writeFile = readFileSync(join(root, "large-write.txt"), "utf8");
-    const writeEvent = result.events.find((event) => event.type === "tool_result" && event.toolName === "write");
-    const executionEnds = result.events.filter((event) => event.type === "tool_execution_end");
+    const writeEvent = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "write");
+    const executionEnds = result.events.filter(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_end");
     const all = `${JSON.stringify(result.events)}${JSON.stringify(result.receipt)}`;
     assert(writeFile === largeContent, "large file written exactly once");
     assert(secondTool.toolResults[0].result.path === "large-write.txt" && secondTool.toolResults[0].result.bytes === Buffer.byteLength(largeContent), "provider receives exact large write result ephemerally");
@@ -279,8 +282,8 @@ try {
     });
     const result = await runAgentLoopWithReceipt({ task: "cmd large", workspaceRoot: root, provider, commandExecutor: executor });
     const secondTool = requests[1].messages.find((message) => message.role === "tool");
-    const commandEvent = result.events.find((event) => event.type === "tool_result" && event.toolName === "command");
-    const executionEnds = result.events.filter((event) => event.type === "tool_execution_end");
+    const commandEvent = result.events.find(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "command");
+    const executionEnds = result.events.filter(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_end");
     const all = `${JSON.stringify(result.events)}${JSON.stringify(result.receipt)}`;
     assert(secondTool.toolResults[0].result.stdout === largeStdout, "provider receives exact large stdout ephemerally");
     assert(!all.includes(sentinel), "large stdout sentinel absent from audit data");

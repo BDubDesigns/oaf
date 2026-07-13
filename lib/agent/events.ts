@@ -110,14 +110,20 @@ function validate(type: AgentEventType, fields: unknown): void {
   }
 }
 
-export function createEvent<Type extends AgentEventType>(type: Type, fields: AgentEventFields<Type>): Extract<AgentEvent, { type: Type }>;
-export function createEvent(type: AgentEventType, fields: unknown): AgentEvent;
+type ExactEventFields<Type extends AgentEventType, Fields> = Exclude<keyof Fields, keyof AgentEventFields<Type>> extends never ? Fields : never;
+type CheckedEventFields<Fields> = Fields extends { disposition: "tool_calls"; toolCallCount: 0 } ? never : Fields;
+
+export function createEvent<Type extends AgentEventType, Fields extends AgentEventFields<Type>>(type: Type, fields: Fields & ExactEventFields<Type, Fields> & CheckedEventFields<Fields>): Extract<AgentEvent, { type: Type }>;
 export function createEvent(type: AgentEventType, fields: unknown = {}): AgentEvent {
   if (!KNOWN.has(type)) throw new Error(`Unknown AgentEvent type: ${type}`);
   if (!plain(fields)) throw new Error("Event fields must be an object");
   if ("type" in fields) throw new Error("fields must not contain a 'type' property; it would override the validated event type");
   validate(type, fields);
   return { type, ...fields } as AgentEvent;
+}
+
+function createValidatedEvent(type: AgentEventType, fields: unknown): AgentEvent {
+  return Reflect.apply(createEvent, undefined, [type, fields]);
 }
 
 export function createEventCollector(): EventCollector {
@@ -128,7 +134,7 @@ export function createEventCollector(): EventCollector {
       if (!plain(event) || !("type" in event)) throw new Error("Event must be an object with a type");
       const { type, ...untrustedFields } = event;
       const fields = Object.fromEntries(Object.entries(untrustedFields).filter(([key]) => key !== "seq" && key !== "ts"));
-      const recorded = { ...createEvent(type, fields), seq: ++seq, ts: new Date().toISOString() };
+      const recorded = { ...createValidatedEvent(type, fields), seq: ++seq, ts: new Date().toISOString() };
       events.push(recorded);
       return recorded;
     },
@@ -137,8 +143,11 @@ export function createEventCollector(): EventCollector {
   };
 }
 
-export function recordContinuation(events: readonly RecordedAgentEvent[], event: AgentEvent): RecordedAgentEvent {
-  const lastSeq = events.reduce((max, current) => Math.max(max, current.seq), 0);
+export function recordContinuation(events: readonly unknown[], event: AgentEvent): RecordedAgentEvent {
+  const lastSeq = events.reduce<number>((max, current) => {
+    if (!plain(current) || !integer(current.seq)) return max;
+    return Math.max(max, current.seq);
+  }, 0);
   const { type, ...fields } = event;
-  return { ...createEvent(type, fields), seq: lastSeq + 1, ts: new Date().toISOString() };
+  return { ...createValidatedEvent(type, fields), seq: lastSeq + 1, ts: new Date().toISOString() };
 }

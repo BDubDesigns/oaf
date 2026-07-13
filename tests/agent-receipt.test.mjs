@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, writeFileSync, rmSync, mkdirSync, symlinkSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  runAgentLoopWithReceipt as runTypedAgentLoopWithReceipt,
+  runAgentLoopWithReceipt as typedRunAgentLoopWithReceipt,
   buildReceipt,
   writeReceipt,
   receiptFileName,
@@ -12,10 +12,12 @@ import {
    OAF_VERSION,
    validateReceiptUsage,
 } from "../lib/agent/receipt.mjs";
-/** @type {(options: any) => Promise<{ events: any[], receipt: any, [key: string]: any }>} */
-const runAgentLoopWithReceipt = runTypedAgentLoopWithReceipt;
+/** @param {unknown[]} args */
+function runAgentLoopWithReceipt(...args) { return Reflect.apply(typedRunAgentLoopWithReceipt, undefined, args); }
 import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+/** @typedef {import("../lib/agent/contracts.ts").ReceiptCheck} ReceiptCheck */
+/** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
 
 let failures = 0;
 function assert(condition, message) {
@@ -202,7 +204,7 @@ try {
       assert(!serialized.includes(sentinel), `command sentinel ${sentinel} absent from receipt`);
       assert(result.receipt.commands[0].command === "<redacted command>", `suspicious command omitted: ${sentinel}`);
       assert(result.receipt.commands[0].redacted === true, `command marked redacted: ${sentinel}`);
-      assert(result.receipt.warnings.some(/** @param {any} w */ (w) => /redact/i.test(w)), `redaction warning recorded: ${sentinel}`);
+    assert(result.receipt.warnings.some(/** @param {string} warning */ (warning) => /redact/i.test(warning)), `redaction warning recorded: ${sentinel}`);
     }
 
     // Canonical recordable command remains identifiable and is not redacted.
@@ -210,7 +212,7 @@ try {
     const safeResult = await runCommandTask(wsSafe, "pnpm test");
     assert(safeResult.receipt.commands[0].command === "pnpm test" && safeResult.receipt.commands[0].redacted === false,
       "canonical recordable command remains identifiable");
-    assert(safeResult.receipt.checks.some(/** @param {any} c */ (c) => c.name === "test"), "canonical pnpm test is recorded as a check");
+    assert(safeResult.receipt.checks.some(/** @param {ReceiptCheck} check */ (check) => check.name === "test"), "canonical pnpm test is recorded as a check");
   }
 
   // 6. successful write is listed as a touched file; read is not.
@@ -264,7 +266,7 @@ try {
       "terminal response after a non-zero build is partial, not success");
     assert(!failResult.receipt.outcome.includes("Agent completed the task"),
       "partial build outcome does not claim task completion");
-    assert(failResult.receipt.warnings.some(/** @param {any} w */ (w) => /Partial terminal run: 0 failed\/rejected\/missing tool action\(s\).*1 command\(s\) did not pass, 1 check\(s\) did not pass/.test(w)),
+    assert(failResult.receipt.warnings.some(/** @param {string} warning */ (warning) => /Partial terminal run: 0 failed\/rejected\/missing tool action\(s\).*1 command\(s\) did not pass, 1 check\(s\) did not pass/.test(warning)),
       "partial warning exposes the failed command and check counts");
   }
 
@@ -282,7 +284,7 @@ try {
       "terminal response after a rejected tool is partial");
     assert(rejected.receipt.outcome.startsWith("Agent reached a terminal response, but one or more tool actions or checks did not complete successfully."),
       "rejected-tool outcome uses partial wording");
-    assert(rejected.receipt.warnings.some(/** @param {any} w */ (w) => /Partial terminal run: 1 failed\/rejected\/missing tool action\(s\).*0 check\(s\) did not pass/.test(w)),
+    assert(rejected.receipt.warnings.some(/** @param {string} warning */ (warning) => /Partial terminal run: 1 failed\/rejected\/missing tool action\(s\).*0 check\(s\) did not pass/.test(warning)),
       "partial warning exposes the rejected tool count");
 
     const missing = buildReceipt({
@@ -365,7 +367,7 @@ try {
     assert(!serialized.includes("TOPSECRET-CONTENT"), "written file content is not present in the receipt");
     assert(result.receipt.commands[0].redacted === true, "command is marked redacted");
     assert(result.receipt.commands[0].command === "<redacted command>", "command uses the fixed omission marker");
-    assert(result.receipt.warnings.some(/** @param {any} w */ (w) => /redact/i.test(w)), "a warning records that redaction occurred");
+    assert(result.receipt.warnings.some(/** @param {string} warning */ (warning) => /redact/i.test(warning)), "a warning records that redaction occurred");
   }
 
   // 12. The model cannot redirect the receipt outside the workspace.
@@ -410,7 +412,7 @@ try {
     const workspace = withFixture();
     const provider = createMockProvider({ script: [{ content: "ok", toolCalls: [] }] });
     const result = await runAgentLoopWithReceipt({ task: "hi", workspaceRoot: workspace, provider });
-    const types = result.events.map((e) => e.type);
+    const types = result.events.map(/** @param {RecordedAgentEvent} event */ (event) => event.type);
     const iAgentEnd = types.lastIndexOf("agent_end");
     const iReceipt = types.indexOf("receipt_emitted");
     assert(iAgentEnd > -1 && iReceipt > -1 && iAgentEnd < iReceipt, "receipt_emitted follows agent_end");

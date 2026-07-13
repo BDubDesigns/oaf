@@ -1,22 +1,25 @@
 // Strict event-safe audit schema coverage.
 import { strictEqual, deepEqual, throws } from "node:assert";
-import { AGENT_EVENT_TYPES as typedAgentEventTypes, createEvent as createTypedEvent, createEventCollector as createTypedEventCollector, recordContinuation as recordTypedContinuation } from "../lib/agent/events.ts";
+import { AGENT_EVENT_TYPES as typedAgentEventTypes, createEvent as typedCreateEvent, createEventCollector, recordContinuation } from "../lib/agent/events.ts";
 
-/** @type {any} */
+/** @type {readonly string[]} */
 const AGENT_EVENT_TYPES = typedAgentEventTypes;
-/** @type {any} */
-const createEvent = createTypedEvent;
-/** @type {() => { all: () => any[], clear: () => void, record: (...args: any[]) => any }} */
-const createEventCollector = createTypedEventCollector;
-/** @type {any} */
-const recordContinuation = recordTypedContinuation;
+/** @param {unknown[]} args */
+function createEvent(...args) { return Reflect.apply(typedCreateEvent, undefined, args); }
 
 let failures = 0;
 function assert(condition, message) { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
 
+/** @returns {import("../lib/agent/contracts.ts").AgentEventFields<"agent_start">} */
 function safeStart() { return { runId: "run_1", taskBytes: 12, taskProvided: true }; }
+/** @returns {import("../lib/agent/contracts.ts").AgentEventFields<"agent_end">} */
 function safeEnd() { return { runId: "run_1", status: "success", turns: 1, terminalReason: "assistant_terminal" }; }
+/** @returns {import("../lib/agent/contracts.ts").AgentEventFields<"message_end">} */
 function safeMessageEnd() { return { turn: 1, disposition: "terminal", contentPresent: true, contentBytes: 4, toolCallCount: 0, errorCode: null }; }
+
+// Runtime schema tests intentionally pass invalid JavaScript values.
+/** @param {string} type @param {unknown} fields */
+function invalidCreateEvent(type, fields) { return Reflect.apply(typedCreateEvent, undefined, [type, fields]); }
 
 assert(AGENT_EVENT_TYPES.length === 10, "exactly 10 AgentEvent types defined");
 for (const type of ["agent_start", "turn_start", "message_start", "message_end", "tool_call", "tool_execution_start", "tool_execution_end", "tool_result", "receipt_emitted", "agent_end"]) assert(AGENT_EVENT_TYPES.includes(type), `type present: ${type}`);
@@ -28,18 +31,18 @@ const toolCall = createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "r
 strictEqual(toolCall.summary.path, "app/page.tsx", "tool_call keeps project-relative summary path");
 
 // Unknown event type
-throws(() => createEvent("not_a_real_event", {}), /Unknown AgentEvent type/, "unknown event type rejected");
-throws(() => createEvent("agent_start", { ...safeStart(), type: "bogus" }), /must not contain a 'type' property/, "fields.type override rejected");
+throws(() => invalidCreateEvent("not_a_real_event", {}), /Unknown AgentEvent type/, "unknown event type rejected");
+throws(() => invalidCreateEvent("agent_start", { ...safeStart(), type: "bogus" }), /must not contain a 'type' property/, "fields.type override rejected");
 
 // Raw field rejection
-throws(() => createEvent("agent_start", { ...safeStart(), task: "RAW_TASK" }), /Unsupported AgentEvent field/, "raw task rejected from agent_start");
-throws(() => createEvent("agent_start", { ...safeStart(), workspaceRoot: "/tmp/raw" }), /Unsupported AgentEvent field/, "workspaceRoot rejected from agent_start");
-throws(() => createEvent("message_end", { ...safeMessageEnd(), content: "RAW" }), /Unsupported AgentEvent field/, "raw content rejected from message_end");
-throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "x" }, args: { path: "x" } }), /Unsupported AgentEvent field/, "raw args rejected from tool_call");
-throws(() => createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "read", summary: { args: { path: "x" } } }), /Unsupported tool summary field/, "raw args rejected from tool summary");
-throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: 10, truncated: false }, errorCode: null, result: { content: "RAW" } }), /Unsupported AgentEvent field/, "raw result rejected from tool_result");
-throws(() => createEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: { stdout: "RAW", exitCode: 0, stdoutBytes: 10, stderrBytes: 0, truncated: false }, errorCode: null }), /Unsupported tool summary field/, "stdout rejected from tool_result summary");
-throws(() => createEvent("agent_end", { ...safeEnd(), arbitrary: "RAW" }), /Unsupported AgentEvent field/, "unknown arbitrary event field rejected");
+throws(() => invalidCreateEvent("agent_start", { ...safeStart(), task: "RAW_TASK" }), /Unsupported AgentEvent field/, "raw task rejected from agent_start");
+throws(() => invalidCreateEvent("agent_start", { ...safeStart(), workspaceRoot: "/tmp/raw" }), /Unsupported AgentEvent field/, "workspaceRoot rejected from agent_start");
+throws(() => invalidCreateEvent("message_end", { ...safeMessageEnd(), content: "RAW" }), /Unsupported AgentEvent field/, "raw content rejected from message_end");
+throws(() => invalidCreateEvent("tool_call", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "x" }, args: { path: "x" } }), /Unsupported AgentEvent field/, "raw args rejected from tool_call");
+throws(() => invalidCreateEvent("tool_call", { toolCallId: "tool_1_1", toolName: "read", summary: { args: { path: "x" } } }), /Unsupported tool summary field/, "raw args rejected from tool summary");
+throws(() => invalidCreateEvent("tool_result", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md", bytes: 10, truncated: false }, errorCode: null, result: { content: "RAW" } }), /Unsupported AgentEvent field/, "raw result rejected from tool_result");
+throws(() => invalidCreateEvent("tool_result", { toolCallId: "tool_1_1", toolName: "command", summary: { stdout: "RAW", exitCode: 0, stdoutBytes: 10, stderrBytes: 0, truncated: false }, errorCode: null }), /Unsupported tool summary field/, "stdout rejected from tool_result summary");
+throws(() => invalidCreateEvent("agent_end", { ...safeEnd(), arbitrary: "RAW" }), /Unsupported AgentEvent field/, "unknown arbitrary event field rejected");
 
 // Strict ID validation
 throws(() => createEvent("agent_start", { ...safeStart(), runId: "" }), /Invalid runId/, "empty runId rejected");
@@ -138,8 +141,8 @@ collector.record(createEvent("agent_start", safeStart()));
 collector.record(createEvent("tool_call", { toolCallId: "tool_1_1", toolName: "read", summary: { path: "README.md" } }));
 collector.record(createEvent("agent_end", safeEnd()));
 const all = collector.all();
-assert(all.map(/** @param {any} event */ (event) => event.seq).join(",") === "1,2,3", "collector assigns contiguous sequence numbers");
-assert(all.every(/** @param {any} event */ (event) => typeof event.ts === "string" && !Number.isNaN(Date.parse(event.ts))), "collector assigns ISO timestamps");
+assert(all.map((event) => event.seq).join(",") === "1,2,3", "collector assigns contiguous sequence numbers");
+assert(all.every((event) => typeof event.ts === "string" && !Number.isNaN(Date.parse(event.ts))), "collector assigns ISO timestamps");
 JSON.parse(JSON.stringify(all));
 assert(true, "safe events are JSON-serializable");
 
@@ -148,6 +151,7 @@ const continued = recordContinuation(all, { type: "receipt_emitted", runId: "run
 strictEqual(continued.seq, 4, "continuation sequence follows recorded stream");
 assert(typeof continued.ts === "string" && !Number.isNaN(Date.parse(continued.ts)), "continuation timestamp is ISO");
 throws(() => recordContinuation([], { type: "receipt_emitted", runId: "run", receiptId: "r", path: "/tmp/escape" }), /Invalid receipt_emitted path/, "absolute receipt path rejected");
+strictEqual(recordContinuation([{ seq: Number.NaN }, { seq: -1 }, { seq: 3.5 }, { seq: 4 }], { type: "receipt_emitted", runId: "run_1", receiptId: "rcpt_2", path: "oaf/receipts/b.json" }).seq, 5, "continuation ignores invalid sequence values");
 
 if (failures > 0) { console.error(`\n${failures} event check(s) failed.`); process.exit(1); }
 console.log("\nAll agent-event checks passed.");

@@ -14,7 +14,7 @@ import { TOOL_NAMES, getToolDefinition } from "./tools.ts";
 import { createEvent, createEventCollector } from "./events.ts";
 import { loadAgentContext } from "./context.mjs";
 import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure, validateProviderCall } from "./provider.ts";
-import { safeProjectPath, summarizeToolCall, utf8Bytes } from "./privacy.mjs";
+import { summarizeToolCall, summarizeToolResult, utf8Bytes } from "./privacy.mjs";
 import { AgentToolError, publicToolError } from "./tool-errors.mjs";
 import {
   executeRead,
@@ -25,19 +25,18 @@ import {
 } from "./tool-execution.mjs";
 import type {
   AgentContext,
+  AgentEvent,
+  AgentEventType,
   AgentLoopOptions,
   AgentRunResult,
-  JsonObject,
-  JsonValue,
-  NormalizedProviderToolCall,
   ProviderMessage,
+  Provider,
   ProviderToolResult,
   ToolDefinition,
   ToolArguments,
   ToolExecutorMap,
   ToolExecutorResults,
   ToolName,
-  ToolResultSummary,
 } from "./contracts.ts";
 
 // Hard stop so a broken/mock provider can never loop forever.
@@ -55,7 +54,6 @@ type ToolSuccess = {
   [Name in ToolName]: {
     toolName: Name;
     result: ToolExecutorResults[Name];
-    summary: ToolResultSummary[Name];
   }
 }[ToolName];
 
@@ -190,92 +188,46 @@ function assertUnreachable(value: never): never {
   throw new Error(`unsupported tool: ${value}`);
 }
 
-function resultRecord(result: unknown): Record<string, unknown> {
-  return isPlainObject(result) ? result : {};
-}
-
-function summarizedPath(result: Record<string, unknown>): { path?: string } {
-  const path = safeProjectPath(result.path);
-  return typeof path === "string" ? { path } : {};
-}
-
-function requiredCount(value: unknown): number {
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    throw new Error("tool result count must be a non-negative safe integer");
-  }
-  return value;
-}
-
-function summarizeReadResult(result: ToolExecutorResults["read"]): ToolResultSummary["read"] {
-  const output = resultRecord(result);
-  return { ...summarizedPath(output), bytes: utf8Bytes(output.content), truncated: output.truncated === true };
-}
-
-function summarizeListResult(result: ToolExecutorResults["list"]): ToolResultSummary["list"] {
-  const output = resultRecord(result);
-  return { ...summarizedPath(output), entryCount: Array.isArray(output.entries) ? output.entries.length : 0 };
-}
-
-function summarizeGrepResult(result: ToolExecutorResults["grep"]): ToolResultSummary["grep"] {
-  const output = resultRecord(result);
-  const matches = Array.isArray(output.matches) ? output.matches : [];
-  const paths = new Set<string>();
-  for (const match of matches) {
-    if (!isPlainObject(match)) continue;
-    const path = safeProjectPath(match.path);
-    if (typeof path === "string") paths.add(path);
-  }
-  return { matchCount: matches.length, fileCount: paths.size };
-}
-
-function summarizeWriteResult(result: ToolExecutorResults["write"]): ToolResultSummary["write"] {
-  const output = resultRecord(result);
-  return { ...summarizedPath(output), bytes: requiredCount(output.bytes) };
-}
-
-function summarizeCommandResult(result: ToolExecutorResults["command"]): ToolResultSummary["command"] {
-  const output = resultRecord(result);
-  const exitCode = requiredCount(output.exitCode);
-  if (exitCode > 255) throw new Error("tool result exitCode must be at most 255");
-  return { exitCode, stdoutBytes: utf8Bytes(output.stdout), stderrBytes: utf8Bytes(output.stderr), truncated: output.truncated === true };
-}
-
 async function executeTool(executors: ToolExecutorMap, toolName: ToolName, args: Record<string, unknown>, workspaceRoot: string): Promise<ToolSuccess> {
   switch (toolName) {
     case "read": {
       const result = await executors.read({ ...readArguments(args), workspaceRoot });
-      return { toolName, result, summary: summarizeReadResult(result) };
+      return { toolName, result };
     }
     case "list": {
       const result = await executors.list({ ...listArguments(args), workspaceRoot });
-      return { toolName, result, summary: summarizeListResult(result) };
+      return { toolName, result };
     }
     case "grep": {
       const result = await executors.grep({ ...grepArguments(args), workspaceRoot });
-      return { toolName, result, summary: summarizeGrepResult(result) };
+      return { toolName, result };
     }
     case "write": {
       const result = await executors.write({ ...writeArguments(args), workspaceRoot });
-      return { toolName, result, summary: summarizeWriteResult(result) };
+      return { toolName, result };
     }
     case "command": {
       const result = await executors.command({ ...commandArguments(args), workspaceRoot });
-      return { toolName, result, summary: summarizeCommandResult(result) };
+      return { toolName, result };
     }
     default:
       return assertUnreachable(toolName);
   }
 }
 
-function recordSuccessfulToolResult(toolCallId: string, success: ToolSuccess): ReturnType<typeof createEvent> {
-  switch (success.toolName) {
-    case "read": return createEvent("tool_result", { toolCallId, toolName: "read", summary: success.summary, errorCode: null });
-    case "list": return createEvent("tool_result", { toolCallId, toolName: "list", summary: success.summary, errorCode: null });
-    case "grep": return createEvent("tool_result", { toolCallId, toolName: "grep", summary: success.summary, errorCode: null });
-    case "write": return createEvent("tool_result", { toolCallId, toolName: "write", summary: success.summary, errorCode: null });
-    case "command": return createEvent("tool_result", { toolCallId, toolName: "command", summary: success.summary, errorCode: null });
-    default: return assertUnreachable(success);
-  }
+function recordSuccessfulToolResult(toolCallId: string, success: ToolSuccess): AgentEvent {
+  // summarizeToolResult is the established privacy boundary. Its output is
+  // validated by createEvent before it can enter durable audit data.
+  return Reflect.apply(createEvent, undefined, ["tool_result", {
+    toolCallId,
+    toolName: success.toolName,
+    summary: summarizeToolResult(success.toolName, success.result),
+    errorCode: null,
+  }]);
+}
+
+function createRuntimeEvent(type: AgentEventType, fields: unknown): AgentEvent {
+  return Reflect.apply(createEvent, undefined, [type, fields]);
 }
 
 function successfulProviderResult(toolCallId: string, success: ToolSuccess): ProviderToolResult {
@@ -287,45 +239,6 @@ function successfulProviderResult(toolCallId: string, success: ToolSuccess): Pro
     case "command": return { toolCallId, toolName: "command", result: success.result };
     default: return assertUnreachable(success);
   }
-}
-
-function jsonValue(value: unknown): JsonValue | undefined {
-  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
-  if (Array.isArray(value)) {
-    const values: JsonValue[] = [];
-    for (const item of value) {
-      const normalized = jsonValue(item);
-      if (normalized === undefined) return undefined;
-      values.push(normalized);
-    }
-    return values;
-  }
-  if (isPlainObject(value)) {
-    const object: JsonObject = {};
-    for (const [key, item] of Object.entries(value)) {
-      const normalized = jsonValue(item);
-      if (normalized === undefined) return undefined;
-      object[key] = normalized;
-    }
-    return object;
-  }
-  return undefined;
-}
-
-function jsonObject(value: unknown): JsonObject | undefined {
-  const normalized = jsonValue(value);
-  return normalized !== null && typeof normalized === "object" && !Array.isArray(normalized) ? normalized : undefined;
-}
-
-function reconstructToolCalls(toolCalls: unknown[], turn: number): NormalizedProviderToolCall[] {
-  return toolCalls.map((call, index) => {
-    const object = isPlainObject(call) ? call : {};
-    return {
-      id: typeof object.id === "string" ? object.id : `call_${turn}_${index + 1}`,
-      name: typeof object.name === "string" ? object.name : "",
-      args: jsonObject(object.args) ?? {},
-    };
-  });
 }
 
 // Coerce and validate a provider response into the shape the loop relies on.
@@ -363,24 +276,49 @@ function recordUniqueToolCallIds(toolCalls: unknown[], seenIds: Set<string>, tur
   for (const id of currentIds) seenIds.add(id);
 }
 
-export async function runAgentLoop({
-  task,
-  workspaceRoot,
-  provider,
-  maxTurns = DEFAULT_MAX_TURNS,
-  oafRoot,
-  runId,
-  commandExecutor = executeCommand,
-}: AgentLoopOptions): Promise<AgentRunResult> {
+function isCommandExecutor(value: unknown): value is ToolExecutorMap["command"] {
+  return typeof value === "function";
+}
+
+function isProvider(value: unknown): value is Provider {
+  return isPlainObject(value) && typeof value.complete === "function";
+}
+
+type ValidatedLoopOptions = AgentLoopOptions & { maxTurns: number; commandExecutor: ToolExecutorMap["command"] };
+
+function validateLoopOptions(options: unknown): ValidatedLoopOptions {
+  if (!isPlainObject(options)) throw new Error("agent loop options must be an object");
+  const task = options.task;
+  const workspaceRoot = options.workspaceRoot;
+  const provider = options.provider;
+  const maxTurns = options.maxTurns === undefined ? DEFAULT_MAX_TURNS : options.maxTurns;
+  const oafRoot = options.oafRoot;
+  const runId = options.runId;
+  const commandExecutor = options.commandExecutor === undefined ? executeCommand : options.commandExecutor;
   if (typeof task !== "string" || task.length === 0) {
     throw new Error("task is required");
   }
-  if (!provider || typeof provider.complete !== "function") {
+  if (typeof workspaceRoot !== "string" || workspaceRoot.length === 0) {
+    throw new Error("workspaceRoot is required");
+  }
+  if (!isProvider(provider)) {
     throw new Error("provider with a complete() method is required");
   }
-  if (!Number.isInteger(maxTurns) || maxTurns < 1) {
+  if (typeof maxTurns !== "number" || !Number.isInteger(maxTurns) || maxTurns < 1) {
     throw new Error("maxTurns must be a positive integer");
   }
+  if (oafRoot !== undefined && typeof oafRoot !== "string") throw new Error("oafRoot must be a string");
+  if (runId !== undefined && typeof runId !== "string") throw new Error("runId must be a string");
+  if (!isCommandExecutor(commandExecutor)) throw new Error("commandExecutor must be a function");
+  return { task, workspaceRoot, provider, maxTurns, oafRoot, runId, commandExecutor };
+}
+
+export function runAgentLoop(options: AgentLoopOptions): Promise<AgentRunResult> {
+  return runAgentLoopImpl(options);
+}
+
+async function runAgentLoopImpl(options: unknown): Promise<AgentRunResult> {
+  const { task, workspaceRoot, provider, maxTurns, oafRoot, runId, commandExecutor } = validateLoopOptions(options);
 
   const collector = createEventCollector();
   const run = runId ?? `run_${randomUUID()}`;
@@ -389,7 +327,7 @@ export async function runAgentLoop({
   const context = await loadAgentContext({ workspaceRoot, oafRoot });
   const system = buildSystem(context);
   const tools = buildToolProtocol();
-  const executors = { ...DEFAULT_EXECUTORS, command: commandExecutor };
+  const executors: ToolExecutorMap = { ...DEFAULT_EXECUTORS, command: commandExecutor ?? executeCommand };
 
   const messages: ProviderMessage[] = [{ role: "user", content: task }];
   let turn = 0;
@@ -452,7 +390,7 @@ export async function runAgentLoop({
       };
     }
     const requested = normalized.toolCalls;
-    collector.record(createEvent("message_end", {
+    collector.record(createRuntimeEvent("message_end", {
       turn,
       disposition: requested.length === 0 ? "terminal" : "tool_calls",
       contentPresent: typeof normalized.content === "string" && normalized.content.length > 0,
@@ -476,7 +414,7 @@ export async function runAgentLoop({
       const providerId = typeof callObject?.id === "string" && callObject.id.length > 0 ? callObject.id : `call_${turn}_${index + 1}`;
       const auditId = `tool_${turn}_${index + 1}`;
 
-      collector.record(createEvent("tool_call", { toolCallId: auditId, toolName: auditToolName, summary: summarizeToolCall(auditToolName, callObject?.args) }));
+      collector.record(createRuntimeEvent("tool_call", { toolCallId: auditId, toolName: auditToolName, summary: summarizeToolCall(auditToolName, callObject?.args) }));
 
       // Unknown or malformed tool name: recorded and rejected before any
       // executor runs. No tool_execution_start/end is emitted for this.
@@ -535,7 +473,7 @@ export async function runAgentLoop({
       }
     }
 
-    messages.push({ role: "assistant", content: normalized.content, toolCalls: reconstructToolCalls(requested, turn) });
+    messages.push({ role: "assistant", content: normalized.content, toolCalls: requested });
     messages.push({ role: "tool", toolResults });
   }
 
