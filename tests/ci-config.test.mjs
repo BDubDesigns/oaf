@@ -51,9 +51,11 @@ assert(JSON.stringify(discoveredTests) === JSON.stringify(EXPECTED_TESTS), "runn
 
 assert(existsSync(workflowPath), "CI workflow exists");
 const workflow = readFileSync(workflowPath, "utf8");
-const actionReferences = workflow.split("\n").filter((line) => line.includes("uses:"));
-assert(actionReferences.length === 2, "workflow uses only the two official setup actions");
-assert(actionReferences.every((line) => /@[0-9a-f]{40}\s*$/.test(line)), "workflow actions use full commit SHAs");
+const checkoutAction = "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683";
+const setupNodeAction = "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020";
+assert(workflow.includes(checkoutAction), "workflow uses the exact pinned checkout action");
+assert(workflow.includes(setupNodeAction), "workflow uses the exact pinned setup-node action");
+assert(workflow.includes("persist-credentials: false"), "checkout disables persisted credentials");
 for (const required of [
   "permissions:\n  contents: read",
   "pnpm install --frozen-lockfile",
@@ -64,10 +66,12 @@ for (const required of [
   "node tests/fixtures/node24-native-ts-smoke.ts",
   "node-version-file: .node-version",
   "corepack install",
+  "git status --porcelain --untracked-files=all",
 ]) {
   assert(workflow.includes(required), `workflow includes ${required}`);
 }
 assert(!/(?:secrets|openai|anthropic|api[_-]?key|docker|podman)/i.test(workflow), "workflow contains no provider secret, provider, or container command");
+assert(!workflow.includes("GITHUB_TOKEN"), "workflow does not expose the GitHub token");
 
 if (failures > 0) process.exit(1);
 console.log("\nCI configuration checks passed.");
