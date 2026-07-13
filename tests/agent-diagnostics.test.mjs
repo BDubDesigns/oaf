@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { buildDiagnostic, writeDiagnostic, normalizeDiagnosticSchema, DIAGNOSTICS_DIR } from "../lib/agent/diagnostics.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 import { createMockProvider, ProviderFailure } from "../lib/agent/provider.ts";
-import { runAgentLoopWithReceipt, ReceiptWriteError } from "../lib/agent/receipt.mjs";
+import { runAgentLoopWithReceipt, ReceiptWriteError } from "../lib/agent/receipt.ts";
 import { createOpenAICompatibleProvider, MAX_BODY_BYTES } from "../lib/agent/openai-compatible-provider.ts";
 import { createEvent, createEventCollector } from "../lib/agent/events.ts";
 

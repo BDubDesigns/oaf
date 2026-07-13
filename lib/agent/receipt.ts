@@ -14,8 +14,6 @@
 //   the shared event model, only after a successful write, after `agent_end`.
 // - `oafVersion` is null (with a warning) when it cannot be read/validated.
 
-/** @typedef {import("./contracts.ts").Receipt} Receipt */
-
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -26,44 +24,75 @@ import { writeWorkspaceFile } from "./tool-execution.mjs";
 import { CANONICAL_COMMANDS } from "../command-policy.mjs";
 import { MAX_MODEL_IDENTIFIER_LENGTH, MAX_PROVIDER_IDENTIFIER_LENGTH, normalizeProviderIdentifier } from "./provider.ts";
 import { buildDiagnostic } from "./diagnostics.ts";
-import { RECEIPT_STATUSES } from "./contracts.ts";
+import {
+  RECEIPT_STATUSES,
+  type AgentContext,
+  type AgentLoopWithReceiptOptions,
+  type AgentRunWithReceiptResult,
+  type BuildReceiptOptions,
+  type Diagnostic,
+  type Receipt,
+  type ReceiptCheck,
+  type ReceiptCommand,
+  type ReceiptStatus,
+  type ReceiptTerminal,
+  type ReceiptUsage,
+  type RecordedAgentEvent,
+  type WriteReceiptOptions,
+} from "./contracts.ts";
 
 const [RECEIPT_SUCCESS, RECEIPT_PARTIAL, RECEIPT_FAILED] = RECEIPT_STATUSES;
-
-/** @type {number | undefined} */
-const OPTIONAL_NUMBER = undefined;
-/** @type {string | undefined} */
-const OPTIONAL_STRING = undefined;
-/** @type {import("./contracts.ts").ToolExecutorMap["command"] | undefined} */
-const OPTIONAL_COMMAND_EXECUTOR = undefined;
-/** @type {unknown} */
-const OPTIONAL_RECEIPT_USAGE = undefined;
 
 export const RECEIPT_SCHEMA_VERSION = "0.1.0";
 export const RECEIPT_DIR = "oaf/receipts";
 export class ReceiptWriteError extends Error {
-  constructor(diagnostic) { super("receipt could not be written"); this.code = "RECEIPT_WRITE_FAILED"; this.diagnostic = diagnostic; Object.defineProperty(this, "name", { value: "ReceiptWriteError", enumerable: false, writable: true, configurable: true }); }
+  readonly code: "RECEIPT_WRITE_FAILED";
+  readonly diagnostic: Diagnostic;
+
+  constructor(diagnostic: Diagnostic) {
+    super("receipt could not be written");
+    this.code = "RECEIPT_WRITE_FAILED";
+    this.diagnostic = diagnostic;
+    Object.defineProperty(this, "name", { value: "ReceiptWriteError", enumerable: false, writable: true, configurable: true });
+  }
 }
 
-export function validateReceiptUsage(usage) {
-  if (usage === null || typeof usage !== "object" || Array.isArray(usage)) throw new Error("invalid receipt usage");
+type ReceiptUsageFields = {
+  provider: unknown;
+  model: unknown;
+  runMode: unknown;
+  calls: unknown;
+  tokensIn: unknown;
+  tokensOut: unknown;
+};
+
+function isNonnegativeSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+function hasReceiptUsageFields(value: object): value is ReceiptUsageFields {
   const fields = ["provider", "model", "runMode", "calls", "tokensIn", "tokensOut"];
-  if (Object.keys(usage).length !== fields.length || fields.some((field) => !Object.hasOwn(usage, field))) throw new Error("invalid receipt usage");
+  return Object.keys(value).length === fields.length && fields.every((field) => Object.hasOwn(value, field));
+}
+
+export function validateReceiptUsage(usage: unknown): ReceiptUsage {
+  if (usage === null || typeof usage !== "object" || Array.isArray(usage)) throw new Error("invalid receipt usage");
+  if (!hasReceiptUsageFields(usage)) throw new Error("invalid receipt usage");
   const provider = normalizeProviderIdentifier(usage.provider, MAX_PROVIDER_IDENTIFIER_LENGTH);
   const model = normalizeProviderIdentifier(usage.model, MAX_MODEL_IDENTIFIER_LENGTH);
-  const count = (value) => value === null || (Number.isSafeInteger(value) && value >= 0);
-  if (provider === null || model === null || usage.runMode !== "agent" || !Number.isSafeInteger(usage.calls) || usage.calls < 0 || !count(usage.tokensIn) || !count(usage.tokensOut)) throw new Error("invalid receipt usage");
+  const count = (value: unknown): value is number | null => value === null || isNonnegativeSafeInteger(value);
+  if (provider === null || model === null || usage.runMode !== "agent" || !isNonnegativeSafeInteger(usage.calls) || !count(usage.tokensIn) || !count(usage.tokensOut)) throw new Error("invalid receipt usage");
   return { provider, model, runMode: "agent", calls: usage.calls, tokensIn: usage.tokensIn, tokensOut: usage.tokensOut };
 }
 
-function isValidOafVersion(value) {
+function isValidOafVersion(value: unknown): value is string {
   return typeof value === "string" && /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(value);
 }
 
 // OAF factory version, read from the repo package.json (never from the model).
 // If it cannot be read or is not a valid semver, we return null and let the
 // receipt record `oafVersion: null` with a warning — never a fabricated value.
-function resolveOafVersion() {
+function resolveOafVersion(): string | null {
   try {
     const pkgPath = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "package.json");
     const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
@@ -93,36 +122,36 @@ const SECRET_CLI_OPTION_RE = new RegExp(
   "gi",
 );
 
-function redactSecretsInText(text) {
+function redactSecretsInText(text: string): { text: string; redacted: boolean } {
   if (typeof text !== "string" || text.length === 0) {
     return { text: "", redacted: false };
   }
   let redacted = false;
-  let value = text.replace(SECRET_ASSIGN_RE, (match, prefix, dq, sq, uq) => {
+  let value = text.replace(SECRET_ASSIGN_RE, (_match: string, prefix: string, dq: string | undefined, sq: string | undefined, _uq: string | undefined) => {
     redacted = true;
     if (dq !== undefined) return `${prefix}"<redacted>"`;
     if (sq !== undefined) return `${prefix}'<redacted>'`;
     return `${prefix}<redacted>`;
   });
-  value = value.replace(SECRET_CLI_OPTION_RE, (match, option, separator, dq, sq, uq) => {
+  value = value.replace(SECRET_CLI_OPTION_RE, (_match: string, option: string, separator: string, dq: string | undefined, sq: string | undefined, _uq: string | undefined) => {
     redacted = true;
     if (dq !== undefined) return `${option}${separator}"<redacted>"`;
     if (sq !== undefined) return `${option}${separator}'<redacted>'`;
     return `${option}${separator}<redacted>`;
   });
-  value = value.replace(/(Authorization:\s*(?:Bearer|Basic)\s+)\S+/gi, (match, prefix) => {
+  value = value.replace(/(Authorization:\s*(?:Bearer|Basic)\s+)\S+/gi, (_match: string, prefix: string) => {
     redacted = true;
     return `${prefix}<redacted>`;
   });
-  value = value.replace(/([a-z][a-z0-9+.\-]*:\/\/[^\s:/]+:)[^\s@]+@/g, (match, prefix) => {
+  value = value.replace(/([a-z][a-z0-9+.\-]*:\/\/[^\s:/]+:)[^\s@]+@/g, (_match: string, prefix: string) => {
     redacted = true;
     return `${prefix}<redacted>@`;
   });
   return { text: value, redacted };
 }
 
-function eventTypeSummary(events) {
-  const summary = {};
+function eventTypeSummary(events: RecordedAgentEvent[]): Record<RecordedAgentEvent["type"], number | undefined> {
+  const summary: Record<string, number | undefined> = {};
   for (const event of events) {
     summary[event.type] = (summary[event.type] ?? 0) + 1;
   }
@@ -131,7 +160,9 @@ function eventTypeSummary(events) {
 
 // Pull app/stack/docs-pack identity from the already-loaded OAF context
 // (reusing context.documents rather than re-running boundary logic).
-function extractContextMeta(context) {
+type ContextMeta = { appName: string | null; oafStack: string | null; docsPack: string | null };
+
+function extractContextMeta(context: AgentContext): ContextMeta {
   let appName = null;
   let oafStack = context?.docsPack?.oafStack ?? null;
   let docsPack = context?.docsPack?.id ?? null;
@@ -150,8 +181,12 @@ function extractContextMeta(context) {
 
 // Pair each tool_call with its tool_result by toolCallId so command outcomes
 // and write results can be read without dumping the raw event stream.
-function pairToolCalls(events) {
-  const calls = new Map();
+type ToolCallEvent = Extract<RecordedAgentEvent, { type: "tool_call" }>;
+type ToolResultEvent = Extract<RecordedAgentEvent, { type: "tool_result" }>;
+type ToolCallPair = { call: ToolCallEvent; result: ToolResultEvent | null };
+
+function pairToolCalls(events: RecordedAgentEvent[]): Map<string, ToolCallPair> {
+  const calls = new Map<string, ToolCallPair>();
   for (const event of events) {
     if (event.type === "tool_call") calls.set(event.toolCallId, { call: event, result: null });
     else if (event.type === "tool_result") {
@@ -162,10 +197,10 @@ function pairToolCalls(events) {
   return calls;
 }
 
-function buildFromTools(events) {
+function buildFromTools(events: RecordedAgentEvent[]): { touched: string[]; commands: ReceiptCommand[]; redactedCount: number; failedToolActions: number; missingToolResults: number } {
   const calls = pairToolCalls(events);
   const touched = [];
-  const commands = [];
+  const commands: ReceiptCommand[] = [];
   let redactedCount = 0;
   let failedToolActions = 0;
   let missingToolResults = 0;
@@ -181,17 +216,17 @@ function buildFromTools(events) {
     }
 
     if (call.toolName === "write" && result && !result.errorCode) {
-      const path = result.summary?.path;
+      const path = "path" in result.summary ? result.summary.path : undefined;
       if (typeof path === "string") touched.push(path);
     } else if (call.toolName === "command") {
-      const args = call.summary ?? {};
-      const redacted = { command: args.command ?? "", redacted: args.redacted === true };
+      const args = call.summary;
+      const redacted = { command: args.command, redacted: args.redacted };
       if (redacted.redacted) redactedCount++;
       let exitCode = null;
-      let status = "error";
+      let status: ReceiptCommand["status"] = "error";
       if (result?.errorCode) {
         status = "error";
-      } else if (result?.summary && typeof result.summary.exitCode === "number") {
+      } else if (result?.summary && "exitCode" in result.summary && typeof result.summary.exitCode === "number") {
         exitCode = result.summary.exitCode;
         status = exitCode === 0 ? "pass" : "fail";
       }
@@ -207,8 +242,8 @@ function buildFromTools(events) {
   return { touched, commands, redactedCount, failedToolActions, missingToolResults };
 }
 
-function buildChecks(commands) {
-  const checks = [];
+function buildChecks(commands: ReceiptCommand[]): ReceiptCheck[] {
+  const checks: ReceiptCheck[] = [];
   for (const command of commands) {
     const match = CANONICAL_COMMANDS.find((candidate) => candidate.command === command.command);
     if (match) {
@@ -226,8 +261,8 @@ function buildChecks(commands) {
 // Deterministic outcome summary from trusted run facts only. Never the raw
 // model output. A terminal assistant response only proves conversational
 // termination; receipt status additionally reflects recorded tool/check facts.
-function buildOutcome({ status, terminalReason, turns, touched, commands, checks }) {
-  const parts = [];
+function buildOutcome({ status, terminalReason, turns, touched, commands, checks }: { status: ReceiptStatus; terminalReason: Receipt["terminalReason"]; turns: number; touched: string[]; commands: ReceiptCommand[]; checks: ReceiptCheck[] }): string {
+  const parts: string[] = [];
   if (status === RECEIPT_SUCCESS) {
     parts.push("Agent reached a terminal response with no recorded tool or check failures.");
   } else if (status === RECEIPT_PARTIAL) {
@@ -253,7 +288,7 @@ function buildOutcome({ status, terminalReason, turns, touched, commands, checks
   return parts.join(" ");
 }
 
-export function buildReceipt({ run, task, oafVersion = OAF_VERSION }) {
+export function buildReceipt({ run, task, oafVersion = OAF_VERSION }: BuildReceiptOptions): Receipt {
   const { appName, oafStack, docsPack } = extractContextMeta(run.context);
   const { touched, commands, redactedCount, failedToolActions, missingToolResults } = buildFromTools(run.events);
   const checks = buildChecks(commands);
@@ -262,15 +297,17 @@ export function buildReceipt({ run, task, oafVersion = OAF_VERSION }) {
   const failedCommands = commands.filter((command) => command.status !== "pass").length;
   const failedChecks = checks.filter((check) => check.status !== "pass").length;
   const partial = terminalSucceeded && (failedToolActions > 0 || failedCommands > 0 || failedChecks > 0);
-  const status = terminalSucceeded
-    ? (partial ? RECEIPT_PARTIAL : RECEIPT_SUCCESS)
-    : RECEIPT_FAILED;
+  const terminal: ReceiptTerminal = terminalSucceeded
+    ? { status: partial ? RECEIPT_PARTIAL : RECEIPT_SUCCESS, terminalReason: "assistant_terminal" }
+    : run.terminalReason === "max_turns"
+      ? { status: RECEIPT_FAILED, terminalReason: "max_turns" }
+      : { status: RECEIPT_FAILED, terminalReason: "provider_error" };
   const validOafVersion = isValidOafVersion(oafVersion) ? oafVersion : null;
 
-  const outcome = buildOutcome({ status, terminalReason: run.terminalReason, turns: run.turns, touched, commands, checks });
+  const outcome = buildOutcome({ status: terminal.status, terminalReason: terminal.terminalReason, turns: run.turns, touched, commands, checks });
   const taskRedaction = redactSecretsInText(task);
 
-  const warnings = [];
+  const warnings: string[] = [];
   if (partial) {
     warnings.push(
       `Partial terminal run: ${failedToolActions} failed/rejected/missing tool action(s) (${missingToolResults} missing result(s)), ${failedCommands} command(s) did not pass, ${failedChecks} check(s) did not pass.`,
@@ -288,7 +325,7 @@ export function buildReceipt({ run, task, oafVersion = OAF_VERSION }) {
     warnings.push("oafVersion could not be determined; the receipt omits it.");
   }
 
-  const nextSteps = status === RECEIPT_SUCCESS
+  const nextSteps = terminal.status === RECEIPT_SUCCESS
     ? ["Review the generated changes and receipt.", "Run oaf doctor to confirm the app structure."]
     : ["Review the agent run events and receipt.", "Retry with an adjusted task or configuration."];
 
@@ -300,8 +337,7 @@ export function buildReceipt({ run, task, oafVersion = OAF_VERSION }) {
     app: { name: appName, oafStack, docsPack },
     task: { summary: taskRedaction.text, redacted: taskRedaction.redacted },
     runId: run.runId,
-    status,
-    terminalReason: run.terminalReason,
+    ...terminal,
     outcome,
     turns: run.turns,
     eventSummary: { byType: eventTypeSummary(run.events) },
@@ -323,12 +359,12 @@ export function buildReceipt({ run, task, oafVersion = OAF_VERSION }) {
   };
 }
 
-function receiptTimestamp() {
+function receiptTimestamp(): string {
   // 2026-07-10T22-55-41Z — safe for filenames (no ':' or '.').
   return new Date().toISOString().slice(0, 19).replace(/:/g, "-") + "Z";
 }
 
-export function receiptFileName(receipt) {
+export function receiptFileName(receipt: Receipt): string {
   const stamp = receiptTimestamp();
   const shortId = receipt.id.replace(/^rcpt_/, "").replace(/-/g, "").slice(0, 8);
   return `${stamp}-${shortId}.json`;
@@ -339,7 +375,7 @@ export function receiptFileName(receipt) {
 // directory is created (bounded to the workspace), and the file is written with
 // the internal atomic, workspace-bounded writer, which rejects absolute
 // paths, traversal, and symlink escapes. Returns the project-relative path.
-export async function writeReceipt({ workspaceRoot, receipt }) {
+export async function writeReceipt({ workspaceRoot, receipt }: WriteReceiptOptions): Promise<string> {
   const dir = join(workspaceRoot, RECEIPT_DIR);
   mkdirSync(dir, { recursive: true });
   const name = receiptFileName(receipt);
@@ -357,16 +393,16 @@ export async function runAgentLoopWithReceipt({
   task,
   workspaceRoot,
   provider,
-  maxTurns = OPTIONAL_NUMBER,
-  oafRoot = OPTIONAL_STRING,
-  runId = OPTIONAL_STRING,
-  commandExecutor = OPTIONAL_COMMAND_EXECUTOR,
-  receiptUsage = OPTIONAL_RECEIPT_USAGE,
-}) {
+  maxTurns,
+  oafRoot,
+  runId,
+  commandExecutor,
+  receiptUsage,
+}: AgentLoopWithReceiptOptions): Promise<AgentRunWithReceiptResult> {
   const run = await runAgentLoop({ task, workspaceRoot, provider, maxTurns, oafRoot, runId, commandExecutor });
   const receipt = buildReceipt({ run, task });
   if (receiptUsage !== undefined) receipt.usage = validateReceiptUsage(typeof receiptUsage === "function" ? receiptUsage(run) : receiptUsage);
-  let receiptPath;
+  let receiptPath: string;
   try { receiptPath = await writeReceipt({ workspaceRoot, receipt }); }
   catch { throw new ReceiptWriteError(buildDiagnostic({ run, usage: receipt.usage, receiptPath: null, receiptStatus: receipt.status })); }
   // Continue the loop's recorded event stream through the shared event model so

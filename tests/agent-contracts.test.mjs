@@ -5,7 +5,7 @@ import { createEvent } from "../lib/agent/events.ts";
 import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure } from "../lib/agent/provider.ts";
 import { publicToolError, PUBLIC_TOOL_ERRORS } from "../lib/agent/tool-errors.mjs";
 import { getToolDefinition, TOOLS } from "../lib/agent/tools.ts";
-import { buildReceipt, RECEIPT_SCHEMA_VERSION } from "../lib/agent/receipt.mjs";
+import { buildReceipt, RECEIPT_SCHEMA_VERSION } from "../lib/agent/receipt.ts";
 import { DIAGNOSTICS_DIR, normalizeDiagnosticSchema } from "../lib/agent/diagnostics.ts";
 import { SANDBOX_MODES as SANDBOX_RUNTIME_MODES } from "../lib/sandbox.mjs";
 
@@ -35,6 +35,7 @@ deepEqual(normalizeProviderAttempt({ turn: 1, durationMs: 1, outcome: "http_erro
 deepEqual(normalizeProviderAttempt({ turn: 1, durationMs: 1, outcome: "timeout", httpStatus: 504 }), { turn: 1, durationMs: 1, outcome: "timeout", httpStatus: null }, "durable attempts drop status from non-HTTP outcomes");
 
 const privateSentinels = ["API_KEY_SECRET_VALUE", "PROVIDER_BODY_SENTINEL", "/tmp/absolute-workspace", "STDOUT_SENTINEL", "STDERR_SENTINEL", "RAW_EXCEPTION_SENTINEL"];
+/** @type {import("../lib/agent/contracts.ts").AgentRunResult} */
 const run = {
   runId: "run_contract",
   status: "success",
@@ -44,7 +45,7 @@ const run = {
   providerCalls: [],
   providerAttempts: [{ turn: 1, durationMs: 1, outcome: "success", httpStatus: null }],
   context: { documents: [], docsPack: {} },
-  events: [createEvent("agent_end", { runId: "run_contract", status: "success", turns: 1, terminalReason: "assistant_terminal" })],
+  events: [{ type: "agent_end", runId: "run_contract", status: "success", turns: 1, terminalReason: "assistant_terminal", seq: 1, ts: "2026-01-01T00:00:00.000Z" }],
 };
 const receipt = buildReceipt({ run, task: "task API_KEY=API_KEY_SECRET_VALUE" });
 strictEqual(receipt.schemaVersion, "0.1.0", "receipt JSON schema remains unchanged");

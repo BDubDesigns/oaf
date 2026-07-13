@@ -2,7 +2,7 @@
 // results, while events and receipts retain only safe audit summaries.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { runAgentLoopWithReceipt } from "../lib/agent/receipt.mjs";
+import { runAgentLoopWithReceipt } from "../lib/agent/receipt.ts";
 import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 /** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */

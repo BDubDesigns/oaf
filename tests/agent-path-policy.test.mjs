@@ -4,7 +4,7 @@ import { executeGrep, executeList, executeRead, executeWrite } from "../lib/agen
 import { AgentPathDeniedError, AGENT_PATH_DENIED_MESSAGE } from "../lib/agent/path-policy.mjs";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { runAgentSandboxCommand, SandboxError } from "../lib/sandbox.mjs";
-import { writeReceipt } from "../lib/agent/receipt.mjs";
+import { buildReceipt, writeReceipt } from "../lib/agent/receipt.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;
@@ -126,7 +126,7 @@ try {
   try { await executeWrite({ workspaceRoot: workspace, path: "oaf/receipts/spoof.json", content: "{}" }); }
   catch (error) { assert(error instanceof AgentPathDeniedError, "model cannot spoof receipt"); }
   assert(!existsSync(join(workspace, "oaf", "receipts", "spoof.json")), "spoof receipt never created");
-  await writeReceipt({ workspaceRoot: workspace, receipt: { id: "rcpt_test", schemaVersion: "0.1.0", app: "test", oafStack: "0.1.0", docsPack: "stack-0.1", oafVersion: "0.0.0", createdAt: new Date().toISOString(), task: { original: "test", summary: "test", redacted: false }, status: "success", outcome: "test", turns: 1, checks: [], commands: [], touched: [], warnings: [] } });
+  await writeReceipt({ workspaceRoot: workspace, receipt: buildReceipt({ run: { runId: "receipt_test", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { documents: [], docsPack: {} }, events: [] }, task: "test" }) });
   const receiptAfter = readdirSync(receiptDir).filter((name) => !receiptBefore.includes(name));
   assert(receiptAfter.length === 1, "exactly one real receipt created");
   assert(receiptAfter[0].endsWith(".json"), "receipt is JSON file");
