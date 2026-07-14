@@ -9,7 +9,7 @@ let failures = 0;
 function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
 function runCli(args, options) { return new Promise((resolveChild, reject) => { const child = spawn("node", args, options); let stdout = ""; let stderr = ""; child.stdout.on("data", (data) => { stdout += data; }); child.stderr.on("data", (data) => { stderr += data; }); child.on("error", reject); child.on("close", (status) => resolveChild({ status, stdout, stderr })); }); }
 const repo = resolve(import.meta.dirname, "..");
-const bin = join(repo, "bin/oaf.mjs");
+const bin = join(repo, "bin/oaf.ts");
 function receiptFiles(workspace) { const dir = join(workspace, "oaf/receipts"); try { return existsSync(dir) ? readdirSync(dir).filter((name) => name.endsWith(".json")) : []; } catch { return []; } }
 async function scenario(responder, callback) {
   let requests = 0;
@@ -77,7 +77,7 @@ await new Promise((resolveServer) => server.listen(0, "127.0.0.1", resolveServer
 try {
   const port = server.address().port;
   const env = { ...process.env, OAF_PROVIDER: "openai-compatible", OAF_PROVIDER_BASE_URL: `http://127.0.0.1:${port}`, OAF_MODEL: "test/model", OAF_API_KEY_ENV: "OAF_TEST_SECRET", OAF_TEST_SECRET: secret, OAF_MAX_TURNS: "4", OAF_DIAGNOSTICS: "1" };
-  const success = await runCli([join(repo, "bin/oaf.mjs"), "agent", "write", "a", "file"], { cwd: fixture.workspace, env });
+  const success = await runCli([join(repo, "bin/oaf.ts"), "agent", "write", "a", "file"], { cwd: fixture.workspace, env });
   const output = success.stdout + success.stderr;
   assert(success.status === 0, "successful CLI round trip exits 0");
   assert(existsSync(join(fixture.workspace, "app/oaf-cli-test.txt")), "provider tool call writes allowed file");
@@ -100,9 +100,9 @@ try {
   assert(receipt.status === "success" && receipt.terminalReason === "assistant_terminal", "receipt records successful terminal run");
   assert(receipt.usage.provider === "openai-compatible" && receipt.usage.model === "test/model" && receipt.usage.calls === 2 && receipt.usage.tokensIn === 8 && receipt.usage.tokensOut === 6, "receipt records trusted provider usage");
   assert(!JSON.stringify(receipt).includes(secret) && !JSON.stringify(receipt).includes("CLI terminal response"), "receipt omits key and raw model response");
-  const missing = await runCli([join(repo, "bin/oaf.mjs"), "agent"], { cwd: fixture.workspace, env });
+  const missing = await runCli([join(repo, "bin/oaf.ts"), "agent"], { cwd: fixture.workspace, env });
   assert(missing.status === 2 && /task is required/.test(missing.stderr), "missing task exits 2 before provider");
-  const invalidConfig = await runCli([join(repo, "bin/oaf.mjs"), "agent", "x"], { cwd: fixture.workspace, env: { ...env, OAF_PROVIDER: "other" } });
+  const invalidConfig = await runCli([join(repo, "bin/oaf.ts"), "agent", "x"], { cwd: fixture.workspace, env: { ...env, OAF_PROVIDER: "other" } });
   assert(invalidConfig.status === 2 && !invalidConfig.stdout.includes(secret), "invalid provider exits 2 without key leakage");
 } finally { await new Promise((resolveServer) => server.close(resolveServer)); fixture.cleanup(); }
 

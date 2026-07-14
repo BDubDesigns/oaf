@@ -53,18 +53,18 @@ yet.
 
 OAF is in early implementation. To try the minimal factory primitives:
 
-    node bin/oaf.mjs init chores-app
+    node bin/oaf.ts init chores-app
     cd chores-app
     node oaf/doctor.mjs
 
 Or, from outside the app, point the CLI at it:
 
-    node ../bin/oaf.mjs doctor
+    node ../bin/oaf.ts doctor
 
 Run a sandbox-checked command (see `docs/sandbox.md` for policy):
 
-    node bin/oaf.mjs sandbox run "pnpm test"
-    node bin/oaf.mjs sandbox status
+    node bin/oaf.ts sandbox run "pnpm test"
+    node bin/oaf.ts sandbox status
 
 Once the `oaf` bin is installed / packaged, the commands shorten to:
 

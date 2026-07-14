@@ -28,6 +28,14 @@ const stackSnapshotFixture = join(root, "tests", "fixtures", "stack-snapshot-nat
 const templatesFixture = join(root, "tests", "fixtures", "templates-native-typescript.ts");
 const doctorFixture = join(root, "tests", "fixtures", "doctor-native-typescript.ts");
 const doctorModule = join(root, "lib", "doctor.ts");
+const binary = join(root, "bin", "oaf.ts");
+const usage = `OAF — Opinionated App Factory (Alpha 0)
+
+Usage:
+  oaf init <app-name>   Create a new OAF app skeleton
+  oaf doctor            Check the current directory is an OAF app
+  oaf agent <task>      Run one configured agent task
+  oaf --help            Show this help\n`;
 const fingerprint = `TS9999|Error|tests/example.mjs|${"a".repeat(64)}`;
 let failures = 0;
 
@@ -87,6 +95,9 @@ const templatesOutput = execFileSync(process.execPath, [templatesFixture], { enc
 assert(templatesOutput.trim() === "templates-native-typescript:ok", "native TypeScript templates execute with explicit .ts imports");
 const doctorOutput = execFileSync(process.execPath, [doctorFixture], { encoding: "utf8" });
 assert(doctorOutput.trim() === "doctor-native-typescript:ok", "native TypeScript doctor executes with its explicit .ts import");
+const binaryOutput = execFileSync(process.execPath, [binary, "--help"], { encoding: "utf8" });
+assert(binaryOutput === usage, "Node directly executes the TypeScript binary with exact deterministic usage output");
+assert(!existsSync(join(root, "bin", "oaf.js")) && !existsSync(join(root, "bin", "oaf.js.map")), "binary execution emits no JavaScript or source map");
 
 const baseline = parseBaseline(readFileSync(join(root, "config", "typecheck-baseline.json"), "utf8"));
 const current = countFingerprints(collectDiagnosticFingerprints());
@@ -115,7 +126,7 @@ throws(() => parseBaseline("{"), "malformed baseline JSON is rejected");
 for (const path of ["/home/user/oaf/lib/file.mjs", "../outside.mjs", "lib/../../outside.mjs", "lib//file.mjs", "lib\\file.mjs", "C:/repo/file.mjs", "lib/"]) {
   throws(() => validateBaseline({ version: 2, diagnostics: [{ fingerprint: fingerprintForPath(path), count: 1 }] }), `invalid fingerprint path is rejected: ${path}`);
 }
-for (const path of ["bin/oaf.mjs", "lib/agent/provider.ts", "scripts/typecheck-baseline.mjs", "tests/fixtures/example.ts", ".config/example.mjs"]) {
+for (const path of ["bin/oaf.ts", "lib/agent/provider.ts", "scripts/typecheck-baseline.mjs", "tests/fixtures/example.ts", ".config/example.mjs"]) {
   assert(isValidFingerprint(fingerprintForPath(path)), `valid project-relative fingerprint path is accepted: ${path}`);
 }
 assert(baseline.diagnostics.every((diagnostic) => isValidFingerprint(diagnostic.fingerprint)), "every committed baseline fingerprint is valid");
@@ -148,6 +159,7 @@ const newFiles = new Set([
   templatesFixture,
   doctorFixture,
   doctorModule,
+  binary,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 

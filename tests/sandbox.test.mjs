@@ -11,7 +11,7 @@ import {
 } from "../lib/sandbox.ts";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const binPath = resolve(repoRoot, "bin", "oaf.mjs");
+const binPath = resolve(repoRoot, "bin", "oaf.ts");
 
 let failures = 0;
 function assert(cond, msg) {

@@ -7,7 +7,7 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const binPath = join(repoRoot, "bin", "oaf.mjs");
+const binPath = join(repoRoot, "bin", "oaf.ts");
 const base = mkdtempSync(join(tmpdir(), "oaf-init-"));
 
 let failures = 0;

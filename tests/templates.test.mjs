@@ -8,7 +8,7 @@ import { loadStackSnapshot } from "../lib/stack-snapshot.ts";
 const NAME = "generated-app-fixture";
 const CREATED_AT = "2000-01-01T00:00:00.000Z";
 const EXPECTED_ENTRIES = [
-  ["README.md", 933, "7827f616071ce68596ce38ef4cce5542264e80886c5b06d7b84d9e816dde6e2e"],
+  ["README.md", 932, "8007167013c876097628ff3423556d8f8398d131819bbea69758b167dcc73022"],
   ["package.json", 189, "cb49561cdf97078fde0991d9b9de1d6fe52cb5bc8f85baf19b5fddd91f9cb3cb"],
   ["oaf/app.json", 102, "2a4a18272c1fd3d18805e7154508c401d1cf65c998f27dd3e591f8b1075b571f"],
   ["oaf/stack.json", 25, "8243f169566e2e812faea1f2f3eb160cfca5e7eb7b1469c8e7b6fcdd4667de0b"],
@@ -46,7 +46,8 @@ const EXPECTED_ENTRIES = [
   ["docker-compose.yml", 254, "1a21cc9548e9bd1b655d46b38bd4f18a160883e7fe551a57ad864ac6329bb928"],
   ["Dockerfile", 305, "74901c85bbc317f15d37a4a3873f72176b89778abde03ce28bbc5a0cd47f5679"],
 ];
-const COMPLETE_TREE_DIGEST = "46967cb2b36ede01e92bb4259e87e854de7410e5f3688e2e585f226c5c13e18b";
+const COMPLETE_TREE_DIGEST = "afa58a4a4b507c204ebeec168d8c7f7b180c051691cc1fe055124da1b1c7dd2b";
+const CLEAN_MAIN_README_DIGEST = "7827f616071ce68596ce38ef4cce5542264e80886c5b06d7b84d9e816dde6e2e";
 
 /** @param {string} content */
 function digest(content) {
@@ -72,6 +73,12 @@ assert.ok(Object.entries(tree).filter(([path]) => path.endsWith("/.gitkeep")).ev
 
 const independent = getAppTemplates(NAME, CREATED_AT);
 assert.notStrictEqual(tree, independent, "separate calls return separate objects");
+assert.equal(independent["README.md"].split("bin/oaf.ts").length, 2, "README has exactly one native TypeScript binary path");
+assert.equal(
+  digest(independent["README.md"].replace("bin/oaf.ts", "bin/oaf.mjs")),
+  CLEAN_MAIN_README_DIGEST,
+  "restoring the old binary path restores clean-main README bytes exactly",
+);
 tree["README.md"] = "changed";
 assert.notEqual(tree["README.md"], independent["README.md"], "mutating one tree does not affect another");
 

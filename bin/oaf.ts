@@ -14,12 +14,12 @@ Usage:
   oaf agent <task>      Run one configured agent task
   oaf --help            Show this help`;
 
-function fail(msg) {
-  console.error(msg);
+function fail(message: string): never {
+  console.error(message);
   process.exit(1);
 }
 
-function validateName(name) {
+function validateName(name: string | undefined): string {
   if (!name) fail(`Error: app name is required.\n\n${USAGE}`);
   if (name.includes("..")) fail(`Error: app name must not contain "..".`);
   if (name.includes("/") || name.includes("\\"))
@@ -28,12 +28,12 @@ function validateName(name) {
   return name;
 }
 
-function initApp(name) {
-  validateName(name);
+function initApp(name: string | undefined): void {
+  name = validateName(name);
   const target = resolve(process.cwd(), name);
 
   if (existsSync(target)) {
-    let entries = [];
+    let entries: string[] = [];
     try {
       entries = readdirSync(target);
     } catch {
@@ -58,7 +58,7 @@ function initApp(name) {
   console.log(`Next: cd ${name} && oaf doctor`);
 }
 
-function doctor() {
+function doctor(): void {
   const results = checkApp(process.cwd());
   let failed = 0;
   for (const r of results) {
@@ -72,7 +72,7 @@ function doctor() {
   console.log("\nDoctor: this is a valid OAF Alpha 0 app skeleton.");
 }
 
-async function runSandboxCli(args) {
+async function runSandboxCli(args: string[]): Promise<void> {
   const [sub, ...rest] = args;
   if (sub === "status") {
     sandboxStatus();
@@ -113,7 +113,7 @@ switch (cmd) {
       const result = taskParts.some((part) => part.startsWith("--"))
         ? { code: 2, message: "Error: agent command does not support options." }
         : await runAgentCli({ taskParts });
-      if (result.message) console.error(result.message);
+      if ("message" in result) console.error(result.message);
       process.exitCode = result.code;
       break;
     }
