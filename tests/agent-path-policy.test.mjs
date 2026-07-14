@@ -36,14 +36,31 @@ const fixture = copyGeneratedAppFixture();
 try {
   const { workspace } = fixture;
 
-  for (const path of [".env", ".env.local", "nested/.envrc", ".NPMRC", "PRIVATE.PEM", ".GIT/config", "nested\\NODE_MODULES\\index.js", "oaf/receipts/entry.json"]) {
+  for (const path of [
+    ".env",
+    ".env.local",
+    "nested/.envrc",
+    ".NPMRC",
+    ".NETRC",
+    ".GIT-CREDENTIALS",
+    "ID_RSA",
+    "ID_ED25519",
+    "PRIVATE.PEM",
+    "PRIVATE.KEY",
+    "ARCHIVE.P12",
+    "ARCHIVE.PFX",
+    ".GIT/config",
+    "nested\\.SSH\\id",
+    "nested\\NODE_MODULES\\index.js",
+    "oaf/receipts/entry.json",
+  ]) {
     assert(isProtectedAgentPath(path), `path policy protects ${path}`);
     assert(shouldHideFromAgentTraversal(path) === isProtectedAgentPath(path), `traversal hiding matches path policy for ${path}`);
   }
   for (const path of ["app/token.ts", "app/password.ts", "app/secret.ts", "app/api-key.ts", "oaf/app.json"]) {
     assert(isAgentReadablePath(path), `path policy keeps ordinary readable path ${path}`);
   }
-  assert(!isAgentWritablePath("oaf/app.json"), "path policy keeps OAF-owned metadata unwritable");
+  assert(!isAgentWritablePath("oaf/app.json") && !isAgentWritablePath("oaf/nested/path.json"), "path policy keeps every OAF-owned path unwritable");
   assert(isAgentWritablePath("app/source.ts"), "path policy keeps ordinary source writable");
   try { assertAgentReadablePath("app/source.ts", ".env"); assert(false, "read assertion rejects any denied path"); }
   catch (error) { assert(error instanceof AgentPathDeniedError && error.message === AGENT_PATH_DENIED_MESSAGE, "read assertion keeps bounded error for multiple paths"); }
