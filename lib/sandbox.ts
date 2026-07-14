@@ -196,7 +196,7 @@ export async function runSandboxCommand(options: SandboxCommandOptions): Promise
 // The agent entry point permanently owns denied grants and all agent-only
 // verification/mount semantics. Provider values cannot override these fields.
 export async function runAgentSandboxCommand(options: AgentSandboxCommandOptions = {}): Promise<SandboxExecutionResult> {
-  if (!isPlainObject(options)) throw new SandboxError("INVALID_AGENT_ARGUMENT", "agent sandbox options must be an object");
+  if (options === null || typeof options !== "object" || Array.isArray(options)) throw new SandboxError("INVALID_AGENT_ARGUMENT", "agent sandbox options must be an object");
   const allowed = new Set(["command", "mode", "cwd", "onStart", "onStdout", "onStderr", "dependencies"]);
   for (const key of Object.keys(options)) if (!allowed.has(key)) throw new SandboxError("INVALID_AGENT_ARGUMENT", `agent sandbox received unexpected argument: ${key}`);
   const { command, mode, cwd, onStart, onStdout, onStderr, dependencies } = options;

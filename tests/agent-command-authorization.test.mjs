@@ -98,6 +98,32 @@ try {
     await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, [key]: true, dependencies: invalidDependencies }), "INVALID_AGENT_ARGUMENT", `agent entry rejects ${key}`);
   }
   assert(invalidCalls === 0, "invalid agent entry fields never reach runtime or container seams");
+  let compatibleCalls = 0;
+  const compatibleDependencies = { detectRuntime: () => { compatibleCalls++; return "fake"; }, runContainer: async () => { compatibleCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
+  class CompatibleOptions { constructor() { this.command = "git status"; this.cwd = fixture.workspace; this.dependencies = compatibleDependencies; } }
+  await Reflect.apply(runAgentSandboxCommand, undefined, [new CompatibleOptions()]);
+  assert(compatibleCalls === 2, "class instance with allowed fields reaches dependency path");
+  const nullPrototypeOptions = Object.create(null);
+  nullPrototypeOptions.command = "git status";
+  nullPrototypeOptions.cwd = fixture.workspace;
+  nullPrototypeOptions.dependencies = compatibleDependencies;
+  await Reflect.apply(runAgentSandboxCommand, undefined, [nullPrototypeOptions]);
+  assert(compatibleCalls === 4, "null-prototype record with allowed fields reaches dependency path");
+  let rejectedRuntimeCalls = 0;
+  let rejectedWorkspaceCalls = 0;
+  let rejectedContainerCalls = 0;
+  const rejectedDependencies = { detectRuntime: () => { rejectedRuntimeCalls++; return "fake"; }, createVerificationWorkspace: async () => { rejectedWorkspaceCalls++; throw new Error("must not run"); }, runContainer: async () => { rejectedContainerCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
+  class UnexpectedOptions { constructor() { this.command = "git status"; this.dependencies = rejectedDependencies; this.unexpected = true; } }
+  await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [new UnexpectedOptions()]), "INVALID_AGENT_ARGUMENT", "class instance unexpected field is rejected");
+  const nullPrototypeUnexpected = Object.create(null);
+  nullPrototypeUnexpected.command = "git status";
+  nullPrototypeUnexpected.dependencies = rejectedDependencies;
+  nullPrototypeUnexpected.unexpected = true;
+  await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [nullPrototypeUnexpected]), "INVALID_AGENT_ARGUMENT", "null-prototype unexpected field is rejected");
+  assert(rejectedRuntimeCalls === 0 && rejectedWorkspaceCalls === 0 && rejectedContainerCalls === 0, "unexpected agent fields never invoke dependencies");
+  for (const value of [null, [], () => {}, "options", 1, true, Symbol("options")]) {
+    await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [value]), "INVALID_AGENT_ARGUMENT", `abnormal agent options are rejected: ${typeof value}`);
+  }
   await rejects(() => runAgentSandboxCommand({ command: "pnpm install", cwd: fixture.workspace }), "AGENT_NETWORK_DENIED", "agent entry cannot execute network command");
   await rejects(() => runAgentSandboxCommand({ command: "unknown command", cwd: fixture.workspace }), "AGENT_AUTHORIZATION_REQUIRED", "agent entry cannot execute unknown command");
   await rejects(() => runHumanSandboxCommand({ command: "pnpm install", approvalGranted: false, networkGranted: false, cwd: fixture.workspace }), "POLICY_REJECTED", "human CLI requires trusted flags");
