@@ -17,6 +17,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = join(root, "tests", "fixtures", "node24-native-ts-smoke.ts");
 const helper = join(root, "tests", "fixtures", "node24-native-ts-smoke-helper.ts");
 const providerFixture = join(root, "tests", "fixtures", "provider-native-typescript.ts");
+const toolExecutionFixture = join(root, "tests", "fixtures", "agent-tool-execution-native-typescript.ts");
 const fingerprint = `TS9999|Error|tests/example.mjs|${"a".repeat(64)}`;
 let failures = 0;
 
@@ -108,6 +109,7 @@ const newFiles = new Set([
   fixture,
   helper,
   providerFixture,
+  toolExecutionFixture,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 

@@ -3,7 +3,7 @@
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { executeGrep, executeList, executeRead } from "../lib/agent/tool-execution.mjs";
+import { executeGrep, executeList, executeRead } from "../lib/agent/tool-execution.ts";
 
 let failures = 0;
 function assert(condition, message) {

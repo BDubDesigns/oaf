@@ -14,7 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { executeWrite } from "../lib/agent/tool-execution.mjs";
+import { executeWrite } from "../lib/agent/tool-execution.ts";
 
 let failures = 0;
 function assert(condition, message) {

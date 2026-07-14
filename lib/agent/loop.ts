@@ -22,7 +22,7 @@ import {
   executeList,
   executeGrep,
   executeCommand,
-} from "./tool-execution.mjs";
+} from "./tool-execution.ts";
 import type {
   AgentContext,
   AgentEvent,

@@ -20,7 +20,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { recordContinuation } from "./events.ts";
 import { runAgentLoop } from "./loop.ts";
-import { writeWorkspaceFile } from "./tool-execution.mjs";
+import { writeWorkspaceFile } from "./tool-execution.ts";
 import { CANONICAL_COMMANDS } from "../command-policy.mjs";
 import { MAX_MODEL_IDENTIFIER_LENGTH, MAX_PROVIDER_IDENTIFIER_LENGTH, normalizeProviderIdentifier } from "./provider.ts";
 import { buildDiagnostic } from "./diagnostics.ts";

@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { executeGrep, executeList, executeRead, executeWrite } from "../lib/agent/tool-execution.mjs";
+import { executeGrep, executeList, executeRead, executeWrite } from "../lib/agent/tool-execution.ts";
 import { AgentPathDeniedError, AGENT_PATH_DENIED_MESSAGE } from "../lib/agent/path-policy.mjs";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { runAgentSandboxCommand, SandboxError } from "../lib/sandbox.mjs";

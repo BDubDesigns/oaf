@@ -20,7 +20,7 @@ import {
   type WriteDiagnosticOptions,
 } from "./contracts.ts";
 import { normalizeProviderAttempt } from "./provider.ts";
-import { writeWorkspaceFile } from "./tool-execution.mjs";
+import { writeWorkspaceFile } from "./tool-execution.ts";
 
 export const DIAGNOSTICS_DIR = "oaf/diagnostics";
 
