@@ -1,7 +1,16 @@
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { executeGrep, executeList, executeRead, executeWrite } from "../lib/agent/tool-execution.ts";
-import { AgentPathDeniedError, AGENT_PATH_DENIED_MESSAGE } from "../lib/agent/path-policy.mjs";
+import {
+  AgentPathDeniedError,
+  AGENT_PATH_DENIED_MESSAGE,
+  assertAgentReadablePath,
+  assertAgentWritablePath,
+  isAgentReadablePath,
+  isAgentWritablePath,
+  isProtectedAgentPath,
+  shouldHideFromAgentTraversal,
+} from "../lib/agent/path-policy.ts";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { runAgentSandboxCommand, SandboxError } from "../lib/sandbox.mjs";
 import { buildReceipt, writeReceipt } from "../lib/agent/receipt.ts";
@@ -26,6 +35,20 @@ const ABS_SENTINEL = "/ABS_SENTINEL_PATH_POLICY_57";
 const fixture = copyGeneratedAppFixture();
 try {
   const { workspace } = fixture;
+
+  for (const path of [".env", ".env.local", "nested/.envrc", ".NPMRC", "PRIVATE.PEM", ".GIT/config", "nested\\NODE_MODULES\\index.js", "oaf/receipts/entry.json"]) {
+    assert(isProtectedAgentPath(path), `path policy protects ${path}`);
+    assert(shouldHideFromAgentTraversal(path) === isProtectedAgentPath(path), `traversal hiding matches path policy for ${path}`);
+  }
+  for (const path of ["app/token.ts", "app/password.ts", "app/secret.ts", "app/api-key.ts", "oaf/app.json"]) {
+    assert(isAgentReadablePath(path), `path policy keeps ordinary readable path ${path}`);
+  }
+  assert(!isAgentWritablePath("oaf/app.json"), "path policy keeps OAF-owned metadata unwritable");
+  assert(isAgentWritablePath("app/source.ts"), "path policy keeps ordinary source writable");
+  try { assertAgentReadablePath("app/source.ts", ".env"); assert(false, "read assertion rejects any denied path"); }
+  catch (error) { assert(error instanceof AgentPathDeniedError && error.message === AGENT_PATH_DENIED_MESSAGE, "read assertion keeps bounded error for multiple paths"); }
+  try { assertAgentWritablePath("app/source.ts", "oaf/app.json"); assert(false, "write assertion rejects any denied path"); }
+  catch (error) { assert(error instanceof AgentPathDeniedError && error.message === AGENT_PATH_DENIED_MESSAGE, "write assertion keeps bounded error for multiple paths"); }
 
   // Setup: create real denied files and one symlink alias.
   const deniedFiles = [".env", ".env.local", "nested/.envrc", ".npmrc", ".netrc", ".git/config", ".ssh/id_ed25519", "private.pem", "service.key", "oaf/receipts/previous.json", "node_modules/example/index.js"];

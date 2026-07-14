@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { AGENT_EVENT_TYPES, COMMAND_ORIGINS, PROVIDER_ATTEMPT_OUTCOMES, PROVIDER_FAILURE_OUTCOMES, RUN_TERMINALS, SANDBOX_MODES, TOOL_ERROR_MESSAGES, TOOL_NAMES } from "../lib/agent/contracts.ts";
 import { createEvent } from "../lib/agent/events.ts";
 import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure } from "../lib/agent/provider.ts";
-import { publicToolError, PUBLIC_TOOL_ERRORS } from "../lib/agent/tool-errors.mjs";
+import { publicToolError, PUBLIC_TOOL_ERRORS } from "../lib/agent/tool-errors.ts";
 import { getToolDefinition, TOOLS } from "../lib/agent/tools.ts";
 import { buildReceipt, RECEIPT_SCHEMA_VERSION } from "../lib/agent/receipt.ts";
 import { DIAGNOSTICS_DIR, normalizeDiagnosticSchema } from "../lib/agent/diagnostics.ts";

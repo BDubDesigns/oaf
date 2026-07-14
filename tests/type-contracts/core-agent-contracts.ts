@@ -19,7 +19,7 @@ import {
   type ProviderAttemptOutcome,
   type ToolName,
 } from "../../lib/agent/contracts.ts";
-import { PUBLIC_TOOL_ERRORS } from "../../lib/agent/tool-errors.mjs";
+import { PUBLIC_TOOL_ERRORS } from "../../lib/agent/tool-errors.ts";
 
 type Equal<Left, Right> = (<Value>() => Value extends Left ? 1 : 2) extends (<Value>() => Value extends Right ? 1 : 2) ? true : false;
 type Assert<Value extends true> = Value;
