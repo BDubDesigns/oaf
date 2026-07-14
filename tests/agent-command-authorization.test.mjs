@@ -2,7 +2,7 @@
 // is required: policy failures occur before runtime discovery.
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildContainerRun, createVerificationWorkspace, runAgentSandboxCommand, runHumanSandboxCommand, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.mjs";
+import { buildContainerRun, createVerificationWorkspace, runAgentSandboxCommand, runHumanSandboxCommand, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.ts";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
@@ -91,13 +91,39 @@ try {
   const gitArgv = buildContainerRun("docker", { command: "git status", cwd: fixture.workspace, readOnly: true });
   assert(gitArgv.includes(`${fixture.workspace}:/workspace:ro`), "git inspection mount is read-only");
 
-  await rejects(() => runSandboxCommand({ command: "pnpm test", cwd: fixture.workspace }), "INVALID_ORIGIN", "omitted generic origin fails closed");
+  await rejects(() => Reflect.apply(runSandboxCommand, undefined, [{ command: "pnpm test", cwd: fixture.workspace }]), "INVALID_ORIGIN", "omitted generic origin fails closed");
   let invalidCalls = 0;
   const invalidDependencies = { detectRuntime: () => { invalidCalls++; return "fake"; }, runContainer: async () => { invalidCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
   for (const key of ["approvalGranted", "networkGranted", "origin", "confirm", "network", "unknown"]) {
     await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, [key]: true, dependencies: invalidDependencies }), "INVALID_AGENT_ARGUMENT", `agent entry rejects ${key}`);
   }
   assert(invalidCalls === 0, "invalid agent entry fields never reach runtime or container seams");
+  let compatibleCalls = 0;
+  const compatibleDependencies = { detectRuntime: () => { compatibleCalls++; return "fake"; }, runContainer: async () => { compatibleCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
+  class CompatibleOptions { constructor() { this.command = "git status"; this.cwd = fixture.workspace; this.dependencies = compatibleDependencies; } }
+  await Reflect.apply(runAgentSandboxCommand, undefined, [new CompatibleOptions()]);
+  assert(compatibleCalls === 2, "class instance with allowed fields reaches dependency path");
+  const nullPrototypeOptions = Object.create(null);
+  nullPrototypeOptions.command = "git status";
+  nullPrototypeOptions.cwd = fixture.workspace;
+  nullPrototypeOptions.dependencies = compatibleDependencies;
+  await Reflect.apply(runAgentSandboxCommand, undefined, [nullPrototypeOptions]);
+  assert(compatibleCalls === 4, "null-prototype record with allowed fields reaches dependency path");
+  let rejectedRuntimeCalls = 0;
+  let rejectedWorkspaceCalls = 0;
+  let rejectedContainerCalls = 0;
+  const rejectedDependencies = { detectRuntime: () => { rejectedRuntimeCalls++; return "fake"; }, createVerificationWorkspace: async () => { rejectedWorkspaceCalls++; throw new Error("must not run"); }, runContainer: async () => { rejectedContainerCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
+  class UnexpectedOptions { constructor() { this.command = "git status"; this.dependencies = rejectedDependencies; this.unexpected = true; } }
+  await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [new UnexpectedOptions()]), "INVALID_AGENT_ARGUMENT", "class instance unexpected field is rejected");
+  const nullPrototypeUnexpected = Object.create(null);
+  nullPrototypeUnexpected.command = "git status";
+  nullPrototypeUnexpected.dependencies = rejectedDependencies;
+  nullPrototypeUnexpected.unexpected = true;
+  await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [nullPrototypeUnexpected]), "INVALID_AGENT_ARGUMENT", "null-prototype unexpected field is rejected");
+  assert(rejectedRuntimeCalls === 0 && rejectedWorkspaceCalls === 0 && rejectedContainerCalls === 0, "unexpected agent fields never invoke dependencies");
+  for (const value of [null, [], () => {}, "options", 1, true, Symbol("options")]) {
+    await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [value]), "INVALID_AGENT_ARGUMENT", `abnormal agent options are rejected: ${typeof value}`);
+  }
   await rejects(() => runAgentSandboxCommand({ command: "pnpm install", cwd: fixture.workspace }), "AGENT_NETWORK_DENIED", "agent entry cannot execute network command");
   await rejects(() => runAgentSandboxCommand({ command: "unknown command", cwd: fixture.workspace }), "AGENT_AUTHORIZATION_REQUIRED", "agent entry cannot execute unknown command");
   await rejects(() => runHumanSandboxCommand({ command: "pnpm install", approvalGranted: false, networkGranted: false, cwd: fixture.workspace }), "POLICY_REJECTED", "human CLI requires trusted flags");
@@ -140,7 +166,7 @@ try {
   await runAgentSandboxCommand({ command: "git status", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd, argv }) => { gitCwd = cwd; assert(argv.includes(`${fixture.workspace}:/workspace:ro`) && argv[argv.indexOf("--network") + 1] === "none", "git runner uses authoritative read-only mount"); return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } } });
   assert(gitCwd === fixture.workspace, "git inspection creates no disposable workspace");
   const stdout = []; const stderr = [];
-  await runHumanSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, onStdout: (data) => stdout.push(String(data)), onStderr: (data) => stderr.push(String(data)), dependencies: { detectRuntime: () => "fake", runContainer: async ({ onStdout, onStderr }) => { onStdout("stdout"); onStderr("stderr"); return { exitCode: 0, stdout: "stdout", stderr: "stderr", truncated: false }; } } });
+  await runHumanSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, onStdout: (data) => stdout.push(String(data)), onStderr: (data) => stderr.push(String(data)), dependencies: { detectRuntime: () => "fake", runContainer: async ({ onStdout, onStderr }) => { onStdout?.(Buffer.from("stdout")); onStderr?.(Buffer.from("stderr")); return { exitCode: 0, stdout: "stdout", stderr: "stderr", truncated: false }; } } });
   assert(stdout.join("") === "stdout" && stderr.join("") === "stderr", "human stdout and stderr callbacks route once");
 } finally { fixture.cleanup(); }
 

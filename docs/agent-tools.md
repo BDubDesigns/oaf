@@ -80,7 +80,7 @@ recursive `list` and `grep`, nested symlinks are never followed. This mirrors
 the sandbox's project-only mount boundary for in-process file tools.
 
 `command` is implemented separately through the shared sandbox seam
-`runSandboxCommand` in `lib/sandbox.mjs` (issue #30). Both `oaf sandbox run`
+`runSandboxCommand` in `lib/sandbox.ts` (issue #30). Both `oaf sandbox run`
 and `executeCommand` use that same policy evaluation and container execution
 path. The agent tool contains no process-spawn, shell, or unsandboxed fallback
 path.

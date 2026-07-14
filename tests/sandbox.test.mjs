@@ -8,7 +8,7 @@ import {
   classifyCommand,
   buildContainerRun,
   detectRuntime,
-} from "../lib/sandbox.mjs";
+} from "../lib/sandbox.ts";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const binPath = resolve(repoRoot, "bin", "oaf.mjs");
