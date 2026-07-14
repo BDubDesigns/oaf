@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { recordContinuation } from "./events.ts";
 import { runAgentLoop } from "./loop.ts";
 import { writeWorkspaceFile } from "./tool-execution.ts";
-import { CANONICAL_COMMANDS } from "../command-policy.mjs";
+import { CANONICAL_COMMANDS } from "../command-policy.ts";
 import { MAX_MODEL_IDENTIFIER_LENGTH, MAX_PROVIDER_IDENTIFIER_LENGTH, normalizeProviderIdentifier } from "./provider.ts";
 import { buildDiagnostic } from "./diagnostics.ts";
 import {
