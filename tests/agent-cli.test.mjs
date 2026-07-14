@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
-import { sanitizeTerminal, usageFrom } from "../lib/agent/cli.mjs";
+import { sanitizeTerminal, usageFrom } from "../lib/agent/cli.ts";
 
 let failures = 0;
 function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
@@ -26,12 +26,14 @@ const unicode = sanitizeTerminal("a".repeat(8190) + "€😀");
 assert(Buffer.byteLength(unicode, "utf8") <= 8192 && unicode.endsWith("[response truncated]"), "terminal sanitizer truncates at Unicode boundary within final byte limit");
 const usageFailure = usageFrom({ turns: 1, providerCalls: [] }, { model: " test/model " });
 assert(usageFailure.calls === 1 && usageFailure.tokensIn === null && usageFailure.tokensOut === null && usageFailure.model === "test/model", "usage counts failed attempts without fabricated tokens");
-for (const [calls, expectedIn, expectedOut, label] of [
+/** @type {[{ usage: { inputTokens: number | null, outputTokens: number | null } }[], number | null, number | null, string][]} */
+const usageCases = [
   [[{ usage: { inputTokens: 1, outputTokens: Number.MAX_SAFE_INTEGER } }, { usage: { inputTokens: 1, outputTokens: 1 } }], 2, null, "valid input with overflowing output"],
   [[{ usage: { inputTokens: Number.MAX_SAFE_INTEGER, outputTokens: 1 } }, { usage: { inputTokens: 1, outputTokens: 1 } }], null, 2, "overflowing input with valid output"],
   [[{ usage: { inputTokens: null, outputTokens: 1 } }], null, 1, "invalid input with valid output"],
   [[{ usage: { inputTokens: 1, outputTokens: null } }], 1, null, "valid input with invalid output"],
-]) { const usage = usageFrom({ turns: calls.length, providerCalls: calls }, { model: "test/model" }); assert(usage.calls === calls.length && usage.tokensIn === expectedIn && usage.tokensOut === expectedOut, `usageFrom ${label}`); }
+];
+for (const [calls, expectedIn, expectedOut, label] of usageCases) { const usage = usageFrom({ turns: calls.length, providerCalls: calls }, { model: "test/model" }); assert(usage.calls === calls.length && usage.tokensIn === expectedIn && usage.tokensOut === expectedOut, `usageFrom ${label}`); }
 const missingCallUsage = usageFrom({ turns: 2, providerCalls: [{ usage: { inputTokens: 1, outputTokens: 1 } }] }, { model: "test/model" });
 assert(missingCallUsage.calls === 2 && missingCallUsage.tokensIn === null && missingCallUsage.tokensOut === null, "usageFrom missing providerCall nulls independent totals");
 const fixture = copyGeneratedAppFixture();

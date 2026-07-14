@@ -4,7 +4,7 @@ import { join, resolve, dirname, isAbsolute } from "node:path";
 import { getAppTemplates } from "../lib/templates.mjs";
 import { checkApp } from "../lib/doctor.mjs";
 import { runSandbox, sandboxStatus } from "../lib/sandbox.ts";
-import { runAgentCli } from "../lib/agent/cli.mjs";
+import { runAgentCli } from "../lib/agent/cli.ts";
 
 const USAGE = `OAF — Opinionated App Factory (Alpha 0)
 

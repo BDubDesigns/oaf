@@ -146,6 +146,14 @@ export type ReceiptTerminal =
   | { status: "failed"; terminalReason: "max_turns" };
 export interface ReceiptUsage { model: string | null; provider: string | null; runMode: "agent" | null; calls: number | null; tokensIn: number | null; tokensOut: number | null; }
 export interface ValidatedReceiptUsage { model: string; provider: string; runMode: "agent"; calls: number; tokensIn: number | null; tokensOut: number | null; }
+export interface AgentCliEnvironment { readonly [name: string]: string | undefined; }
+export interface AgentCliConfig { baseUrl: string; model: string; apiKeyEnv: string; maxTurns: number; }
+export interface AgentCliOutput { log(...values: unknown[]): void; error?(...values: unknown[]): void; }
+export interface AgentCliOptions { taskParts?: readonly string[]; cwd?: string; oafRoot?: string; env?: AgentCliEnvironment; output?: AgentCliOutput; }
+export type AgentCliPublicError = { code: 1 | 2; message: string; run?: never };
+export type AgentCliCompletedResult = { code: 0 | 1 | 3; run: AgentRunWithReceiptResult; message?: never };
+export type AgentCliResult = AgentCliPublicError | AgentCliCompletedResult;
+export interface AgentCliUsageRun { turns: number; providerCalls?: readonly { usage?: { inputTokens?: unknown; outputTokens?: unknown } }[]; }
 export interface ReceiptCommand { command: string; redacted: boolean; mode: SandboxMode | null; exitCode: number | null; status: "pass" | "fail" | "error"; }
 export interface ReceiptCheck { name: string; type: string; status: "pass" | "fail" | "error"; exitCode: number | null; }
 export type Receipt = ReceiptTerminal & { schemaVersion: "0.1.0"; id: string; createdAt: string; oafVersion: string | null; app: { name: string | null; oafStack: string | null; docsPack: string | null }; task: { summary: string; redacted: boolean }; runId: string; outcome: string; turns: number; eventSummary: { byType: Record<AgentEventType, number | undefined> }; files: { created: string[]; touched: string[] }; commands: ReceiptCommand[]; checks: ReceiptCheck[]; warnings: string[]; assumptions: string[]; usage: ReceiptUsage; humanReview: { required: true; status: "pending"; reviewer: null; approvedAt: null }; nextSteps: string[]; };
