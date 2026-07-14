@@ -1,7 +1,7 @@
 // OAF-owned command policy. Recordability, lexical classification, execution
 // authorization, and package-script trust deliberately remain separate.
 
-import { loadStackSnapshot } from "./stack-snapshot.mjs";
+import { loadStackSnapshot } from "./stack-snapshot.ts";
 
 const stack = loadStackSnapshot() as { runtime: { pnpm: string } };
 

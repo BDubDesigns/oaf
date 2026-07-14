@@ -7,6 +7,49 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+export interface StackRuntime {
+  node: string;
+  pnpm: string;
+}
+
+export interface StackFramework {
+  next: string;
+  react: string;
+  reactDom: string;
+  typescript: string;
+}
+
+export interface StackData {
+  postgresImage: string;
+  drizzleOrm: string;
+  drizzleKit: string;
+  pg: string;
+}
+
+export interface StackApp {
+  betterAuth: string;
+  zod: string;
+  tailwindcss: string;
+  tailwindPostcss: string;
+}
+
+export interface StackTesting {
+  vitest: string;
+  playwright: string;
+}
+
+export interface StackSnapshot {
+  id: "0.1.0";
+  status: "locked";
+  verifiedAt: string;
+  docsPack: string;
+  runtime: StackRuntime;
+  framework: StackFramework;
+  data: StackData;
+  app: StackApp;
+  testing: StackTesting;
+}
+
 const SNAPSHOT_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../config/stack/oaf-stack-0.1.json");
 const TOP_LEVEL_KEYS = ["id", "status", "verifiedAt", "docsPack", "runtime", "framework", "data", "app", "testing"];
 const REQUIRED_SECTIONS = {
@@ -19,21 +62,28 @@ const REQUIRED_SECTIONS = {
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
 const POSTGRES_IMAGE = /^postgres:\d+\.\d+-[a-z0-9]+$/;
 
-function isObject(value) {
+function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function hasExactKeys(value, expected) {
+function hasExactKeys(value: unknown, expected: readonly string[]): value is Record<string, unknown> {
   return isObject(value) && Object.keys(value).length === expected.length && expected.every((key) => key in value);
 }
 
-function assertExactVersion(value, label) {
+function assertExactVersion(value: unknown, label: string): void {
   if (typeof value !== "string" || !EXACT_VERSION.test(value)) {
     throw new Error(`${label} must be an exact stable version`);
   }
 }
 
-export function validateStackSnapshot(snapshot) {
+function validateSection(section: string, value: unknown, keys: readonly string[]): Record<string, unknown> {
+  if (!hasExactKeys(value, keys)) {
+    throw new Error(`stack snapshot ${section} section has unknown, missing, or malformed values`);
+  }
+  return value;
+}
+
+function assertValidStackSnapshot(snapshot: unknown): asserts snapshot is StackSnapshot {
   if (!hasExactKeys(snapshot, TOP_LEVEL_KEYS)) {
     throw new Error("stack snapshot has unknown, missing, or malformed top-level sections");
   }
@@ -49,37 +99,41 @@ export function validateStackSnapshot(snapshot) {
     throw new Error("stack snapshot verifiedAt is not a real date");
   }
 
-  for (const [section, keys] of Object.entries(REQUIRED_SECTIONS)) {
-    if (!hasExactKeys(snapshot[section], keys)) {
-      throw new Error(`stack snapshot ${section} section has unknown, missing, or malformed values`);
-    }
-  }
+  const sections = Object.fromEntries(
+    Object.entries(REQUIRED_SECTIONS).map(([section, keys]) => [section, validateSection(section, snapshot[section], keys)]),
+  );
 
   for (const [section, keys] of Object.entries(REQUIRED_SECTIONS)) {
     for (const key of keys) {
       if (section === "data" && key === "postgresImage") continue;
-      assertExactVersion(snapshot[section][key], `${section}.${key}`);
+      assertExactVersion(sections[section][key], `${section}.${key}`);
     }
   }
-  if (typeof snapshot.data.postgresImage !== "string" || !POSTGRES_IMAGE.test(snapshot.data.postgresImage)) {
+  if (typeof sections.data.postgresImage !== "string" || !POSTGRES_IMAGE.test(sections.data.postgresImage)) {
     throw new Error("data.postgresImage must be an exact postgres image tag");
   }
-  if (snapshot.framework.react !== snapshot.framework.reactDom) {
+  if (sections.framework.react !== sections.framework.reactDom) {
     throw new Error("framework.react and framework.reactDom must match exactly");
   }
 
+  // All required fields and cross-field invariants above establish this contract.
+}
+
+export function validateStackSnapshot(snapshot: unknown): StackSnapshot {
+  assertValidStackSnapshot(snapshot);
   return snapshot;
 }
 
-export function loadStackSnapshot() {
-  let parsed;
+export function loadStackSnapshot(): StackSnapshot {
+  let parsed: unknown;
   try {
     parsed = JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8"));
   } catch (error) {
-    throw new Error(`could not load OAF Stack 0.1 snapshot: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`could not load OAF Stack 0.1 snapshot: ${message}`);
   }
 
-  validateStackSnapshot(parsed);
+  const snapshot = validateStackSnapshot(parsed);
   // Reparse to return a caller-owned plain-data copy.
-  return JSON.parse(JSON.stringify(parsed));
+  return validateStackSnapshot(JSON.parse(JSON.stringify(snapshot)));
 }
