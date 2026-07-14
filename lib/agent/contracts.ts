@@ -126,7 +126,10 @@ export type RecordedAgentEvent = AgentEvent & { seq: number; ts: string };
 type WithoutEventType<Event> = Event extends AgentEvent ? Omit<Event, "type"> : never;
 export type AgentEventFields<Type extends AgentEventType> = WithoutEventType<Extract<AgentEvent, { type: Type }>>;
 export interface EventCollector { record(event: AgentEvent): RecordedAgentEvent; all(): RecordedAgentEvent[]; clear(): void; }
-export interface AgentContext { documents: { source: string; path: string; content: string }[]; docsPack?: { id?: string; oafStack?: string }; }
+export type ContextDocumentSource = "workspace" | "docs-pack";
+export interface AgentContextDocument { source: ContextDocumentSource; path: string; content: string; bytes: number; }
+export interface AgentContext { workspaceRoot: string; docsPack: { id: string; oafStack: string }; documents: AgentContextDocument[]; totalBytes: number; }
+export interface LoadAgentContextOptions { workspaceRoot: string; oafRoot?: string; }
 export type AgentRunResultDetails = { runId: string; turns: number; providerCalls: ({ turn: number } & ProviderCallMetadata)[]; providerAttempts: ProviderAttempt[]; context: AgentContext; events: RecordedAgentEvent[] };
 export type AgentRunResult =
   | (AgentRunResultDetails & { status: "success"; terminalReason: "assistant_terminal"; content: string | null })

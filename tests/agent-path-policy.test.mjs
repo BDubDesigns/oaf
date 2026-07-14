@@ -166,7 +166,7 @@ try {
   try { await executeWrite({ workspaceRoot: workspace, path: "oaf/receipts/spoof.json", content: "{}" }); }
   catch (error) { assert(error instanceof AgentPathDeniedError, "model cannot spoof receipt"); }
   assert(!existsSync(join(workspace, "oaf", "receipts", "spoof.json")), "spoof receipt never created");
-  await writeReceipt({ workspaceRoot: workspace, receipt: buildReceipt({ run: { runId: "receipt_test", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { documents: [], docsPack: {} }, events: [] }, task: "test" }) });
+  await writeReceipt({ workspaceRoot: workspace, receipt: buildReceipt({ run: { runId: "receipt_test", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { workspaceRoot: workspace, docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 }, events: [] }, task: "test" }) });
   const receiptAfter = readdirSync(receiptDir).filter((name) => !receiptBefore.includes(name));
   assert(receiptAfter.length === 1, "exactly one real receipt created");
   assert(receiptAfter[0].endsWith(".json"), "receipt is JSON file");

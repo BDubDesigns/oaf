@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadAgentContext } from "../lib/agent/context.mjs";
+import { loadAgentContext } from "../lib/agent/context.ts";
 import { copyGeneratedAppFixture, GENERATED_APP_FIXTURE } from "./generated-app-fixture-helper.mjs";
 
 let failures = 0;
@@ -88,9 +88,45 @@ try {
 
   // 2. Required workspace validation and optional app docs behavior.
   await rejects(
-    () => loadAgentContext({}),
+    () => Reflect.apply(loadAgentContext, undefined, [{}]),
     /workspaceRoot is required/,
     "context requires workspaceRoot",
+  );
+  await rejects(
+    () => Reflect.apply(loadAgentContext, undefined, [{ workspaceRoot: "" }]),
+    /workspaceRoot is required/,
+    "context rejects an empty workspaceRoot from JavaScript",
+  );
+  await rejects(
+    () => Reflect.apply(loadAgentContext, undefined, [{ workspaceRoot: 1 }]),
+    /workspaceRoot is required/,
+    "context rejects a non-string workspaceRoot from JavaScript",
+  );
+  await rejects(
+    () => Reflect.apply(loadAgentContext, undefined, [{ workspaceRoot: fresh.workspace, oafRoot: 1 }]),
+    /oafRoot is required/,
+    "context rejects a non-string oafRoot from JavaScript",
+  );
+
+  await rejects(
+    () => loadAgentContext({ workspaceRoot: join(tmpdir(), "oaf-agent-context-missing-workspace") }),
+    /workspaceRoot does not exist/,
+    "context rejects a nonexistent workspace",
+  );
+  await rejects(
+    () => loadAgentContext({ workspaceRoot: join(fresh.workspace, "README.md") }),
+    /workspaceRoot must be a directory/,
+    "context rejects a workspace file",
+  );
+  await rejects(
+    () => loadAgentContext({ workspaceRoot: fresh.workspace, oafRoot: join(tmpdir(), "oaf-agent-context-missing-root") }),
+    /oafRoot does not exist/,
+    "context rejects a nonexistent OAF root",
+  );
+  await rejects(
+    () => loadAgentContext({ workspaceRoot: fresh.workspace, oafRoot: join(fresh.workspace, "README.md") }),
+    /oafRoot must be a directory/,
+    "context rejects an OAF root file",
   );
 
   const nonOafRoot = mkdtempSync(join(tmpdir(), "oaf-agent-context-non-oaf-"));
@@ -110,6 +146,17 @@ try {
     "context rejects a missing docs-pack marker",
   );
 
+  for (const marker of ["oaf/app.json", "oaf/stack.json"]) {
+    const fixture = copyGeneratedAppFixture();
+    fixtureCopies.push(fixture);
+    unlinkSync(join(fixture.workspace, marker));
+    await rejects(
+      () => loadAgentContext({ workspaceRoot: fixture.workspace }),
+      new RegExp(`workspace marker is missing: ${marker.replace("/", "\\/").replace(".", "\\.")}`),
+      `context rejects a missing ${marker} marker`,
+    );
+  }
+
   const malformedMarker = copyGeneratedAppFixture();
   fixtureCopies.push(malformedMarker);
   writeFileSync(join(malformedMarker.workspace, "oaf/docs-pack.json"), "not json\n");
@@ -118,6 +165,28 @@ try {
     /oaf\/docs-pack\.json is malformed JSON/,
     "context rejects a malformed docs-pack marker",
   );
+
+  /** @type {[string, string, RegExp, string][]} */
+  const markerCases = [
+    ["oaf/app.json", "[]", /oaf\/app\.json is not a valid OAF-generated app marker/, "array app marker"],
+    ["oaf/app.json", JSON.stringify({ name: 1, createdBy: "oaf", createdAt: "now" }), /oaf\/app\.json is not a valid OAF-generated app marker/, "invalid app marker fields"],
+    ["oaf/stack.json", "[]", /oaf\/stack\.json is malformed/, "array stack marker"],
+    ["oaf/stack.json", JSON.stringify({}), /oaf\/stack\.json is malformed/, "invalid stack marker"],
+    ["oaf/docs-pack.json", "null", /oaf\/docs-pack\.json is malformed/, "non-object docs-pack marker"],
+    ["oaf/docs-pack.json", JSON.stringify({ docsPack: "stack-0.1" }), /oaf\/docs-pack\.json is malformed/, "invalid docs-pack marker"],
+    ["oaf/docs-pack.json", JSON.stringify({ docsPack: "stack-0.1", oafStack: "wrong" }), /oaf\/docs-pack\.json does not match oaf\/stack\.json/, "mismatched stack marker"],
+  ];
+  for (const [marker, content, pattern, label] of markerCases) {
+    const fixture = copyGeneratedAppFixture();
+    fixtureCopies.push(fixture);
+    writeFileSync(join(fixture.workspace, marker), content);
+    await rejects(() => loadAgentContext({ workspaceRoot: fixture.workspace }), pattern, `context rejects ${label}`);
+  }
+  const extraMarkerFields = copyGeneratedAppFixture();
+  fixtureCopies.push(extraMarkerFields);
+  writeFileSync(join(extraMarkerFields.workspace, "oaf/docs-pack.json"), JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", ignored: true }));
+  await loadAgentContext({ workspaceRoot: extraMarkerFields.workspace });
+  assert(true, "context accepts harmless extra marker fields");
 
   const optionalAppDocs = copyGeneratedAppFixture();
   fixtureCopies.push(optionalAppDocs);
@@ -129,7 +198,12 @@ try {
   for (const [docsPack, pattern, label] of [
     ["unknown-pack", /docs-pack is missing/, "unknown docs-pack"],
     ["/tmp/pack", /docs-pack reference must not be absolute/, "absolute docs-pack reference"],
-    ["../stack-0.1", /docs-pack reference must not contain parent traversal/, "traversal docs-pack reference"],
+    ["C:\\pack", /docs-pack reference must not be absolute/, "Windows absolute docs-pack reference"],
+    ["../stack-0.1", /docs-pack reference must not contain parent traversal/, "forward traversal docs-pack reference"],
+    ["a\\..\\stack-0.1", /docs-pack reference must not contain parent traversal/, "backslash traversal docs-pack reference"],
+    ["a/../stack-0.1", /docs-pack reference must not contain parent traversal/, "nested traversal docs-pack reference"],
+    ["stack/0.1", /docs-pack reference contains unsupported characters/, "nested docs-pack reference"],
+    ["stack@0.1", /docs-pack reference contains unsupported characters/, "unsupported docs-pack characters"],
   ]) {
     const fixture = copyGeneratedAppFixture();
     fixtureCopies.push(fixture);
@@ -152,6 +226,16 @@ try {
     "context rejects a malformed docs-pack manifest",
   );
 
+  const missingDocsPacks = copyGeneratedAppFixture();
+  fixtureCopies.push(missingDocsPacks);
+  const missingDocsPacksRoot = mkdtempSync(join(tmpdir(), "oaf-agent-context-no-packs-"));
+  temporaryRoots.push(() => rmSync(missingDocsPacksRoot, { recursive: true, force: true }));
+  await rejects(
+    () => loadAgentContext({ workspaceRoot: missingDocsPacks.workspace, oafRoot: missingDocsPacksRoot }),
+    /docs-packs root is missing/,
+    "context rejects a missing docs-packs root",
+  );
+
   const missingPackDocumentFixture = copyGeneratedAppFixture();
   fixtureCopies.push(missingPackDocumentFixture);
   const missingPackDocumentPacks = copyOafDocsPacks();
@@ -162,6 +246,38 @@ try {
     /docs-pack document is missing: oaf\/stack\.md/,
     "context rejects a missing required docs-pack document",
   );
+
+  /** @type {[string, RegExp, string][]} */
+  const manifestCases = [
+    ["{}", /docs-pack manifest does not match the generated app marker/, "non-matching manifest object"],
+    ["[]", /docs-pack manifest does not match the generated app marker/, "array manifest"],
+    [JSON.stringify({ docsPack: "wrong", oafStack: "0.1.0", documents: [] }), /docs-pack manifest does not match the generated app marker/, "manifest marker mismatch"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0" }), /docs-pack manifest must contain an ordered documents list/, "missing manifest documents"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: [] }), /docs-pack manifest must contain an ordered documents list/, "empty manifest documents"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: {} }), /docs-pack manifest must contain an ordered documents list/, "non-array manifest documents"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: [null] }), /docs-pack manifest contains an invalid document entry/, "malformed manifest entry"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: [{ path: 1, required: true }] }), /docs-pack manifest contains an invalid document entry/, "non-string manifest path"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: [{ path: "oaf/stack.md", required: 1 }] }), /docs-pack manifest contains an invalid document entry/, "non-boolean manifest required flag"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: [{ path: "oaf/stack.md", required: true }, { path: "oaf/stack.md", required: false }] }), /docs-pack manifest contains a duplicate document path: oaf\/stack\.md/, "duplicate manifest document"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: [{ path: "/tmp/file", required: true }] }), /docs-pack document path must not be absolute/, "absolute manifest document"],
+    [JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: [{ path: "a/../file", required: true }] }), /docs-pack document path must not contain parent traversal/, "traversal manifest document"],
+  ];
+  for (const [content, pattern, label] of manifestCases) {
+    const fixture = copyGeneratedAppFixture();
+    fixtureCopies.push(fixture);
+    const packs = copyOafDocsPacks();
+    temporaryRoots.push(packs.cleanup);
+    writeFileSync(join(packs.oafRoot, "docs-packs", "stack-0.1", "manifest.json"), content);
+    await rejects(() => loadAgentContext({ workspaceRoot: fixture.workspace, oafRoot: packs.oafRoot }), pattern, `context rejects ${label}`);
+  }
+
+  const optionalPackDocument = copyGeneratedAppFixture();
+  fixtureCopies.push(optionalPackDocument);
+  const optionalPack = copyOafDocsPacks();
+  temporaryRoots.push(optionalPack.cleanup);
+  writeFileSync(join(optionalPack.oafRoot, "docs-packs", "stack-0.1", "manifest.json"), JSON.stringify({ docsPack: "stack-0.1", oafStack: "0.1.0", documents: [{ path: "missing.md", required: false }, { path: "oaf/stack.md", required: true }] }));
+  const optionalPackContext = await loadAgentContext({ workspaceRoot: optionalPackDocument.workspace, oafRoot: optionalPack.oafRoot });
+  assert(JSON.stringify(optionalPackContext.documents.slice(-1).map((document) => document.path)) === JSON.stringify(["oaf/stack.md"]), "missing optional docs-pack documents are omitted in manifest order");
 
   // 5. Workspace and docs-pack symlink escapes fail closed when supported.
   const outside = mkdtempSync(join(tmpdir(), "oaf-agent-context-outside-"));
@@ -191,6 +307,22 @@ try {
       /docs-pack document resolves outside its owner root through a symlink/,
       "context rejects a docs-pack document symlink escape",
     );
+
+    const docsPacksRootEscape = copyGeneratedAppFixture();
+    fixtureCopies.push(docsPacksRootEscape);
+    const rootEscapePacks = copyOafDocsPacks();
+    temporaryRoots.push(rootEscapePacks.cleanup);
+    rmSync(join(rootEscapePacks.oafRoot, "docs-packs"), { recursive: true, force: true });
+    symlinkSync(outside, join(rootEscapePacks.oafRoot, "docs-packs"));
+    await rejects(() => loadAgentContext({ workspaceRoot: docsPacksRootEscape.workspace, oafRoot: rootEscapePacks.oafRoot }), /docs-packs root resolves outside its owner root through a symlink/, "context rejects a docs-packs root symlink escape");
+
+    const selectedPackEscape = copyGeneratedAppFixture();
+    fixtureCopies.push(selectedPackEscape);
+    const selectedEscapePacks = copyOafDocsPacks();
+    temporaryRoots.push(selectedEscapePacks.cleanup);
+    rmSync(join(selectedEscapePacks.oafRoot, "docs-packs", "stack-0.1"), { recursive: true, force: true });
+    symlinkSync(outside, join(selectedEscapePacks.oafRoot, "docs-packs", "stack-0.1"));
+    await rejects(() => loadAgentContext({ workspaceRoot: selectedPackEscape.workspace, oafRoot: selectedEscapePacks.oafRoot }), /docs-pack resolves outside its owner root through a symlink/, "context rejects a selected docs-pack symlink escape");
   } catch (error) {
     if (error.code === "EPERM" || error.code === "EACCES" || error.code === "ENOTSUP") {
       console.log(`SKIP  symlink context tests unavailable: ${error.code}`);
@@ -198,6 +330,19 @@ try {
       throw error;
     }
   }
+
+  const multibyte = copyGeneratedAppFixture();
+  fixtureCopies.push(multibyte);
+  writeFileSync(join(multibyte.workspace, "README.md"), "emoji: 😀\n");
+  const multibyteContext = await loadAgentContext({ workspaceRoot: multibyte.workspace });
+  const multibyteDocument = multibyteContext.documents.find((document) => document.path === "README.md");
+  assert(multibyteDocument?.bytes === Buffer.byteLength("emoji: 😀\n", "utf8") && multibyteDocument.bytes > multibyteDocument.content.length, "context counts multibyte content as UTF-8 bytes");
+
+  const nonFileWorkspaceDocument = copyGeneratedAppFixture();
+  fixtureCopies.push(nonFileWorkspaceDocument);
+  rmSync(join(nonFileWorkspaceDocument.workspace, "README.md"));
+  mkdirSync(join(nonFileWorkspaceDocument.workspace, "README.md"));
+  await rejects(() => loadAgentContext({ workspaceRoot: nonFileWorkspaceDocument.workspace }), /workspace README must be a file: README\.md/, "context requires workspace documents to be regular files");
 
   // 6. Context assembly is read-only; fixture source stays untouched.
   assert(readFileSync(join(GENERATED_APP_FIXTURE, "app/page.tsx"), "utf8") === sourcePage, "context load does not mutate fixture source files");

@@ -117,7 +117,7 @@ try {
   // 4b. HONESTY FIX: an unreadable/invalid oafVersion becomes null with a warning.
   {
     const receipt = buildReceipt({
-      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { documents: [], docsPack: {} }, events: [] },
+      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { workspaceRoot: "/tmp/workspace", docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 }, events: [] },
       task: "x",
       oafVersion: null,
     });
@@ -125,7 +125,7 @@ try {
     assert(receipt.warnings.some((w) => /oafVersion/i.test(w)), "a warning records the missing oafVersion");
 
     const invalid = buildReceipt({
-      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { documents: [], docsPack: {} }, events: [] },
+      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { workspaceRoot: "/tmp/workspace", docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 }, events: [] },
       task: "x",
       oafVersion: "1.2.3garbage",
     });
@@ -297,7 +297,7 @@ try {
         content: "ignored",
         providerCalls: [],
         providerAttempts: [],
-        context: { documents: [], docsPack: {} },
+        context: { workspaceRoot: "/tmp/workspace", docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 },
         events: [{ type: "tool_call", toolCallId: "missing", toolName: "read", summary: { path: "README.md" }, seq: 1, ts: "2000-01-01T00:00:00.000Z" }],
       },
       task: "x",
@@ -393,7 +393,7 @@ try {
       let threw = false;
       try {
         await writeReceipt({ workspaceRoot: wsLink, receipt: buildReceipt({
-          run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: "x", providerCalls: [], providerAttempts: [], context: { documents: [], docsPack: {} }, events: [] },
+          run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: "x", providerCalls: [], providerAttempts: [], context: { workspaceRoot: wsLink, docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 }, events: [] },
           task: "x",
         }) });
       } catch {

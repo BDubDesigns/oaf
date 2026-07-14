@@ -454,7 +454,7 @@ uses(async (fixture) => {
 // -------------------------------------------------------------------
 {
   /** @param {import("../lib/agent/contracts.ts").RecordedAgentEvent[]} events @returns {import("../lib/agent/contracts.ts").AgentRunResult} */
-  const base = (events) => ({ runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, context: { documents: [], docsPack: {} }, providerAttempts: [], events, providerCalls: [] });
+  const base = (events) => ({ runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, context: { workspaceRoot: "/tmp/workspace", docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 }, providerAttempts: [], events, providerCalls: [] });
   /** @type {import("../lib/agent/contracts.ts").ReceiptUsage} */
   const usage = { provider: null, model: null, runMode: null, calls: null, tokensIn: null, tokensOut: null };
 
