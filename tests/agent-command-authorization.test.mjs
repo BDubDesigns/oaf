@@ -4,7 +4,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, un
 import { join } from "node:path";
 import { buildContainerRun, createVerificationWorkspace, runAgentSandboxCommand, runHumanSandboxCommand, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.ts";
 import { runAgentLoop } from "../lib/agent/loop.ts";
-import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 
 let failures = 0;
 function assert(condition, message) { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }

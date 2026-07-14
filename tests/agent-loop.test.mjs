@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { createMockProvider, buildToolProtocol } from "../lib/agent/provider.ts";
 import { TOOL_NAMES } from "../lib/agent/tools.ts";
-import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 /** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
 /** @typedef {import("../lib/agent/contracts.ts").ProviderMessage} ProviderMessage */
 /** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */

@@ -10,7 +10,7 @@ import {
   FIXTURE_NAME,
   FIXTURE_TEMPLATE_PATHS,
   GENERATED_APP_FIXTURE,
-} from "./generated-app-fixture-helper.mjs";
+} from "./generated-app-fixture-helper.ts";
 
 let failures = 0;
 function assert(condition, message) {

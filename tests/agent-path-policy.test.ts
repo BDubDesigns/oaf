@@ -14,19 +14,26 @@ import {
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { runAgentSandboxCommand, SandboxError } from "../lib/sandbox.ts";
 import { buildReceipt, writeReceipt } from "../lib/agent/receipt.ts";
-import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
+import type { AgentRunResult, Provider, SandboxDependencies } from "../lib/agent/contracts.ts";
 
 let failures = 0;
-function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
-async function denied(action, message, sentinel) {
+function assert(ok: unknown, message: string): void { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
+function stringProperty(value: unknown, key: "message" | "code"): string | undefined {
+  if (value === null || (typeof value !== "object" && typeof value !== "function") || !(key in value)) return undefined;
+  const property = Reflect.get(value, key);
+  return typeof property === "string" ? property : undefined;
+}
+async function denied(action: () => Promise<unknown>, message: string, sentinel?: string): Promise<void> {
   try { await action(); assert(false, message); }
-  catch (error) {
+  catch (error: unknown) {
+    const errorMessage = stringProperty(error, "message");
     assert(error instanceof AgentPathDeniedError, `${message}: is AgentPathDeniedError`);
-    assert(error.message === AGENT_PATH_DENIED_MESSAGE, `${message}: exact bounded message`);
-    if (sentinel !== undefined) assert(!error.message.includes(sentinel), `${message}: message has no sentinel`);
+    assert(errorMessage === AGENT_PATH_DENIED_MESSAGE, `${message}: exact bounded message`);
+    if (sentinel !== undefined) assert(errorMessage !== undefined && !errorMessage.includes(sentinel), `${message}: message has no sentinel`);
   }
 }
-function noTempSiblings(workspace, directory) {
+function noTempSiblings(workspace: string, directory: string): boolean {
   const entries = readdirSync(join(workspace, directory)).filter((name) => name.startsWith("."));
   return entries.filter((name) => name.endsWith(".tmp") || name.includes(".oaf-")).length === 0;
 }
@@ -63,9 +70,9 @@ try {
   assert(!isAgentWritablePath("oaf/app.json") && !isAgentWritablePath("oaf/nested/path.json"), "path policy keeps every OAF-owned path unwritable");
   assert(isAgentWritablePath("app/source.ts"), "path policy keeps ordinary source writable");
   try { assertAgentReadablePath("app/source.ts", ".env"); assert(false, "read assertion rejects any denied path"); }
-  catch (error) { assert(error instanceof AgentPathDeniedError && error.message === AGENT_PATH_DENIED_MESSAGE, "read assertion keeps bounded error for multiple paths"); }
+  catch (error: unknown) { assert(error instanceof AgentPathDeniedError && error.message === AGENT_PATH_DENIED_MESSAGE, "read assertion keeps bounded error for multiple paths"); }
   try { assertAgentWritablePath("app/source.ts", "oaf/app.json"); assert(false, "write assertion rejects any denied path"); }
-  catch (error) { assert(error instanceof AgentPathDeniedError && error.message === AGENT_PATH_DENIED_MESSAGE, "write assertion keeps bounded error for multiple paths"); }
+  catch (error: unknown) { assert(error instanceof AgentPathDeniedError && error.message === AGENT_PATH_DENIED_MESSAGE, "write assertion keeps bounded error for multiple paths"); }
 
   // Setup: create real denied files and one symlink alias.
   const deniedFiles = [".env", ".env.local", "nested/.envrc", ".npmrc", ".netrc", ".git/config", ".ssh/id_ed25519", "private.pem", "service.key", "oaf/receipts/previous.json", "node_modules/example/index.js"];
@@ -132,13 +139,13 @@ try {
   // Error privacy: no host absolute path in errors.
   for (const path of [".env", "safe-looking.txt", ".env.missing", ".npmrc", "safe-dir/app.json"]) {
     try { await executeRead({ workspaceRoot: workspace, path }); }
-    catch (error) {
+    catch (error: unknown) {
       if (error instanceof AgentPathDeniedError) {
         assert(!error.message.includes(workspace), `error for ${path} contains no workspaceRoot`);
       }
     }
     try { await executeWrite({ workspaceRoot: workspace, path, content: "x" }); }
-    catch (error) {
+    catch (error: unknown) {
       if (error instanceof AgentPathDeniedError) {
         assert(!error.message.includes(workspace), `write error for ${path} contains no workspaceRoot`);
       }
@@ -148,8 +155,8 @@ try {
   // Agent-loop round trip: provider requests protected missing path.
   const sentinelSecret = "LOOP_SENTINEL_SECRET_57";
   let turnCount = 0;
-  const provider = {
-    complete: async () => {
+  const provider: Provider = {
+    async complete(): Promise<unknown> {
       if (turnCount++ === 0) return { content: null, toolCalls: [{ id: "tc1", name: "read", args: { path: ".env.missing" } }] };
       return { content: "done", toolCalls: [] };
     },
@@ -164,17 +171,31 @@ try {
   const receiptDir = join(workspace, "oaf", "receipts");
   const receiptBefore = readdirSync(receiptDir);
   try { await executeWrite({ workspaceRoot: workspace, path: "oaf/receipts/spoof.json", content: "{}" }); }
-  catch (error) { assert(error instanceof AgentPathDeniedError, "model cannot spoof receipt"); }
+  catch (error: unknown) { assert(error instanceof AgentPathDeniedError, "model cannot spoof receipt"); }
   assert(!existsSync(join(workspace, "oaf", "receipts", "spoof.json")), "spoof receipt never created");
-  await writeReceipt({ workspaceRoot: workspace, receipt: buildReceipt({ run: { runId: "receipt_test", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { workspaceRoot: workspace, docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 }, events: [] }, task: "test" }) });
+  const receiptRun: AgentRunResult = {
+    runId: "receipt_test",
+    status: "success",
+    terminalReason: "assistant_terminal",
+    turns: 1,
+    content: null,
+    providerCalls: [],
+    providerAttempts: [],
+    context: { workspaceRoot: workspace, docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 },
+    events: [],
+  };
+  await writeReceipt({ workspaceRoot: workspace, receipt: buildReceipt({ run: receiptRun, task: "test" }) });
   const receiptAfter = readdirSync(receiptDir).filter((name) => !receiptBefore.includes(name));
   assert(receiptAfter.length === 1, "exactly one real receipt created");
   assert(receiptAfter[0].endsWith(".json"), "receipt is JSON file");
 
   // Agent git diff denied before runtime.
   let runtimeCalls = 0;
-  try { await runAgentSandboxCommand({ command: "git diff", cwd: workspace, dependencies: { detectRuntime: () => { runtimeCalls++; return "fake"; } } }); assert(false, "agent git diff is denied"); }
-  catch (error) { assert(error instanceof SandboxError && error.code === "AGENT_COMMAND_DENIED" && runtimeCalls === 0, "agent git diff is denied before runtime"); }
+  const dependencies: SandboxDependencies = {
+    detectRuntime(): string | null { runtimeCalls++; return "fake"; },
+  };
+  try { await runAgentSandboxCommand({ command: "git diff", cwd: workspace, dependencies }); assert(false, "agent git diff is denied"); }
+  catch (error: unknown) { assert(error instanceof SandboxError && error.code === "AGENT_COMMAND_DENIED" && runtimeCalls === 0, "agent git diff is denied before runtime"); }
 } finally { fixture.cleanup(); }
 if (failures) process.exit(1);
 console.log("All agent path-policy checks passed.");

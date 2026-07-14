@@ -13,7 +13,7 @@ import {
    validateReceiptUsage,
 } from "../lib/agent/receipt.ts";
 import { createMockProvider } from "../lib/agent/provider.ts";
-import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 /** @typedef {import("../lib/agent/contracts.ts").ReceiptCheck} ReceiptCheck */
 /** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
 

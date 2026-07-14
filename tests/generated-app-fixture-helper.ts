@@ -16,8 +16,14 @@ export const GENERATED_APP_FIXTURE = resolve(
 // Every retained generated file must match the output of getAppTemplates for
 // FIXTURE_NAME/FIXTURE_CREATED_AT, allowing only one added final newline for
 // checked-in text-file convention. FIXTURE.md is fixture-only documentation.
-/** @type {import("../lib/templates.ts").AppTemplatePath[]} */
-export const FIXTURE_TEMPLATE_PATHS = [
+import type { AppTemplatePath } from "../lib/templates.ts";
+
+export interface GeneratedAppFixture {
+  workspace: string;
+  cleanup(): void;
+}
+
+export const FIXTURE_TEMPLATE_PATHS: AppTemplatePath[] = [
   "README.md",
   "package.json",
   "tsconfig.json",
@@ -53,7 +59,7 @@ export const FIXTURE_TEMPLATE_PATHS = [
   "docs/app.md",
 ];
 
-export function copyGeneratedAppFixture() {
+export function copyGeneratedAppFixture(): GeneratedAppFixture {
   const base = mkdtempSync(join(tmpdir(), "oaf-generated-app-fixture-"));
   const workspace = join(base, "workspace");
   cpSync(GENERATED_APP_FIXTURE, workspace, { recursive: true, force: true });

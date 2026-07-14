@@ -17,7 +17,7 @@ import { join } from "node:path";
 import { executeWrite } from "../lib/agent/tool-execution.ts";
 
 let failures = 0;
-function assert(condition, message) {
+function assert(condition: unknown, message: string): void {
   if (condition) {
     console.log(`PASS  ${message}`);
   } else {
@@ -26,12 +26,19 @@ function assert(condition, message) {
   }
 }
 
-async function rejects(action, pattern, message) {
+function stringProperty(value: unknown, key: "message" | "code"): string | undefined {
+  if (value === null || (typeof value !== "object" && typeof value !== "function") || !(key in value)) return undefined;
+  const property = Reflect.get(value, key);
+  return typeof property === "string" ? property : undefined;
+}
+
+async function rejects(action: () => Promise<unknown>, pattern: RegExp, message: string): Promise<void> {
   try {
     await action();
     assert(false, message);
-  } catch (error) {
-    assert(pattern.test(error.message), message);
+  } catch (error: unknown) {
+    const errorMessage = stringProperty(error, "message");
+    assert(errorMessage !== undefined && pattern.test(errorMessage), message);
   }
 }
 
@@ -136,9 +143,10 @@ try {
       /parent directory resolves outside the workspace through a symlink/,
       "write rejects a symlink parent escape",
     );
-  } catch (error) {
-    if (error.code === "EPERM" || error.code === "EACCES" || error.code === "ENOTSUP") {
-      console.log(`SKIP  symlink write tests unavailable: ${error.code}`);
+  } catch (error: unknown) {
+    const code = stringProperty(error, "code");
+    if (code === "EPERM" || code === "EACCES" || code === "ENOTSUP") {
+      console.log(`SKIP  symlink write tests unavailable: ${code}`);
     } else {
       throw error;
     }
