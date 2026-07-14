@@ -28,7 +28,7 @@ Run the doctor check to verify the skeleton:
 If oaf is not on your PATH in local development, run it directly from the
 OAF repo:
 
-    node <oaf-repo>/bin/oaf.mjs doctor
+    node <oaf-repo>/bin/oaf.ts doctor
 
 ## Notes
 

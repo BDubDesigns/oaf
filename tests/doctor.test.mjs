@@ -6,7 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const binPath = join(root, "bin", "oaf.mjs");
+const binPath = join(root, "bin", "oaf.ts");
 const labels = [
   "oaf/app.json",
   "oaf/stack.json",

@@ -37,10 +37,10 @@ jobs:
       - name: Test all suites
         run: pnpm test
       - name: CLI help
-        run: node bin/oaf.mjs --help
+        run: node bin/oaf.ts --help
       - name: Generated app doctor
         working-directory: tests/fixtures/generated-app
-        run: node ../../../bin/oaf.mjs doctor
+        run: node ../../../bin/oaf.ts doctor
       - name: Native TypeScript smoke
         run: node tests/fixtures/node24-native-ts-smoke.ts
       - name: Verify repository cleanliness and no generated output

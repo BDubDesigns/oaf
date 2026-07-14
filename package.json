@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
-    "oaf": "bin/oaf.mjs"
+    "oaf": "bin/oaf.ts"
   },
   "packageManager": "pnpm@11.5.2",
   "engines": {
@@ -12,7 +12,7 @@
   },
   "scripts": {
     "test": "node scripts/run-tests.mjs",
-    "doctor": "node bin/oaf.mjs doctor",
+    "doctor": "node bin/oaf.ts doctor",
     "typecheck": "node scripts/typecheck-baseline.mjs",
     "typecheck:raw": "tsc --pretty false"
   },
