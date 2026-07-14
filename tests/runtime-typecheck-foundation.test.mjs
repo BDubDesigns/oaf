@@ -19,6 +19,7 @@ const helper = join(root, "tests", "fixtures", "node24-native-ts-smoke-helper.ts
 const providerFixture = join(root, "tests", "fixtures", "provider-native-typescript.ts");
 const toolExecutionFixture = join(root, "tests", "fixtures", "agent-tool-execution-native-typescript.ts");
 const pathToolErrorsFixture = join(root, "tests", "fixtures", "agent-path-tool-errors-native-typescript.ts");
+const commandPolicyFixture = join(root, "tests", "fixtures", "command-policy-native-typescript.ts");
 const fingerprint = `TS9999|Error|tests/example.mjs|${"a".repeat(64)}`;
 let failures = 0;
 
@@ -62,6 +63,8 @@ const providerOutput = execFileSync(process.execPath, [providerFixture], { encod
 assert(providerOutput.trim() === "provider-native-typescript:ok", "native TypeScript provider modules execute with their explicit .ts imports");
 const pathToolErrorsOutput = execFileSync(process.execPath, [pathToolErrorsFixture], { encoding: "utf8" });
 assert(pathToolErrorsOutput.trim() === "agent-path-tool-errors-native-typescript:ok", "native TypeScript path and public tool-error modules execute with their explicit .ts imports");
+const commandPolicyOutput = execFileSync(process.execPath, [commandPolicyFixture], { encoding: "utf8" });
+assert(commandPolicyOutput.trim() === "command-policy-native-typescript:ok", "native TypeScript command policy executes with explicit .ts imports");
 
 const baseline = parseBaseline(readFileSync(join(root, "config", "typecheck-baseline.json"), "utf8"));
 const current = countFingerprints(collectDiagnosticFingerprints());
@@ -114,6 +117,7 @@ const newFiles = new Set([
   providerFixture,
   toolExecutionFixture,
   pathToolErrorsFixture,
+  commandPolicyFixture,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 
