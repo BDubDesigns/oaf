@@ -26,7 +26,7 @@ type ToolResultCandidate = Omit<ToolResultSummary, "write" | "command"> & {
 // from execution trust: repository-controlled package scripts can change
 // their behavior independently of this policy.
 export { CANONICAL_COMMANDS };
-export const COMMAND_MODES = new Set<string>(SANDBOX_MODES);
+export const COMMAND_MODES = new Set<SandboxMode>(SANDBOX_MODES);
 
 export function utf8Bytes(value: unknown): number {
   return typeof value === "string" ? Buffer.byteLength(value, "utf8") : 0;
@@ -99,7 +99,9 @@ function optionalPath(value: unknown): { path?: string } {
 }
 
 function isSandboxMode(value: unknown): value is SandboxMode {
-  return typeof value === "string" && COMMAND_MODES.has(value);
+  // The string guard matches Set.has()'s runtime input domain while retaining
+  // the exported Set's SandboxMode element type for normal TypeScript callers.
+  return typeof value === "string" && COMMAND_MODES.has(value as SandboxMode);
 }
 
 export function summarizeToolCall<Name extends ToolName>(toolName: Name, args: ToolArguments[Name]): ToolCallSummary[Name];
@@ -118,7 +120,9 @@ export function summarizeToolCall(toolName: ToolName, args: unknown): ToolCallSu
 }
 
 function matchPath(match: unknown): unknown {
-  if (match === null || typeof match !== "object") return undefined;
+  if (match === null || match === undefined) return undefined;
+  // JavaScript optional property access applies to every non-nullish value,
+  // including callable objects and boxed primitive values.
   return (match as { path?: unknown }).path;
 }
 

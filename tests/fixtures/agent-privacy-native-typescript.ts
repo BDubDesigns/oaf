@@ -1,4 +1,5 @@
 import {
+  COMMAND_MODES,
   safeCount,
   safeProjectPath,
   summarizeCommand,
@@ -14,6 +15,7 @@ type Assert<Value extends true> = Value;
 type BytesAcceptUnknown = Assert<Equal<typeof utf8Bytes, (value: unknown) => number>>;
 type PathAcceptUnknown = Assert<Equal<typeof safeProjectPath, (value: unknown) => string | null>>;
 type CountAcceptUnknown = Assert<Equal<typeof safeCount, (value: unknown) => number | null>>;
+type CommandModesBounded = Assert<Equal<typeof COMMAND_MODES, Set<SandboxMode>>>;
 
 const readCall = summarizeToolCall("read", { path: "README.md" });
 const listCall = summarizeToolCall("list", { path: "docs", recursive: true });
@@ -53,9 +55,12 @@ if (false) {
   const invalidSuccessfulResult: ToolResultSummary["command"] = commandResult;
   // @ts-expect-error Command modes remain bounded to the sandbox vocabulary.
   const invalidMode: SandboxMode | null = "unsafe";
+  // @ts-expect-error COMMAND_MODES rejects arbitrary additions.
+  COMMAND_MODES.add("unsafe");
+  COMMAND_MODES.add("test");
   void [invalidRedaction, invalidSuccessfulResult, invalidMode];
 }
 
-const proof: [BytesAcceptUnknown, PathAcceptUnknown, CountAcceptUnknown] = [true, true, true];
+const proof: [BytesAcceptUnknown, PathAcceptUnknown, CountAcceptUnknown, CommandModesBounded] = [true, true, true, true];
 void [proof, listCall, writeCall, commandCall, redactedSummary, mode, nullableWriteBytes, nullableExitCode, strictResult];
 process.stdout.write("agent-privacy-native-typescript:ok");
