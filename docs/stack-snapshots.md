@@ -121,7 +121,7 @@ humans see at a glance which snapshot an app is pinned to.
 `config/stack/oaf-stack-0.1.json` is the **single authoritative source** for
 every exact Stack 0.1 value: Node, pnpm, framework, data, app, and testing
 pins, plus the aligned docs-pack ID. It is plain deterministic JSON, status
-`locked`, and validated by `lib/stack-snapshot.mjs` and offline tests.
+`locked`, and validated by `lib/stack-snapshot.ts` and offline tests.
 
 Human-facing rationale, official-source provenance, release-age results, peer
 constraints, and temporary package-resolution probe evidence live in
