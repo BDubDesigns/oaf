@@ -1,36 +1,26 @@
 // Strict event-safe audit schema coverage.
 import { strictEqual, deepEqual, throws } from "node:assert";
 import { AGENT_EVENT_TYPES as typedAgentEventTypes, createEvent, createEventCollector, recordContinuation } from "../lib/agent/events.ts";
+import type { AgentEvent, AgentEventFields } from "../lib/agent/contracts.ts";
 
-/** @type {readonly string[]} */
-const AGENT_EVENT_TYPES = typedAgentEventTypes;
+const AGENT_EVENT_TYPES: readonly string[] = typedAgentEventTypes;
 
 let failures = 0;
-function assert(condition, message) { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
+function assert(condition: unknown, message: string): void { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
 
-/** @returns {import("../lib/agent/contracts.ts").AgentEventFields<"agent_start">} */
-function safeStart() { return { runId: "run_1", taskBytes: 12, taskProvided: true }; }
-/** @returns {import("../lib/agent/contracts.ts").AgentEventFields<"agent_end">} */
-function safeEnd() { return { runId: "run_1", status: "success", turns: 1, terminalReason: "assistant_terminal" }; }
-/** @returns {import("../lib/agent/contracts.ts").AgentEventFields<"message_end">} */
-function safeMessageEnd() { return { turn: 1, disposition: "terminal", contentPresent: true, contentBytes: 4, toolCallCount: 0, errorCode: null }; }
+function safeStart(): AgentEventFields<"agent_start"> { return { runId: "run_1", taskBytes: 12, taskProvided: true }; }
+function safeEnd(): AgentEventFields<"agent_end"> { return { runId: "run_1", status: "success", turns: 1, terminalReason: "assistant_terminal" }; }
+function safeMessageEnd(): AgentEventFields<"message_end"> { return { turn: 1, disposition: "terminal", contentPresent: true, contentBytes: 4, toolCallCount: 0, errorCode: null }; }
 
-/** @param {import("../lib/agent/contracts.ts").AgentEvent} event @returns {event is Extract<import("../lib/agent/contracts.ts").AgentEvent, { type: "tool_call", toolName: "command" }>} */
-function isCommandToolCall(event) { return event.type === "tool_call" && event.toolName === "command"; }
-/** @param {import("../lib/agent/contracts.ts").AgentEvent} event @returns {event is Extract<import("../lib/agent/contracts.ts").AgentEvent, { type: "tool_result", toolName: "read" }>} */
-function isReadToolResult(event) { return event.type === "tool_result" && event.toolName === "read"; }
-/** @param {import("../lib/agent/contracts.ts").AgentEvent} event @returns {event is Extract<import("../lib/agent/contracts.ts").AgentEvent, { type: "tool_result", toolName: "list" }>} */
-function isListToolResult(event) { return event.type === "tool_result" && event.toolName === "list"; }
-/** @param {import("../lib/agent/contracts.ts").AgentEvent} event @returns {event is Extract<import("../lib/agent/contracts.ts").AgentEvent, { type: "tool_result", toolName: "grep" }>} */
-function isGrepToolResult(event) { return event.type === "tool_result" && event.toolName === "grep"; }
-/** @param {import("../lib/agent/contracts.ts").AgentEvent} event @returns {event is Extract<import("../lib/agent/contracts.ts").AgentEvent, { type: "tool_result", toolName: "write" }>} */
-function isWriteToolResult(event) { return event.type === "tool_result" && event.toolName === "write"; }
-/** @param {import("../lib/agent/contracts.ts").AgentEvent} event @returns {event is Extract<import("../lib/agent/contracts.ts").AgentEvent, { type: "tool_result", toolName: "command" }>} */
-function isCommandToolResult(event) { return event.type === "tool_result" && event.toolName === "command"; }
+function isCommandToolCall(event: AgentEvent): event is Extract<AgentEvent, { type: "tool_call"; toolName: "command" }> { return event.type === "tool_call" && event.toolName === "command"; }
+function isReadToolResult(event: AgentEvent): event is Extract<AgentEvent, { type: "tool_result"; toolName: "read" }> { return event.type === "tool_result" && event.toolName === "read"; }
+function isListToolResult(event: AgentEvent): event is Extract<AgentEvent, { type: "tool_result"; toolName: "list" }> { return event.type === "tool_result" && event.toolName === "list"; }
+function isGrepToolResult(event: AgentEvent): event is Extract<AgentEvent, { type: "tool_result"; toolName: "grep" }> { return event.type === "tool_result" && event.toolName === "grep"; }
+function isWriteToolResult(event: AgentEvent): event is Extract<AgentEvent, { type: "tool_result"; toolName: "write" }> { return event.type === "tool_result" && event.toolName === "write"; }
+function isCommandToolResult(event: AgentEvent): event is Extract<AgentEvent, { type: "tool_result"; toolName: "command" }> { return event.type === "tool_result" && event.toolName === "command"; }
 
 // Runtime schema tests intentionally pass invalid JavaScript values.
-/** @param {unknown} type @param {unknown} fields */
-function callCreateEventWithInvalidRuntimeInput(type, fields) { return Reflect.apply(createEvent, undefined, [type, fields]); }
+function callCreateEventWithInvalidRuntimeInput(type: unknown, fields: unknown): unknown { return Reflect.apply(createEvent, undefined, [type, fields]); }
 
 assert(AGENT_EVENT_TYPES.length === 10, "exactly 10 AgentEvent types defined");
 for (const type of ["agent_start", "turn_start", "message_start", "message_end", "tool_call", "tool_execution_start", "tool_execution_end", "tool_result", "receipt_emitted", "agent_end"]) assert(AGENT_EVENT_TYPES.includes(type), `type present: ${type}`);

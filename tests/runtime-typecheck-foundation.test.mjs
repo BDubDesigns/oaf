@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   collectDiagnosticFingerprints,
@@ -12,6 +12,7 @@ import {
   validateBaseline,
   verifyBaseline,
 } from "../scripts/typecheck-baseline.mjs";
+import { getTestFiles } from "../scripts/run-tests.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = join(root, "tests", "fixtures", "node24-native-ts-smoke.ts");
@@ -29,6 +30,10 @@ const templatesFixture = join(root, "tests", "fixtures", "templates-native-types
 const doctorFixture = join(root, "tests", "fixtures", "doctor-native-typescript.ts");
 const doctorModule = join(root, "lib", "doctor.ts");
 const binary = join(root, "bin", "oaf.ts");
+const runner = join(root, "scripts", "run-tests.ts");
+const agentContractsTest = join(root, "tests", "agent-contracts.test.ts");
+const agentEventsTest = join(root, "tests", "agent-events.test.ts");
+const agentToolsTest = join(root, "tests", "agent-tools.test.ts");
 const usage = `OAF — Opinionated App Factory (Alpha 0)
 
 Usage:
@@ -99,6 +104,33 @@ const binaryOutput = execFileSync(process.execPath, [binary, "--help"], { encodi
 assert(binaryOutput === usage, "Node directly executes the TypeScript binary with exact deterministic usage output");
 assert(!existsSync(join(root, "bin", "oaf.js")) && !existsSync(join(root, "bin", "oaf.js.map")), "binary execution emits no JavaScript or source map");
 
+const agentContractsOutput = execFileSync(process.execPath, [agentContractsTest], { encoding: "utf8" });
+assert(agentContractsOutput.trim() === "All agent contract checks passed.", "native TypeScript agent contract suite executes directly");
+const agentEventsOutput = execFileSync(process.execPath, [agentEventsTest], { encoding: "utf8" });
+assert(agentEventsOutput.endsWith("\nAll agent-event checks passed.\n"), "native TypeScript agent event suite executes directly");
+const agentToolsOutput = execFileSync(process.execPath, [agentToolsTest], { encoding: "utf8" });
+assert(agentToolsOutput.endsWith("\nAll agent-tools checks passed.\n"), "native TypeScript agent tool-registry suite executes directly");
+assert(
+  ![runner, agentContractsTest, agentEventsTest, agentToolsTest].some((file) => existsSync(file.replace(/\.ts$/, ".js")) || existsSync(file.replace(/\.ts$/, ".js.map"))),
+  "native TypeScript runner and agent suites emit no JavaScript or source maps",
+);
+
+const discoveryRoot = mkdtempSync(join(tmpdir(), "oaf-test-discovery-"));
+try {
+  const discoveryTests = join(discoveryRoot, "tests");
+  mkdirSync(join(discoveryTests, "nested"), { recursive: true });
+  for (const name of ["zeta.test.mjs", "alpha.test.ts", "ignored.test.js", "ignored.test.mts", "ignored.test.cts", "ignored.test.tsx", "contains.test.name", "fixture.ts"]) {
+    writeFileSync(join(discoveryTests, name), "");
+  }
+  writeFileSync(join(discoveryTests, "nested", "nested.test.ts"), "");
+  assert(
+    JSON.stringify(getTestFiles(discoveryRoot).map((file) => basename(file))) === JSON.stringify(["alpha.test.ts", "zeta.test.mjs"]),
+    "runner directly imports from TypeScript and discovers sorted top-level .test.mjs and .test.ts files only",
+  );
+} finally {
+  rmSync(discoveryRoot, { recursive: true, force: true });
+}
+
 const baseline = parseBaseline(readFileSync(join(root, "config", "typecheck-baseline.json"), "utf8"));
 const current = countFingerprints(collectDiagnosticFingerprints());
 assert(existsSync(join(root, "config", "typecheck-baseline.json")), "machine-readable typecheck baseline exists");
@@ -160,6 +192,10 @@ const newFiles = new Set([
   doctorFixture,
   doctorModule,
   binary,
+  runner,
+  agentContractsTest,
+  agentEventsTest,
+  agentToolsTest,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 

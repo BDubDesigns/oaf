@@ -2,9 +2,10 @@
 // Uses only Node built-ins; no third-party dependencies.
 import { strictEqual, deepEqual, ok, throws, doesNotThrow } from "node:assert";
 import { getToolDefinition, TOOLS, TOOL_NAMES } from "../lib/agent/tools.ts";
+import type { ToolName } from "../lib/agent/contracts.ts";
 
 let failures = 0;
-function assert(cond, msg) {
+function assert(cond: unknown, msg: string): void {
   if (cond) {
     console.log(`PASS  ${msg}`);
   } else {
@@ -14,7 +15,7 @@ function assert(cond, msg) {
 }
 
 // 1. registry exports the expected fixed tool names (no discovery)
-const EXPECTED = ["read", "list", "grep", "write", "command"];
+const EXPECTED: readonly ToolName[] = ["read", "list", "grep", "write", "command"];
 deepEqual(TOOL_NAMES, EXPECTED, "registry exports exactly the 5 fixed tools");
 deepEqual(Object.keys(TOOLS), EXPECTED, "TOOLS keys match the fixed set");
 
@@ -65,13 +66,23 @@ for (const name of ["read", "list", "grep"]) {
 strictEqual(TOOLS.write.mutates, true, "write is mutating");
 strictEqual(TOOLS.write.filesystem, "write", "write touches the filesystem");
 
+function serializedTool(value: unknown, name: ToolName): { requiresSandbox: boolean; argsSchema: object } {
+  if (value !== null && typeof value === "object" && name in value) {
+    const tool: unknown = Reflect.get(value, name);
+    if (tool !== null && typeof tool === "object" && "requiresSandbox" in tool && typeof tool.requiresSandbox === "boolean" && "argsSchema" in tool && tool.argsSchema !== null && typeof tool.argsSchema === "object") {
+      return { requiresSandbox: tool.requiresSandbox, argsSchema: tool.argsSchema };
+    }
+  }
+  throw new Error("Serialized registry metadata is invalid.");
+}
+
 // 7. schemas are plain objects and JSON-serializable
-let serialized;
+let serialized: unknown;
 doesNotThrow(() => {
   serialized = JSON.parse(JSON.stringify(TOOLS));
 }, "registry is JSON-serializable");
-strictEqual(serialized.command.requiresSandbox, true, "serialized registry keeps metadata");
-strictEqual(typeof serialized.read.argsSchema, "object", "serialized argsSchema stays an object");
+strictEqual(serializedTool(serialized, "command").requiresSandbox, true, "serialized registry keeps metadata");
+strictEqual(typeof serializedTool(serialized, "read").argsSchema, "object", "serialized argsSchema stays an object");
 
 // 8. mutating tools are exactly write + command
 const mutating = EXPECTED.filter((name) => getToolDefinition(name)?.mutates);
