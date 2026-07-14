@@ -15,12 +15,19 @@ function assert(condition: unknown, message: string): void {
   }
 }
 
+function stringProperty(value: unknown, key: "message" | "code"): string | undefined {
+  if (value === null || (typeof value !== "object" && typeof value !== "function") || !(key in value)) return undefined;
+  const property = Reflect.get(value, key);
+  return typeof property === "string" ? property : undefined;
+}
+
 async function rejects(action: () => Promise<unknown>, pattern: RegExp, message: string): Promise<void> {
   try {
     await action();
     assert(false, message);
   } catch (error: unknown) {
-    assert(error instanceof Error && pattern.test(error.message), message);
+    const errorMessage = stringProperty(error, "message");
+    assert(errorMessage !== undefined && pattern.test(errorMessage), message);
   }
 }
 
@@ -135,7 +142,7 @@ try {
       "grep rejects symlink escape",
     );
   } catch (error: unknown) {
-    const code = error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
+    const code = stringProperty(error, "code");
     if (code === "EPERM" || code === "EACCES" || code === "ENOTSUP") {
       console.log(`SKIP  symlink escape test unavailable: ${code}`);
     } else {

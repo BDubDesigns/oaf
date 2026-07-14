@@ -19,18 +19,18 @@ import type { AgentRunResult, Provider, SandboxDependencies } from "../lib/agent
 
 let failures = 0;
 function assert(ok: unknown, message: string): void { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
+function stringProperty(value: unknown, key: "message" | "code"): string | undefined {
+  if (value === null || (typeof value !== "object" && typeof value !== "function") || !(key in value)) return undefined;
+  const property = Reflect.get(value, key);
+  return typeof property === "string" ? property : undefined;
+}
 async function denied(action: () => Promise<unknown>, message: string, sentinel?: string): Promise<void> {
   try { await action(); assert(false, message); }
   catch (error: unknown) {
-    if (error instanceof AgentPathDeniedError) {
-      assert(true, `${message}: is AgentPathDeniedError`);
-      assert(error.message === AGENT_PATH_DENIED_MESSAGE, `${message}: exact bounded message`);
-      if (sentinel !== undefined) assert(!error.message.includes(sentinel), `${message}: message has no sentinel`);
-    } else {
-      assert(false, `${message}: is AgentPathDeniedError`);
-      assert(false, `${message}: exact bounded message`);
-      if (sentinel !== undefined) assert(false, `${message}: message has no sentinel`);
-    }
+    const errorMessage = stringProperty(error, "message");
+    assert(error instanceof AgentPathDeniedError, `${message}: is AgentPathDeniedError`);
+    assert(errorMessage === AGENT_PATH_DENIED_MESSAGE, `${message}: exact bounded message`);
+    if (sentinel !== undefined) assert(errorMessage !== undefined && !errorMessage.includes(sentinel), `${message}: message has no sentinel`);
   }
 }
 function noTempSiblings(workspace: string, directory: string): boolean {
