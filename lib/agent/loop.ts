@@ -14,7 +14,7 @@ import { TOOL_NAMES, getToolDefinition } from "./tools.ts";
 import { createEvent, createEventCollector } from "./events.ts";
 import { loadAgentContext } from "./context.ts";
 import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure, validateProviderCall } from "./provider.ts";
-import { summarizeToolCall, summarizeToolResult, utf8Bytes } from "./privacy.mjs";
+import { summarizeToolCall, summarizeToolResult, utf8Bytes } from "./privacy.ts";
 import { AgentToolError, publicToolError } from "./tool-errors.ts";
 import {
   executeRead,
@@ -414,7 +414,7 @@ async function runAgentLoopImpl(options: unknown): Promise<AgentRunResult> {
       const providerId = typeof callObject?.id === "string" && callObject.id.length > 0 ? callObject.id : `call_${turn}_${index + 1}`;
       const auditId = `tool_${turn}_${index + 1}`;
 
-      collector.record(createRuntimeEvent("tool_call", { toolCallId: auditId, toolName: auditToolName, summary: summarizeToolCall(auditToolName, callObject?.args) }));
+      collector.record(createRuntimeEvent("tool_call", { toolCallId: auditId, toolName: auditToolName, summary: auditToolName === null ? {} : summarizeToolCall(auditToolName, callObject?.args) }));
 
       // Unknown or malformed tool name: recorded and rejected before any
       // executor runs. No tool_execution_start/end is emitted for this.

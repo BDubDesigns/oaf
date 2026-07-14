@@ -1,7 +1,7 @@
 // Strict, JSON-serializable safe audit events. Raw task/model/tool data is
 // deliberately excluded; the loop keeps it only in ephemeral conversation state.
 
-import { safeProjectPath, validateCommandSummary } from "./privacy.mjs";
+import { safeProjectPath, validateCommandSummary } from "./privacy.ts";
 import { TOOL_NAMES } from "./tools.ts";
 import {
   AGENT_EVENT_TYPES as AGENT_EVENT_TYPE_VALUES,

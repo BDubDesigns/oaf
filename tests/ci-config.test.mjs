@@ -16,6 +16,7 @@ const EXPECTED_TESTS = [
   "tests/agent-events.test.mjs",
   "tests/agent-loop.test.mjs",
   "tests/agent-path-policy.test.mjs",
+  "tests/agent-privacy.test.mjs",
   "tests/agent-public-tool-errors.test.mjs",
   "tests/agent-read-tools.test.mjs",
   "tests/agent-receipt.test.mjs",
