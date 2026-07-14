@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
-import { sanitizeTerminal, usageFrom } from "../lib/agent/cli.mjs";
+import { parseAgentConfig, sanitizeTerminal, usageFrom } from "../lib/agent/cli.ts";
 
 let failures = 0;
 function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
@@ -22,18 +22,38 @@ async function scenario(responder, callback) {
 }
 const sanitized = sanitizeTerminal("\x1b[31mRED\x1b[0m\x1b]title\x07\0x\by\rz\n\tok");
 assert(sanitized === "REDxyz\n\tok", "terminal sanitizer strips CSI, OSC, controls, and CR");
+assert(sanitizeTerminal(null) === "" && sanitizeTerminal(undefined) === "", "terminal sanitizer converts nullish values to empty text");
+assert(sanitizeTerminal("a".repeat(8192)) === "a".repeat(8192), "terminal sanitizer preserves exactly 8192 UTF-8 bytes without a marker");
+assert(sanitizeTerminal("a".repeat(8193)) === `${"a".repeat(8192 - Buffer.byteLength("\n[response truncated]", "utf8"))}\n[response truncated]`, "terminal sanitizer appends the exact marker when content exceeds the limit");
+assert(sanitizeTerminal({ toString: () => "converted" }) === "converted", "terminal sanitizer preserves String conversion behavior");
 const unicode = sanitizeTerminal("a".repeat(8190) + "€😀");
 assert(Buffer.byteLength(unicode, "utf8") <= 8192 && unicode.endsWith("[response truncated]"), "terminal sanitizer truncates at Unicode boundary within final byte limit");
+const configSecret = "AGENT_CLI_CONFIG_SECRET";
+const configEnvironment = { OAF_PROVIDER: "openai-compatible", OAF_PROVIDER_BASE_URL: " https://example.test/base ", OAF_MODEL: " model/name ", OAF_API_KEY_ENV: "AGENT_CLI_CONFIG_KEY", AGENT_CLI_CONFIG_KEY: configSecret };
+const ordinaryConfig = parseAgentConfig(configEnvironment);
+const nullPrototypeConfig = parseAgentConfig(Object.assign(Object.create(null), configEnvironment));
+const inheritedConfig = parseAgentConfig(Object.create(configEnvironment));
+const oneTurnConfig = parseAgentConfig({ ...configEnvironment, OAF_MAX_TURNS: "1" });
+const sixteenTurnConfig = parseAgentConfig({ ...configEnvironment, OAF_MAX_TURNS: "16" });
+assert(ordinaryConfig.baseUrl === configEnvironment.OAF_PROVIDER_BASE_URL && ordinaryConfig.model === configEnvironment.OAF_MODEL && ordinaryConfig.apiKeyEnv === "AGENT_CLI_CONFIG_KEY" && ordinaryConfig.maxTurns === 8 && !Object.values(ordinaryConfig).includes(configSecret), "parseAgentConfig preserves validated ordinary-record values without the API key");
+assert(nullPrototypeConfig.maxTurns === 8 && inheritedConfig.maxTurns === 8 && oneTurnConfig.maxTurns === 1 && sixteenTurnConfig.maxTurns === 16, "parseAgentConfig accepts null-prototype and inherited environments with exact turn limits");
 const usageFailure = usageFrom({ turns: 1, providerCalls: [] }, { model: " test/model " });
 assert(usageFailure.calls === 1 && usageFailure.tokensIn === null && usageFailure.tokensOut === null && usageFailure.model === "test/model", "usage counts failed attempts without fabricated tokens");
-for (const [calls, expectedIn, expectedOut, label] of [
+/** @type {[{ usage: { inputTokens: number | null, outputTokens: number | null } }[], number | null, number | null, string][]} */
+const usageCases = [
   [[{ usage: { inputTokens: 1, outputTokens: Number.MAX_SAFE_INTEGER } }, { usage: { inputTokens: 1, outputTokens: 1 } }], 2, null, "valid input with overflowing output"],
   [[{ usage: { inputTokens: Number.MAX_SAFE_INTEGER, outputTokens: 1 } }, { usage: { inputTokens: 1, outputTokens: 1 } }], null, 2, "overflowing input with valid output"],
   [[{ usage: { inputTokens: null, outputTokens: 1 } }], null, 1, "invalid input with valid output"],
   [[{ usage: { inputTokens: 1, outputTokens: null } }], 1, null, "valid input with invalid output"],
-]) { const usage = usageFrom({ turns: calls.length, providerCalls: calls }, { model: "test/model" }); assert(usage.calls === calls.length && usage.tokensIn === expectedIn && usage.tokensOut === expectedOut, `usageFrom ${label}`); }
+];
+for (const [calls, expectedIn, expectedOut, label] of usageCases) { const usage = usageFrom({ turns: calls.length, providerCalls: calls }, { model: "test/model" }); assert(usage.calls === calls.length && usage.tokensIn === expectedIn && usage.tokensOut === expectedOut, `usageFrom ${label}`); }
 const missingCallUsage = usageFrom({ turns: 2, providerCalls: [{ usage: { inputTokens: 1, outputTokens: 1 } }] }, { model: "test/model" });
 assert(missingCallUsage.calls === 2 && missingCallUsage.tokensIn === null && missingCallUsage.tokensOut === null, "usageFrom missing providerCall nulls independent totals");
+const negativeUsage = usageFrom({ turns: 1, providerCalls: [{ usage: { inputTokens: -1, outputTokens: 1 } }] }, { model: "test/model" });
+const fractionalUsage = usageFrom({ turns: 1, providerCalls: [{ usage: { inputTokens: 1, outputTokens: 1.5 } }] }, { model: "test/model" });
+const unsafeUsage = usageFrom({ turns: 1, providerCalls: [{ usage: { inputTokens: Number.MAX_SAFE_INTEGER + 1, outputTokens: 1 } }] }, { model: "test/model" });
+const missingUsage = usageFrom({ turns: 1, providerCalls: [{}] }, { model: "test/model" });
+assert(negativeUsage.tokensIn === null && negativeUsage.tokensOut === 1 && fractionalUsage.tokensIn === 1 && fractionalUsage.tokensOut === null && unsafeUsage.tokensIn === null && unsafeUsage.tokensOut === 1 && missingUsage.tokensIn === null && missingUsage.tokensOut === null, "usageFrom rejects invalid token values independently without fabricating totals");
 const fixture = copyGeneratedAppFixture();
 const secret = "OAF_CLI_SECRET_SENTINEL";
 let calls = 0;
