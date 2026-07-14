@@ -7,7 +7,7 @@ import { publicToolError, PUBLIC_TOOL_ERRORS } from "../lib/agent/tool-errors.ts
 import { getToolDefinition, TOOLS } from "../lib/agent/tools.ts";
 import { buildReceipt, RECEIPT_SCHEMA_VERSION } from "../lib/agent/receipt.ts";
 import { DIAGNOSTICS_DIR, normalizeDiagnosticSchema } from "../lib/agent/diagnostics.ts";
-import { SANDBOX_MODES as SANDBOX_RUNTIME_MODES } from "../lib/sandbox.mjs";
+import { SANDBOX_MODES as SANDBOX_RUNTIME_MODES } from "../lib/sandbox.ts";
 
 deepEqual(TOOL_NAMES, ["read", "list", "grep", "write", "command"], "tool vocabulary remains ordered and canonical");
 deepEqual(SANDBOX_MODES, ["plan", "edit", "test", "browser", "install", "research"], "sandbox vocabulary remains canonical");

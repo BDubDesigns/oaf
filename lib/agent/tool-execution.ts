@@ -9,7 +9,7 @@ import { chmod, lstat, readdir, readFile, realpath, rename, stat, unlink, writeF
 import { randomUUID } from "node:crypto";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep, win32 } from "node:path";
 import type { Dirent } from "node:fs";
-import { runAgentSandboxCommand, SANDBOX_MODES } from "../sandbox.mjs";
+import { runAgentSandboxCommand, SANDBOX_MODES } from "../sandbox.ts";
 import { assertAgentReadablePath, assertAgentWritablePath, shouldHideFromAgentTraversal } from "./path-policy.ts";
 import { AgentToolError } from "./tool-errors.ts";
 import type { AgentSandboxCommandOptions, SandboxExecutionResult, ToolExecutorInput, ToolExecutorMap, ToolExecutorResults } from "./contracts.ts";

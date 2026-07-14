@@ -133,12 +133,12 @@ issue-ready. Numbers are suggested and can be renumbered at creation time.
 
 ### Issue A1-4 — Implement sandbox-routed command tool
 - **Scope:** The `bash`/command tool whose `execute` calls `oaf sandbox run`
-  (reuse `lib/sandbox.mjs`). Passes through `--network`/`--confirm` only when
+  (reuse `lib/sandbox.ts`). Passes through `--network`/`--confirm` only when
   policy allows. Returns exit code + captured output.
 - **Acceptance:** `lib/agent/tools/bash.mjs` invokes the sandbox; tests assert
   allowed commands run, confirmation/network-gated commands fail closed, and
   nothing escapes the workspace. Reuses existing sandbox tests' patterns.
-- **Non-goals:** new sandbox policy; changing `lib/sandbox.mjs` behavior.
+- **Non-goals:** new sandbox policy; changing `lib/sandbox.ts` behavior.
 
 ### Issue A1-5 — Implement minimal model-call loop with one provider seam
 - **Scope:** A loop that (1) builds context from a prompt + docs-pack +

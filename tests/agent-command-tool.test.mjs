@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCommandExecutor, executeCommand } from "../lib/agent/tool-execution.ts";
-import { SandboxError } from "../lib/sandbox.mjs";
+import { SandboxError } from "../lib/sandbox.ts";
 
 let failures = 0;
 function assert(condition, message) {

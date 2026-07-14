@@ -2,7 +2,7 @@
 // is required: policy failures occur before runtime discovery.
 import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildContainerRun, createVerificationWorkspace, runAgentSandboxCommand, runHumanSandboxCommand, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.mjs";
+import { buildContainerRun, createVerificationWorkspace, runAgentSandboxCommand, runHumanSandboxCommand, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.ts";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
@@ -91,7 +91,7 @@ try {
   const gitArgv = buildContainerRun("docker", { command: "git status", cwd: fixture.workspace, readOnly: true });
   assert(gitArgv.includes(`${fixture.workspace}:/workspace:ro`), "git inspection mount is read-only");
 
-  await rejects(() => runSandboxCommand({ command: "pnpm test", cwd: fixture.workspace }), "INVALID_ORIGIN", "omitted generic origin fails closed");
+  await rejects(() => Reflect.apply(runSandboxCommand, undefined, [{ command: "pnpm test", cwd: fixture.workspace }]), "INVALID_ORIGIN", "omitted generic origin fails closed");
   let invalidCalls = 0;
   const invalidDependencies = { detectRuntime: () => { invalidCalls++; return "fake"; }, runContainer: async () => { invalidCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
   for (const key of ["approvalGranted", "networkGranted", "origin", "confirm", "network", "unknown"]) {
@@ -140,7 +140,7 @@ try {
   await runAgentSandboxCommand({ command: "git status", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd, argv }) => { gitCwd = cwd; assert(argv.includes(`${fixture.workspace}:/workspace:ro`) && argv[argv.indexOf("--network") + 1] === "none", "git runner uses authoritative read-only mount"); return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } } });
   assert(gitCwd === fixture.workspace, "git inspection creates no disposable workspace");
   const stdout = []; const stderr = [];
-  await runHumanSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, onStdout: (data) => stdout.push(String(data)), onStderr: (data) => stderr.push(String(data)), dependencies: { detectRuntime: () => "fake", runContainer: async ({ onStdout, onStderr }) => { onStdout("stdout"); onStderr("stderr"); return { exitCode: 0, stdout: "stdout", stderr: "stderr", truncated: false }; } } });
+  await runHumanSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, onStdout: (data) => stdout.push(String(data)), onStderr: (data) => stderr.push(String(data)), dependencies: { detectRuntime: () => "fake", runContainer: async ({ onStdout, onStderr }) => { onStdout?.(Buffer.from("stdout")); onStderr?.(Buffer.from("stderr")); return { exitCode: 0, stdout: "stdout", stderr: "stderr", truncated: false }; } } });
   assert(stdout.join("") === "stdout" && stderr.join("") === "stderr", "human stdout and stderr callbacks route once");
 } finally { fixture.cleanup(); }
 

@@ -12,7 +12,7 @@ import {
   shouldHideFromAgentTraversal,
 } from "../lib/agent/path-policy.ts";
 import { runAgentLoop } from "../lib/agent/loop.ts";
-import { runAgentSandboxCommand, SandboxError } from "../lib/sandbox.mjs";
+import { runAgentSandboxCommand, SandboxError } from "../lib/sandbox.ts";
 import { buildReceipt, writeReceipt } from "../lib/agent/receipt.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 
