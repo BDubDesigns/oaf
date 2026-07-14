@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, writeFileSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, isAbsolute } from "node:path";
 import { getAppTemplates } from "../lib/templates.ts";
-import { checkApp } from "../lib/doctor.mjs";
+import { checkApp } from "../lib/doctor.ts";
 import { runSandbox, sandboxStatus } from "../lib/sandbox.ts";
 import { runAgentCli } from "../lib/agent/cli.ts";
 
