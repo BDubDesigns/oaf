@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createCommandExecutor, executeCommand } from "../lib/agent/tool-execution.mjs";
+import { createCommandExecutor, executeCommand } from "../lib/agent/tool-execution.ts";
 import { SandboxError } from "../lib/sandbox.mjs";
 
 let failures = 0;
@@ -115,7 +115,7 @@ try {
   assert(failedRunnerCalls === 1, "failed sandbox seam is called exactly once");
 
   // 7. The agent tool module never imports or calls a direct process API.
-  const toolSource = readFileSync(join(repoRoot, "lib", "agent", "tool-execution.mjs"), "utf8");
+  const toolSource = readFileSync(join(repoRoot, "lib", "agent", "tool-execution.ts"), "utf8");
   assert(
     !/(node:child_process|\bspawn(?:Sync)?\s*\(|\bexec(?:File|Sync|FileSync)?\s*\()/.test(toolSource),
     "agent command tool adds no direct process-execution API",

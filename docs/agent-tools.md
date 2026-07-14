@@ -68,7 +68,7 @@ any more than `command` can.
 
 ## In-process file execution (issues #29, #36)
 
-`lib/agent/tool-execution.mjs` implements the `read`, `list`, `grep`, and
+`lib/agent/tool-execution.ts` implements the `read`, `list`, `grep`, and
 `write` tool bodies. Each requires an explicit `workspaceRoot` supplied by
 OAF's future loop; it is execution context, not an agent-visible tool argument.
 The module uses Node built-ins only and never executes a shell command or

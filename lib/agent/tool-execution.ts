@@ -1,0 +1,322 @@
+// In-process execution for Alpha 1's workspace-bounded agent file tools.
+//
+// These tools are deliberately separate from lib/agent/tools.ts, which is
+// the metadata-only registry. All functions require an explicit workspaceRoot
+// and use Node built-ins only; none execute shell commands or access the
+// network.
+
+import { chmod, lstat, readdir, readFile, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep, win32 } from "node:path";
+import type { Dirent } from "node:fs";
+import { runAgentSandboxCommand, SANDBOX_MODES } from "../sandbox.mjs";
+import { assertAgentReadablePath, assertAgentWritablePath, shouldHideFromAgentTraversal } from "./path-policy.mjs";
+import { AgentToolError } from "./tool-errors.mjs";
+import type { AgentSandboxCommandOptions, SandboxExecutionResult, ToolExecutorInput, ToolExecutorMap, ToolExecutorResults } from "./contracts.ts";
+
+type WorkspacePath = { root: string; target: string; path: string };
+type WriteDestination = { root: string; parent: string; destination: string; path: string; resolvedRelative: string };
+type DirectoryEntry = ToolExecutorResults["list"]["entries"][number];
+type SandboxRunner = (options: AgentSandboxCommandOptions) => Promise<SandboxExecutionResult>;
+
+// Internal receipt/diagnostic writes intentionally bypass agent path policy.
+export interface TrustedWorkspaceFileWrite {
+  workspaceRoot: string;
+  path: string;
+  content: string;
+}
+
+export type TrustedWorkspaceFileWriteResult = ToolExecutorResults["write"];
+
+function hasErrorCode(error: unknown, code: string): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === code;
+}
+
+function isInsideWorkspace(workspaceRoot: string, target: string): boolean {
+  const pathFromRoot = relative(workspaceRoot, target);
+  return pathFromRoot === "" || (pathFromRoot !== ".." && !pathFromRoot.startsWith(`..${sep}`) && !isAbsolute(pathFromRoot));
+}
+
+function outputPath(workspaceRoot: string, target: string): string {
+  return (relative(workspaceRoot, target) || ".").split(sep).join("/");
+}
+
+function validateProjectPath(path: string): void {
+  if (typeof path !== "string" || path.length === 0) throw new AgentToolError("INVALID_TOOL_ARGUMENTS");
+  if (isAbsolute(path) || win32.isAbsolute(path)) throw new AgentToolError("PATH_OUTSIDE_WORKSPACE");
+  if (path.split(/[\\/]+/).includes("..")) throw new AgentToolError("PATH_OUTSIDE_WORKSPACE");
+}
+
+async function resolveWorkspaceRoot(workspaceRoot: string): Promise<string> {
+  if (typeof workspaceRoot !== "string" || workspaceRoot.length === 0) throw new Error("workspaceRoot is required");
+  const root = await realpath(workspaceRoot);
+  if (!(await stat(root)).isDirectory()) throw new Error("workspaceRoot must be a directory");
+  return root;
+}
+
+async function normalizeRequestedPath(workspaceRoot: string, path: string): Promise<{ root: string; requested: string; normalized: string }> {
+  const root = await resolveWorkspaceRoot(workspaceRoot);
+  validateProjectPath(path);
+  const requested = resolve(root, path);
+  if (!isInsideWorkspace(root, requested)) throw new AgentToolError("PATH_OUTSIDE_WORKSPACE");
+  const normalized = outputPath(root, requested);
+  assertAgentReadablePath(normalized);
+  return { root, requested, normalized };
+}
+
+async function resolveWorkspacePath(workspaceRoot: string, path: string): Promise<WorkspacePath> {
+  const { root, requested, normalized } = await normalizeRequestedPath(workspaceRoot, path);
+  // realpath follows links before the boundary check, so a link to /tmp (or
+  // any other parent/external path) cannot be used to escape the project.
+  const target = await realpath(requested);
+  if (!isInsideWorkspace(root, target)) throw new AgentToolError("PATH_OUTSIDE_WORKSPACE");
+  // Protect against safe-looking aliases whose real target is denied.
+  assertAgentReadablePath(outputPath(root, target));
+  return { root, target, path: normalized };
+}
+
+async function resolveWriteDestination(workspaceRoot: string, path: string): Promise<WriteDestination> {
+  const root = await resolveWorkspaceRoot(workspaceRoot);
+  validateProjectPath(path);
+  const requested = resolve(root, path);
+  if (!isInsideWorkspace(root, requested)) throw new Error("path resolves outside the workspace");
+  const requestedRelative = outputPath(root, requested);
+  let parent: string;
+  try {
+    parent = await realpath(dirname(requested));
+  } catch (error: unknown) {
+    if (hasErrorCode(error, "ENOENT")) throw new Error("parent directory does not exist");
+    throw error;
+  }
+  // New files cannot be realpathed yet. Validate the real parent first, then
+  // construct the destination beneath that verified directory.
+  if (!isInsideWorkspace(root, parent)) throw new Error("parent directory resolves outside the workspace through a symlink");
+  if (!(await stat(parent)).isDirectory()) throw new Error("parent path must be a directory");
+  const destination = join(parent, basename(requested));
+  return { root, parent, destination, path: requestedRelative, resolvedRelative: outputPath(root, destination) };
+}
+
+async function verifyExistingWriteDestination(destination: string, workspaceRoot: string): Promise<number | undefined> {
+  try {
+    const destinationStat = await lstat(destination);
+    if (destinationStat.isSymbolicLink()) throw new Error("write does not allow symlink destinations");
+    if (!destinationStat.isFile()) throw new Error("write requires a regular file destination");
+    if (!isInsideWorkspace(workspaceRoot, await realpath(destination))) throw new Error("destination resolves outside the workspace");
+    // Preserve the existing permission mode when its inode is atomically
+    // replaced below. Strip only the file-type bits before chmod.
+    return destinationStat.mode & 0o7777;
+  } catch (error: unknown) {
+    if (hasErrorCode(error, "ENOENT")) return undefined;
+    throw error;
+  }
+}
+
+async function writeAtomically(parent: string, destination: string, content: string, existingMode: number | undefined): Promise<void> {
+  let temporary = "";
+  let temporaryCreated = false;
+  try {
+    // A UUID collision is exceptionally unlikely; retry a few times so the
+    // temporary name is still exclusive if one does occur.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      temporary = join(parent, `.${basename(destination)}.oaf-${randomUUID()}.tmp`);
+      try {
+        await writeFile(temporary, content, { encoding: "utf8", flag: "wx" });
+        temporaryCreated = true;
+        if (existingMode !== undefined) await chmod(temporary, existingMode);
+        break;
+      } catch (error: unknown) {
+        if (!hasErrorCode(error, "EEXIST") || attempt === 2) throw error;
+      }
+    }
+    await rename(temporary, destination);
+    temporaryCreated = false;
+  } finally {
+    if (temporaryCreated) await unlink(temporary).catch(() => {});
+  }
+}
+
+function validateLineNumber(value: number | undefined, name: string): void {
+  if (value !== undefined && (!Number.isInteger(value) || value < 1)) throw new AgentToolError("INVALID_LINE_RANGE");
+  void name;
+}
+
+function linesFrom(content: string): string[] {
+  const lines = content.split(/\r?\n/);
+  if (content.endsWith("\n")) lines.pop();
+  return lines;
+}
+
+// Read a UTF-8 file inside workspaceRoot. Line ranges are 1-based and
+// inclusive. A full read preserves file contents; a range normalizes line
+// endings to \n in its returned slice.
+export async function executeRead({ workspaceRoot, path, startLine, endLine }: ToolExecutorInput<"read">): Promise<ToolExecutorResults["read"]> {
+  validateLineNumber(startLine, "startLine");
+  validateLineNumber(endLine, "endLine");
+  if (startLine !== undefined && endLine !== undefined && endLine < startLine) throw new AgentToolError("INVALID_LINE_RANGE");
+  let resolved: WorkspacePath;
+  try {
+    resolved = await resolveWorkspacePath(workspaceRoot, path);
+  } catch (error: unknown) {
+    if (hasErrorCode(error, "ENOENT")) throw new AgentToolError("PATH_NOT_FOUND", error);
+    throw error;
+  }
+  if (!(await stat(resolved.target)).isFile()) throw new AgentToolError("NOT_A_FILE");
+  const content = await readFile(resolved.target, "utf8");
+  if (startLine === undefined && endLine === undefined) return { path: resolved.path, content, truncated: false };
+  const lines = linesFrom(content);
+  const first = startLine ?? 1;
+  if (first > lines.length) throw new AgentToolError("INVALID_LINE_RANGE");
+  const last = Math.min(endLine ?? lines.length, lines.length);
+  return { path: resolved.path, content: lines.slice(first - 1, last).join("\n"), truncated: first > 1 || last < lines.length };
+}
+
+// Write a complete UTF-8 file for trusted OAF-owned code. Agent-facing writes
+// use executeWrite below, which additionally enforces the agent path policy.
+export async function writeWorkspaceFile({ workspaceRoot, path, content }: TrustedWorkspaceFileWrite): Promise<TrustedWorkspaceFileWriteResult> {
+  if (typeof content !== "string") throw new Error("content must be a string");
+  const resolved = await resolveWriteDestination(workspaceRoot, path);
+  const existingMode = await verifyExistingWriteDestination(resolved.destination, resolved.root);
+  await writeAtomically(resolved.parent, resolved.destination, content, existingMode);
+  return { path: resolved.path, bytes: Buffer.byteLength(content, "utf8") };
+}
+
+export async function executeWrite({ workspaceRoot, path, content }: ToolExecutorInput<"write">): Promise<ToolExecutorResults["write"]> {
+  if (typeof content !== "string") throw new Error("content must be a string");
+  const resolved = await resolveWriteDestination(workspaceRoot, path);
+  assertAgentWritablePath(resolved.path, resolved.resolvedRelative);
+  const existingMode = await verifyExistingWriteDestination(resolved.destination, resolved.root);
+  await writeAtomically(resolved.parent, resolved.destination, content, existingMode);
+  return { path: resolved.path, bytes: Buffer.byteLength(content, "utf8") };
+}
+
+// Factory is a narrow dependency-injection seam for focused tests. Production
+// code uses the exported executeCommand below, which is permanently bound to
+// the shared OAF sandbox runner. The model never supplies this dependency.
+export function createCommandExecutor({ sandboxRunner = runAgentSandboxCommand }: { sandboxRunner?: SandboxRunner } = {}): ToolExecutorMap["command"] {
+  if (typeof sandboxRunner !== "function") throw new Error("sandboxRunner must be a function");
+  return async function executeCommand(input: ToolExecutorInput<"command">): Promise<ToolExecutorResults["command"]> {
+    if (input === null || typeof input !== "object" || Array.isArray(input)) throw new Error("command input must be an object");
+    for (const key of Object.keys(input)) {
+      if (!new Set(["workspaceRoot", "command", "mode"]).has(key)) throw new Error(`command received unexpected argument: ${key}`);
+    }
+    const { workspaceRoot, command, mode } = input;
+    const root = await resolveWorkspaceRoot(workspaceRoot);
+    if (typeof command !== "string" || command.trim().length === 0) throw new Error("command must be a non-empty string");
+    if (mode !== undefined && !SANDBOX_MODES.includes(mode)) throw new Error(`unknown sandbox mode: ${mode}`);
+    // This is the only process-execution boundary available to the agent. The
+    // shared runner evaluates policy and starts the locked-down container; no
+    // local shell or fallback execution path exists in this module.
+    const result = await sandboxRunner({ command: command.trim(), mode, cwd: root });
+    return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr, truncated: result.truncated };
+  };
+}
+
+export const executeCommand: ToolExecutorMap["command"] = createCommandExecutor();
+
+function entryType(entry: Dirent): DirectoryEntry["type"] {
+  if (entry.isFile()) return "file";
+  if (entry.isDirectory()) return "directory";
+  return "other";
+}
+
+async function listDirectory(directory: string, recursive: boolean, base = directory, root = base): Promise<DirectoryEntry[]> {
+  const dirents = await readdir(directory, { withFileTypes: true });
+  dirents.sort((left, right) => left.name.localeCompare(right.name));
+  const entries: DirectoryEntry[] = [];
+  for (const entry of dirents) {
+    const entryPath = resolve(directory, entry.name);
+    if (shouldHideFromAgentTraversal(outputPath(root, entryPath))) continue;
+    entries.push({ name: outputPath(base, entryPath), type: entryType(entry) });
+    // Do not follow directory symlinks during recursive listing. A direct
+    // requested symlink is checked by resolveWorkspacePath; nested links stay
+    // visible as "other" but are never traversed.
+    if (recursive && entry.isDirectory()) entries.push(...(await listDirectory(entryPath, true, base, root)));
+  }
+  return entries;
+}
+
+// List a directory inside workspaceRoot. Recursive results use paths relative
+// to the requested directory. Symlinks are not followed while walking.
+export async function executeList({ workspaceRoot, path, recursive = false }: ToolExecutorInput<"list">): Promise<ToolExecutorResults["list"]> {
+  if (typeof recursive !== "boolean") throw new Error("recursive must be a boolean");
+  let resolved: WorkspacePath;
+  try {
+    resolved = await resolveWorkspacePath(workspaceRoot, path);
+  } catch (error: unknown) {
+    if (hasErrorCode(error, "ENOENT")) throw new AgentToolError("PATH_NOT_FOUND", error);
+    throw error;
+  }
+  if (!(await stat(resolved.target)).isDirectory()) throw new AgentToolError("NOT_A_DIRECTORY");
+  return { path: resolved.path, entries: await listDirectory(resolved.target, recursive, resolved.target, resolved.root) };
+}
+
+function globToRegExp(glob: string): RegExp {
+  let source = "^";
+  for (let index = 0; index < glob.length; index++) {
+    const character = glob[index];
+    if (character === "*") {
+      if (glob[index + 1] === "*") {
+        index++;
+        if (glob[index + 1] === "/") {
+          index++;
+          source += "(?:.*/)?";
+        } else {
+          source += ".*";
+        }
+      } else {
+        source += "[^/]*";
+      }
+    } else if (character === "?") {
+      source += "[^/]";
+    } else {
+      source += character.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+    }
+  }
+  return new RegExp(`${source}$`);
+}
+
+async function collectFiles(target: string, root: string): Promise<string[]> {
+  const targetStat = await stat(target);
+  if (targetStat.isFile()) return shouldHideFromAgentTraversal(outputPath(root, target)) ? [] : [target];
+  if (!targetStat.isDirectory()) return [];
+  const files: string[] = [];
+  const dirents = await readdir(target, { withFileTypes: true });
+  dirents.sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of dirents) {
+    const entryPath = resolve(target, entry.name);
+    if (shouldHideFromAgentTraversal(outputPath(root, entryPath))) continue;
+    if (entry.isFile()) files.push(entryPath);
+    else if (entry.isDirectory()) files.push(...(await collectFiles(entryPath, root)));
+    // Symlinks and non-regular files are intentionally skipped. This avoids
+    // walking links that could escape the workspace during a recursive search.
+  }
+  return files;
+}
+
+// Search a regular file or every UTF-8 text file below a directory for a plain
+// substring. `glob`, when supplied, uses a small *, ?, ** matcher against
+// workspace-relative paths. Files containing a NUL byte are skipped. No shell
+// command is used.
+export async function executeGrep({ workspaceRoot, pattern, path = ".", glob }: ToolExecutorInput<"grep">): Promise<ToolExecutorResults["grep"]> {
+  if (typeof pattern !== "string" || pattern.length === 0) throw new Error("pattern must be a non-empty string");
+  if (glob !== undefined && typeof glob !== "string") throw new Error("glob must be a string");
+  let resolved: WorkspacePath;
+  try {
+    resolved = await resolveWorkspacePath(workspaceRoot, path);
+  } catch (error: unknown) {
+    if (hasErrorCode(error, "ENOENT")) throw new AgentToolError("PATH_NOT_FOUND", error);
+    throw error;
+  }
+  const matcher = glob === undefined ? null : globToRegExp(glob);
+  const matches: ToolExecutorResults["grep"]["matches"] = [];
+  for (const file of await collectFiles(resolved.target, resolved.root)) {
+    const relativePath = outputPath(resolved.root, file);
+    if (matcher !== null && !matcher.test(relativePath)) continue;
+    const content = await readFile(file, "utf8");
+    if (content.includes("\0")) continue;
+    for (const [index, text] of linesFrom(content).entries()) {
+      if (text.includes(pattern)) matches.push({ path: relativePath, line: index + 1, text });
+    }
+  }
+  return { matches };
+}
