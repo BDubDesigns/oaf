@@ -76,12 +76,16 @@ export function usageFrom(run: AgentCliUsageRun, config: Pick<AgentCliConfig, "m
   return { provider: "openai-compatible", model: config.model.trim(), runMode: "agent", calls: run.turns, tokensIn: sum("inputTokens"), tokensOut: sum("outputTokens") };
 }
 
-function isReceiptWriteFailure(error: unknown): error is { code: "RECEIPT_WRITE_FAILED" } {
-  return error !== null && typeof error === "object" && "code" in error && error.code === "RECEIPT_WRITE_FAILED";
+function isPropertyBearing(error: unknown): error is { code?: unknown; diagnostic?: unknown } {
+  return error !== null && (typeof error === "object" || typeof error === "function");
 }
 
-function hasDiagnostic(error: unknown): error is { diagnostic: unknown } {
-  return error !== null && typeof error === "object" && "diagnostic" in error && Boolean(error.diagnostic);
+function isReceiptWriteFailure(error: unknown): error is { code: "RECEIPT_WRITE_FAILED"; diagnostic?: unknown } {
+  return isPropertyBearing(error) && error.code === "RECEIPT_WRITE_FAILED";
+}
+
+function hasDiagnostic(error: { diagnostic?: unknown }): error is { diagnostic: unknown } {
+  return Boolean(error.diagnostic);
 }
 
 function providerErrorMessage(outcome: ProviderAttemptOutcome | undefined, httpStatus: number | undefined): string {
