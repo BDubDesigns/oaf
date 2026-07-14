@@ -24,6 +24,7 @@ const EXPECTED_TESTS = [
   "tests/agent-write-tool.test.mjs",
   "tests/ci-config.test.mjs",
   "tests/command-policy.test.mjs",
+  "tests/doctor.test.mjs",
   "tests/generated-app-fixture.test.mjs",
   "tests/oaf-init.test.mjs",
   "tests/openai-compatible-provider.test.mjs",

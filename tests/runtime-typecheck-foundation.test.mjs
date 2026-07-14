@@ -26,6 +26,8 @@ const privacyFixture = join(root, "tests", "fixtures", "agent-privacy-native-typ
 const cliFixture = join(root, "tests", "fixtures", "agent-cli-native-typescript.ts");
 const stackSnapshotFixture = join(root, "tests", "fixtures", "stack-snapshot-native-typescript.ts");
 const templatesFixture = join(root, "tests", "fixtures", "templates-native-typescript.ts");
+const doctorFixture = join(root, "tests", "fixtures", "doctor-native-typescript.ts");
+const doctorModule = join(root, "lib", "doctor.ts");
 const fingerprint = `TS9999|Error|tests/example.mjs|${"a".repeat(64)}`;
 let failures = 0;
 
@@ -83,6 +85,8 @@ const stackSnapshotOutput = execFileSync(process.execPath, [stackSnapshotFixture
 assert(stackSnapshotOutput.trim() === "stack-snapshot-native-typescript:ok", "native TypeScript stack snapshot executes with explicit .ts imports");
 const templatesOutput = execFileSync(process.execPath, [templatesFixture], { encoding: "utf8" });
 assert(templatesOutput.trim() === "templates-native-typescript:ok", "native TypeScript templates execute with explicit .ts imports");
+const doctorOutput = execFileSync(process.execPath, [doctorFixture], { encoding: "utf8" });
+assert(doctorOutput.trim() === "doctor-native-typescript:ok", "native TypeScript doctor executes with its explicit .ts import");
 
 const baseline = parseBaseline(readFileSync(join(root, "config", "typecheck-baseline.json"), "utf8"));
 const current = countFingerprints(collectDiagnosticFingerprints());
@@ -142,6 +146,8 @@ const newFiles = new Set([
   cliFixture,
   stackSnapshotFixture,
   templatesFixture,
+  doctorFixture,
+  doctorModule,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 
