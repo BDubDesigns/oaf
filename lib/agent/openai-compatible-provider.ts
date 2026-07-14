@@ -1,6 +1,6 @@
 import { type JsonObject, type NormalizedProviderRequest, type NormalizedProviderResponse, type ProviderCallMetadata, type ToolErrorCode } from "./contracts.ts";
 import { MAX_MODEL_IDENTIFIER_LENGTH, normalizeProviderIdentifier, ProviderFailure, validateProviderCall } from "./provider.ts";
-import { PUBLIC_TOOL_ERRORS } from "./tool-errors.mjs";
+import { PUBLIC_TOOL_ERRORS } from "./tool-errors.ts";
 
 const CHAT_COMPLETIONS_PATH = "/chat/completions";
 const DEFAULT_TIMEOUT_MS = 30_000;

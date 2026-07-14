@@ -15,7 +15,7 @@ import { createEvent, createEventCollector } from "./events.ts";
 import { loadAgentContext } from "./context.mjs";
 import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure, validateProviderCall } from "./provider.ts";
 import { summarizeToolCall, summarizeToolResult, utf8Bytes } from "./privacy.mjs";
-import { AgentToolError, publicToolError } from "./tool-errors.mjs";
+import { AgentToolError, publicToolError } from "./tool-errors.ts";
 import {
   executeRead,
   executeWrite,
