@@ -11,7 +11,7 @@ import {
   RECEIPT_SCHEMA_VERSION,
    OAF_VERSION,
    validateReceiptUsage,
-} from "../lib/agent/receipt.mjs";
+} from "../lib/agent/receipt.ts";
 import { createMockProvider } from "../lib/agent/provider.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
 /** @typedef {import("../lib/agent/contracts.ts").ReceiptCheck} ReceiptCheck */
@@ -117,7 +117,7 @@ try {
   // 4b. HONESTY FIX: an unreadable/invalid oafVersion becomes null with a warning.
   {
     const receipt = buildReceipt({
-      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, context: { docsPack: {} }, events: [] },
+      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { documents: [], docsPack: {} }, events: [] },
       task: "x",
       oafVersion: null,
     });
@@ -125,7 +125,7 @@ try {
     assert(receipt.warnings.some((w) => /oafVersion/i.test(w)), "a warning records the missing oafVersion");
 
     const invalid = buildReceipt({
-      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, context: { docsPack: {} }, events: [] },
+      run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: null, providerCalls: [], providerAttempts: [], context: { documents: [], docsPack: {} }, events: [] },
       task: "x",
       oafVersion: "1.2.3garbage",
     });
@@ -295,7 +295,9 @@ try {
         terminalReason: "assistant_terminal",
         turns: 1,
         content: "ignored",
-        context: { docsPack: {} },
+        providerCalls: [],
+        providerAttempts: [],
+        context: { documents: [], docsPack: {} },
         events: [{ type: "tool_call", toolCallId: "missing", toolName: "read", summary: { path: "README.md" }, seq: 1, ts: "2000-01-01T00:00:00.000Z" }],
       },
       task: "x",
@@ -391,7 +393,7 @@ try {
       let threw = false;
       try {
         await writeReceipt({ workspaceRoot: wsLink, receipt: buildReceipt({
-          run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: "x", context: { docsPack: {} }, events: [] },
+          run: { runId: "r", status: "success", terminalReason: "assistant_terminal", turns: 1, content: "x", providerCalls: [], providerAttempts: [], context: { documents: [], docsPack: {} }, events: [] },
           task: "x",
         }) });
       } catch {
@@ -458,7 +460,7 @@ try {
   {
     const workspace = withFixture();
     let threw = false;
-    try { await runAgentLoopWithReceipt({ task: "hi", workspaceRoot: workspace, provider: createMockProvider({ script: [{ content: "ok", toolCalls: [] }] }), receiptUsage: false }); } catch { threw = true; }
+    try { await Reflect.apply(runAgentLoopWithReceipt, undefined, [{ task: "hi", workspaceRoot: workspace, provider: createMockProvider({ script: [{ content: "ok", toolCalls: [] }] }), receiptUsage: false }]); } catch { threw = true; }
     assert(threw && readdirSync(join(workspace, "oaf", "receipts")).filter((name) => name.endsWith(".json")).length === 0, "malformed supplied usage rejects before receipt writing");
   }
 } finally {
