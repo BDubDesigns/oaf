@@ -50,6 +50,14 @@ export interface StackSnapshot {
   testing: StackTesting;
 }
 
+type ValidatedSectionShapes = Record<string, unknown> & {
+  runtime: Record<"node" | "pnpm", unknown>;
+  framework: Record<"next" | "react" | "reactDom" | "typescript", unknown>;
+  data: Record<"postgresImage" | "drizzleOrm" | "drizzleKit" | "pg", unknown>;
+  app: Record<"betterAuth" | "zod" | "tailwindcss" | "tailwindPostcss", unknown>;
+  testing: Record<"vitest" | "playwright", unknown>;
+};
+
 const SNAPSHOT_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../config/stack/oaf-stack-0.1.json");
 const TOP_LEVEL_KEYS = ["id", "status", "verifiedAt", "docsPack", "runtime", "framework", "data", "app", "testing"];
 const REQUIRED_SECTIONS = {
@@ -83,8 +91,8 @@ function validateSection(section: string, value: unknown, keys: readonly string[
   return value;
 }
 
-function assertValidatedSnapshot(value: Record<string, unknown>): asserts value is StackSnapshot & Record<string, unknown> {
-  // The preceding validation phases establish the complete static contract.
+function assertValidatedSectionShapes(value: Record<string, unknown>): asserts value is ValidatedSectionShapes {
+  // The preceding section-shape phase established these keys with unknown values.
 }
 
 function assertValidStackSnapshot(snapshot: unknown): asserts snapshot is StackSnapshot {
@@ -106,7 +114,7 @@ function assertValidStackSnapshot(snapshot: unknown): asserts snapshot is StackS
   for (const [section, keys] of Object.entries(REQUIRED_SECTIONS)) {
     validateSection(section, snapshot[section], keys);
   }
-  assertValidatedSnapshot(snapshot);
+  assertValidatedSectionShapes(snapshot);
 
   assertExactVersion(snapshot.runtime.node, "runtime.node");
   assertExactVersion(snapshot.runtime.pnpm, "runtime.pnpm");
