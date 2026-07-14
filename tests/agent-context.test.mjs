@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadAgentContext } from "../lib/agent/context.ts";
-import { copyGeneratedAppFixture, GENERATED_APP_FIXTURE } from "./generated-app-fixture-helper.mjs";
+import { copyGeneratedAppFixture, GENERATED_APP_FIXTURE } from "./generated-app-fixture-helper.ts";
 
 let failures = 0;
 function assert(condition, message) {

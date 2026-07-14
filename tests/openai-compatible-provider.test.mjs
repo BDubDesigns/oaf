@@ -8,7 +8,7 @@ import {
 } from "../lib/agent/openai-compatible-provider.ts";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { buildToolProtocol, ProviderFailure } from "../lib/agent/provider.ts";
-import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 /** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */
 /** @typedef {import("../lib/agent/contracts.ts").ProviderMessage} ProviderMessage */
 /** @typedef {import("../lib/agent/contracts.ts").ProviderToolDefinition} ProviderToolDefinition */

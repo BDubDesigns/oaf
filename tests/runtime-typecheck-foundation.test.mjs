@@ -13,6 +13,7 @@ import {
   verifyBaseline,
 } from "../scripts/typecheck-baseline.mjs";
 import { getTestFiles } from "../scripts/run-tests.ts";
+import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = join(root, "tests", "fixtures", "node24-native-ts-smoke.ts");
@@ -34,6 +35,11 @@ const runner = join(root, "scripts", "run-tests.ts");
 const agentContractsTest = join(root, "tests", "agent-contracts.test.ts");
 const agentEventsTest = join(root, "tests", "agent-events.test.ts");
 const agentToolsTest = join(root, "tests", "agent-tools.test.ts");
+const generatedAppFixtureHelper = join(root, "tests", "generated-app-fixture-helper.ts");
+const agentReadToolsTest = join(root, "tests", "agent-read-tools.test.ts");
+const agentWriteToolTest = join(root, "tests", "agent-write-tool.test.ts");
+const agentPathPolicyTest = join(root, "tests", "agent-path-policy.test.ts");
+const agentPublicToolErrorsTest = join(root, "tests", "agent-public-tool-errors.test.ts");
 const usage = `OAF — Opinionated App Factory (Alpha 0)
 
 Usage:
@@ -100,6 +106,14 @@ const templatesOutput = execFileSync(process.execPath, [templatesFixture], { enc
 assert(templatesOutput.trim() === "templates-native-typescript:ok", "native TypeScript templates execute with explicit .ts imports");
 const doctorOutput = execFileSync(process.execPath, [doctorFixture], { encoding: "utf8" });
 assert(doctorOutput.trim() === "doctor-native-typescript:ok", "native TypeScript doctor executes with its explicit .ts import");
+const copiedFixture = copyGeneratedAppFixture();
+try {
+  assert(existsSync(copiedFixture.workspace), "native TypeScript fixture helper creates a fresh workspace");
+  assert(existsSync(join(copiedFixture.workspace, "oaf", "app.json")), "native TypeScript fixture helper imports directly and copies canonical files");
+} finally {
+  copiedFixture.cleanup();
+}
+assert(!existsSync(copiedFixture.workspace), "native TypeScript fixture helper cleanup removes its workspace");
 const binaryOutput = execFileSync(process.execPath, [binary, "--help"], { encoding: "utf8" });
 assert(binaryOutput === usage, "Node directly executes the TypeScript binary with exact deterministic usage output");
 assert(!existsSync(join(root, "bin", "oaf.js")) && !existsSync(join(root, "bin", "oaf.js.map")), "binary execution emits no JavaScript or source map");
@@ -110,8 +124,26 @@ const agentEventsOutput = execFileSync(process.execPath, [agentEventsTest], { en
 assert(agentEventsOutput.endsWith("\nAll agent-event checks passed.\n"), "native TypeScript agent event suite executes directly");
 const agentToolsOutput = execFileSync(process.execPath, [agentToolsTest], { encoding: "utf8" });
 assert(agentToolsOutput.endsWith("\nAll agent-tools checks passed.\n"), "native TypeScript agent tool-registry suite executes directly");
+const agentReadToolsOutput = execFileSync(process.execPath, [agentReadToolsTest], { encoding: "utf8" });
+assert(agentReadToolsOutput.endsWith("\nAll agent read-tool checks passed.\n"), "native TypeScript agent read-tool suite executes directly");
+const agentWriteToolOutput = execFileSync(process.execPath, [agentWriteToolTest], { encoding: "utf8" });
+assert(agentWriteToolOutput.endsWith("\nAll agent write-tool checks passed.\n"), "native TypeScript agent write-tool suite executes directly");
+const agentPathPolicyOutput = execFileSync(process.execPath, [agentPathPolicyTest], { encoding: "utf8" });
+assert(agentPathPolicyOutput.endsWith("All agent path-policy checks passed.\n"), "native TypeScript agent path-policy suite executes directly");
+const agentPublicToolErrorsOutput = execFileSync(process.execPath, [agentPublicToolErrorsTest], { encoding: "utf8" });
+assert(agentPublicToolErrorsOutput.endsWith("All public tool-error checks passed.\n"), "native TypeScript public tool-error suite executes directly");
 assert(
-  ![runner, agentContractsTest, agentEventsTest, agentToolsTest].some((file) => existsSync(file.replace(/\.ts$/, ".js")) || existsSync(file.replace(/\.ts$/, ".js.map"))),
+  ![
+    runner,
+    agentContractsTest,
+    agentEventsTest,
+    agentToolsTest,
+    generatedAppFixtureHelper,
+    agentReadToolsTest,
+    agentWriteToolTest,
+    agentPathPolicyTest,
+    agentPublicToolErrorsTest,
+  ].some((file) => existsSync(file.replace(/\.ts$/, ".js")) || existsSync(file.replace(/\.ts$/, ".js.map"))),
   "native TypeScript runner and agent suites emit no JavaScript or source maps",
 );
 
@@ -196,6 +228,11 @@ const newFiles = new Set([
   agentContractsTest,
   agentEventsTest,
   agentToolsTest,
+  generatedAppFixtureHelper,
+  agentReadToolsTest,
+  agentWriteToolTest,
+  agentPathPolicyTest,
+  agentPublicToolErrorsTest,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 

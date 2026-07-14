@@ -1,21 +1,40 @@
-import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.mjs";
+import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { AgentToolError, PUBLIC_TOOL_ERRORS, publicToolError } from "../lib/agent/tool-errors.ts";
+import type {
+  AgentRunResult,
+  NormalizedProviderRequest,
+  NormalizedProviderToolCall,
+  Provider,
+  ProviderToolResult,
+  ToolExecutorMap,
+} from "../lib/agent/contracts.ts";
 
 let failures = 0;
-function assert(ok, message) { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
-async function roundTrip(call, executor) {
-  const fixture = copyGeneratedAppFixture(); let request;
+function assert(ok: unknown, message: string): void { if (ok) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
+function errorMessage(result: ProviderToolResult | undefined): string | undefined { return result !== undefined && "error" in result ? result.error : undefined; }
+async function roundTrip(
+  call: NormalizedProviderToolCall,
+  executor?: ToolExecutorMap["command"],
+): Promise<{ run: AgentRunResult; request: NormalizedProviderRequest; workspace: string }> {
+  const fixture = copyGeneratedAppFixture();
+  let capturedRequest: NormalizedProviderRequest | undefined;
   try {
     let count = 0;
-    const provider = { complete: async (value) => { request = value; return count++ === 0 ? { content: null, toolCalls: [call] } : { content: "done", toolCalls: [] }; } };
+    const provider: Provider = {
+      async complete(request: NormalizedProviderRequest): Promise<unknown> {
+        capturedRequest = request;
+        return count++ === 0 ? { content: null, toolCalls: [call] } : { content: "done", toolCalls: [] };
+      },
+    };
     const run = await runAgentLoop({ task: "test", workspaceRoot: fixture.workspace, oafRoot: process.cwd(), provider, commandExecutor: executor });
-    return { run, request, workspace: fixture.workspace };
+    if (capturedRequest === undefined) throw new Error("provider request was not captured");
+    return { run, request: capturedRequest, workspace: fixture.workspace };
   } finally { fixture.cleanup(); }
 }
 const missing = await roundTrip({ id: "missing_1", name: "read", args: { path: "app/does-not-exist.ts" } });
 const missingResult = missing.request.messages.find((message) => message.role === "tool")?.toolResults?.[0];
-assert(missingResult?.error === "requested path does not exist" && !JSON.stringify(missing.request).includes(missing.workspace), "missing read sends bounded no-path failure");
+assert(errorMessage(missingResult) === "requested path does not exist" && !JSON.stringify(missing.request).includes(missing.workspace), "missing read sends bounded no-path failure");
 for (const output of [
   publicToolError(new AgentToolError("AGENT_PATH_DENIED")),
   publicToolError(new AgentToolError("PATH_NOT_FOUND")),
@@ -43,9 +62,9 @@ assert(publicToolError({ code: "BOGUS" }).code === "TOOL_EXECUTION_FAILED", "for
 const sentinels = "/ABS_SENTINEL API_KEY_SENTINEL Authorization: Bearer SECRET";
 const unexpected = await roundTrip({ id: "throw_1", name: "command", args: { command: "pnpm test" } }, async () => { throw new Error(sentinels); });
 const unexpectedResult = unexpected.request.messages.find((message) => message.role === "tool")?.toolResults?.[0];
-assert(unexpectedResult?.error === "tool execution failed" && !JSON.stringify(unexpected.request).includes("SENTINEL") && !JSON.stringify(unexpected.run.events).includes("SENTINEL"), "unexpected executor message never reaches provider or events");
+assert(errorMessage(unexpectedResult) === "tool execution failed" && !JSON.stringify(unexpected.request).includes("SENTINEL") && !JSON.stringify(unexpected.run.events).includes("SENTINEL"), "unexpected executor message never reaches provider or events");
 const bypass = await roundTrip({ id: "bypass_1", name: "command", args: { command: "pnpm test" } }, async () => { throw Reflect.construct(AgentToolError, ["/ABS API_KEY Authorization", "SENTINEL"]); });
 const bypassResult = bypass.request.messages.find((message) => message.role === "tool")?.toolResults?.[0];
-assert(bypassResult?.error === "tool execution failed" && !JSON.stringify(bypass.request).includes("SENTINEL"), "bogus public error code falls back to fixed generic failure");
+assert(errorMessage(bypassResult) === "tool execution failed" && !JSON.stringify(bypass.request).includes("SENTINEL"), "bogus public error code falls back to fixed generic failure");
 if (failures) process.exit(1);
 console.log("All public tool-error checks passed.");

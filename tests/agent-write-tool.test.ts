@@ -17,7 +17,7 @@ import { join } from "node:path";
 import { executeWrite } from "../lib/agent/tool-execution.ts";
 
 let failures = 0;
-function assert(condition, message) {
+function assert(condition: unknown, message: string): void {
   if (condition) {
     console.log(`PASS  ${message}`);
   } else {
@@ -26,12 +26,12 @@ function assert(condition, message) {
   }
 }
 
-async function rejects(action, pattern, message) {
+async function rejects(action: () => Promise<unknown>, pattern: RegExp, message: string): Promise<void> {
   try {
     await action();
     assert(false, message);
-  } catch (error) {
-    assert(pattern.test(error.message), message);
+  } catch (error: unknown) {
+    assert(error instanceof Error && pattern.test(error.message), message);
   }
 }
 
@@ -136,9 +136,10 @@ try {
       /parent directory resolves outside the workspace through a symlink/,
       "write rejects a symlink parent escape",
     );
-  } catch (error) {
-    if (error.code === "EPERM" || error.code === "EACCES" || error.code === "ENOTSUP") {
-      console.log(`SKIP  symlink write tests unavailable: ${error.code}`);
+  } catch (error: unknown) {
+    const code = error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : undefined;
+    if (code === "EPERM" || code === "EACCES" || code === "ENOTSUP") {
+      console.log(`SKIP  symlink write tests unavailable: ${code}`);
     } else {
       throw error;
     }
