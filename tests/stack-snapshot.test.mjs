@@ -148,6 +148,66 @@ const inheritedSection = validSnapshot();
 inheritedSection.runtime = inheritedRuntime;
 assert(validateStackSnapshot(inheritedSection) === inheritedSection, "inherited section required keys are accepted when enumerable own-key count matches");
 
+// Accessors and Proxies retain the original repeated direct section reads.
+/** @type {Record<string, number>} */
+const accessorCounts = { runtime: 0, framework: 0, data: 0, app: 0, testing: 0 };
+const accessorSnapshot = validSnapshot();
+for (const section of Object.keys(accessorCounts)) {
+  const value = accessorSnapshot[section];
+  Object.defineProperty(accessorSnapshot, section, {
+    enumerable: true,
+    get() {
+      accessorCounts[section]++;
+      return value;
+    },
+  });
+}
+assert(validateStackSnapshot(accessorSnapshot) === accessorSnapshot, "stable section accessors are accepted");
+assert(accessorCounts.runtime === 3, "runtime accessor is read exactly 3 times");
+assert(accessorCounts.framework === 7, "framework accessor is read exactly 7 times");
+assert(accessorCounts.data === 6, "data accessor is read exactly 6 times");
+assert(accessorCounts.app === 5, "app accessor is read exactly 5 times");
+assert(accessorCounts.testing === 3, "testing accessor is read exactly 3 times");
+let changingRuntimeReads = 0;
+const changingRuntime = validSnapshot();
+const validRuntime = changingRuntime.runtime;
+Object.defineProperty(changingRuntime, "runtime", {
+  enumerable: true,
+  get() {
+    changingRuntimeReads++;
+    return changingRuntimeReads === 1 ? validRuntime : { ...validRuntime, node: "^24.15.0" };
+  },
+});
+throws(() => validateStackSnapshot(changingRuntime), "runtime getter values are re-read after section validation", "runtime.node must be an exact stable version");
+const laterReadError = new Error("runtime getter later read");
+let throwingRuntimeReads = 0;
+const throwingRuntime = validSnapshot();
+const throwingRuntimeValue = throwingRuntime.runtime;
+Object.defineProperty(throwingRuntime, "runtime", {
+  enumerable: true,
+  get() {
+    throwingRuntimeReads++;
+    if (throwingRuntimeReads === 2) throw laterReadError;
+    return throwingRuntimeValue;
+  },
+});
+try {
+  validateStackSnapshot(throwingRuntime);
+  assert(false, "getter exception during a later component read propagates");
+} catch (error) {
+  assert(error === laterReadError, "getter exception during a later component read propagates");
+}
+/** @type {Record<string, number>} */
+const proxyCounts = { runtime: 0, framework: 0, data: 0, app: 0, testing: 0 };
+const proxySnapshot = new Proxy(validSnapshot(), {
+  get(target, property, receiver) {
+    if (typeof property === "string" && Object.hasOwn(proxyCounts, property)) proxyCounts[property]++;
+    return Reflect.get(target, property, receiver);
+  },
+});
+assert(validateStackSnapshot(proxySnapshot) === proxySnapshot, "section Proxy is accepted");
+assert(JSON.stringify(proxyCounts) === JSON.stringify(accessorCounts), "Proxy get trap observes repeated direct section reads");
+
 // Version, image, and cross-field validation retain their exact expressions.
 const versionCases = [["1.2.3", true], ["^1.2.3", false], ["~1.2.3", false], ["1.2.*", false], ["1.2.3-rc.1", false], [" 1.2.3 ", false], [1, false]];
 for (const [value, accepted] of versionCases) {

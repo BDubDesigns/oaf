@@ -83,6 +83,10 @@ function validateSection(section: string, value: unknown, keys: readonly string[
   return value;
 }
 
+function assertValidatedSnapshot(value: Record<string, unknown>): asserts value is StackSnapshot & Record<string, unknown> {
+  // The preceding validation phases establish the complete static contract.
+}
+
 function assertValidStackSnapshot(snapshot: unknown): asserts snapshot is StackSnapshot {
   if (!hasExactKeys(snapshot, TOP_LEVEL_KEYS)) {
     throw new Error("stack snapshot has unknown, missing, or malformed top-level sections");
@@ -99,20 +103,30 @@ function assertValidStackSnapshot(snapshot: unknown): asserts snapshot is StackS
     throw new Error("stack snapshot verifiedAt is not a real date");
   }
 
-  const sections = Object.fromEntries(
-    Object.entries(REQUIRED_SECTIONS).map(([section, keys]) => [section, validateSection(section, snapshot[section], keys)]),
-  );
-
   for (const [section, keys] of Object.entries(REQUIRED_SECTIONS)) {
-    for (const key of keys) {
-      if (section === "data" && key === "postgresImage") continue;
-      assertExactVersion(sections[section][key], `${section}.${key}`);
-    }
+    validateSection(section, snapshot[section], keys);
   }
-  if (typeof sections.data.postgresImage !== "string" || !POSTGRES_IMAGE.test(sections.data.postgresImage)) {
+  assertValidatedSnapshot(snapshot);
+
+  assertExactVersion(snapshot.runtime.node, "runtime.node");
+  assertExactVersion(snapshot.runtime.pnpm, "runtime.pnpm");
+  assertExactVersion(snapshot.framework.next, "framework.next");
+  assertExactVersion(snapshot.framework.react, "framework.react");
+  assertExactVersion(snapshot.framework.reactDom, "framework.reactDom");
+  assertExactVersion(snapshot.framework.typescript, "framework.typescript");
+  assertExactVersion(snapshot.data.drizzleOrm, "data.drizzleOrm");
+  assertExactVersion(snapshot.data.drizzleKit, "data.drizzleKit");
+  assertExactVersion(snapshot.data.pg, "data.pg");
+  assertExactVersion(snapshot.app.betterAuth, "app.betterAuth");
+  assertExactVersion(snapshot.app.zod, "app.zod");
+  assertExactVersion(snapshot.app.tailwindcss, "app.tailwindcss");
+  assertExactVersion(snapshot.app.tailwindPostcss, "app.tailwindPostcss");
+  assertExactVersion(snapshot.testing.vitest, "testing.vitest");
+  assertExactVersion(snapshot.testing.playwright, "testing.playwright");
+  if (typeof snapshot.data.postgresImage !== "string" || !POSTGRES_IMAGE.test(snapshot.data.postgresImage)) {
     throw new Error("data.postgresImage must be an exact postgres image tag");
   }
-  if (sections.framework.react !== sections.framework.reactDom) {
+  if (snapshot.framework.react !== snapshot.framework.reactDom) {
     throw new Error("framework.react and framework.reactDom must match exactly");
   }
 
