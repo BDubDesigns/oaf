@@ -3,7 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getAppTemplates } from "../lib/templates.mjs";
+import { getAppTemplates } from "../lib/templates.ts";
 import { loadStackSnapshot, validateStackSnapshot } from "../lib/stack-snapshot.ts";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");

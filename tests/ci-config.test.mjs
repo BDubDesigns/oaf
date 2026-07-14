@@ -30,6 +30,7 @@ const EXPECTED_TESTS = [
   "tests/runtime-typecheck-foundation.test.mjs",
   "tests/sandbox.test.mjs",
   "tests/stack-snapshot.test.mjs",
+  "tests/templates.test.mjs",
 ];
 let failures = 0;
 

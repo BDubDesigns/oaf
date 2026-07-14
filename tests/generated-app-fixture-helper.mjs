@@ -16,6 +16,7 @@ export const GENERATED_APP_FIXTURE = resolve(
 // Every retained generated file must match the output of getAppTemplates for
 // FIXTURE_NAME/FIXTURE_CREATED_AT, allowing only one added final newline for
 // checked-in text-file convention. FIXTURE.md is fixture-only documentation.
+/** @type {import("../lib/templates.ts").AppTemplatePath[]} */
 export const FIXTURE_TEMPLATE_PATHS = [
   "README.md",
   "package.json",

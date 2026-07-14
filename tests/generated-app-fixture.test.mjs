@@ -3,7 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { getAppTemplates } from "../lib/templates.mjs";
+import { getAppTemplates } from "../lib/templates.ts";
 import {
   copyGeneratedAppFixture,
   FIXTURE_CREATED_AT,
