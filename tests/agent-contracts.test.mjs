@@ -44,7 +44,7 @@ const run = {
   content: privateSentinels[2],
   providerCalls: [],
   providerAttempts: [{ turn: 1, durationMs: 1, outcome: "success", httpStatus: null }],
-  context: { documents: [], docsPack: {} },
+  context: { workspaceRoot: "/tmp/absolute-workspace", docsPack: { id: "stack-0.1", oafStack: "0.1.0" }, documents: [], totalBytes: 0 },
   events: [{ type: "agent_end", runId: "run_contract", status: "success", turns: 1, terminalReason: "assistant_terminal", seq: 1, ts: "2026-01-01T00:00:00.000Z" }],
 };
 const receipt = buildReceipt({ run, task: "task API_KEY=API_KEY_SECRET_VALUE" });

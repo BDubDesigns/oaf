@@ -97,7 +97,7 @@ small: a manifest and five OAF-owned Markdown documents covering agent
 guidance, stack, app structure, package policy, and sandbox boundaries. It is
 not a complete third-party framework reference pack.
 
-`lib/agent/context.mjs` provides the read-only `loadAgentContext({
+`lib/agent/context.ts` provides the read-only `loadAgentContext({
 workspaceRoot, oafRoot? })` assembly step for the future loop. It reads the
 generated app's `oaf/app.json`, `oaf/stack.json`, and `oaf/docs-pack.json`
 markers, resolves the matching pack only under the OAF-owned `docs-packs/`

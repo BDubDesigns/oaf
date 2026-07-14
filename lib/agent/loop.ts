@@ -12,7 +12,7 @@
 import { randomUUID } from "node:crypto";
 import { TOOL_NAMES, getToolDefinition } from "./tools.ts";
 import { createEvent, createEventCollector } from "./events.ts";
-import { loadAgentContext } from "./context.mjs";
+import { loadAgentContext } from "./context.ts";
 import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure, validateProviderCall } from "./provider.ts";
 import { summarizeToolCall, summarizeToolResult, utf8Bytes } from "./privacy.mjs";
 import { AgentToolError, publicToolError } from "./tool-errors.ts";
