@@ -5,15 +5,14 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** @param {string} projectRoot */
-export function getTestFiles(projectRoot = root) {
+export function getTestFiles(projectRoot: string = root): string[] {
   return readdirSync(join(projectRoot, "tests"), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".test.mjs"))
+    .filter((entry) => entry.isFile() && (entry.name.endsWith(".test.mjs") || entry.name.endsWith(".test.ts")))
     .map((entry) => join(projectRoot, "tests", entry.name))
     .sort();
 }
 
-export function runTests() {
+export function runTests(): void {
   const testFiles = getTestFiles();
   console.log(`Running ${testFiles.length} top-level test suite(s).`);
   for (const testFile of testFiles) {

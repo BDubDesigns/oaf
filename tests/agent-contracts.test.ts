@@ -1,6 +1,6 @@
 import { deepEqual, strictEqual } from "node:assert";
 import { spawnSync } from "node:child_process";
-import { AGENT_EVENT_TYPES, COMMAND_ORIGINS, PROVIDER_ATTEMPT_OUTCOMES, PROVIDER_FAILURE_OUTCOMES, RUN_TERMINALS, SANDBOX_MODES, TOOL_ERROR_MESSAGES, TOOL_NAMES } from "../lib/agent/contracts.ts";
+import { AGENT_EVENT_TYPES, COMMAND_ORIGINS, PROVIDER_ATTEMPT_OUTCOMES, PROVIDER_FAILURE_OUTCOMES, RUN_TERMINALS, SANDBOX_MODES, TOOL_ERROR_MESSAGES, TOOL_NAMES, type AgentRunResult } from "../lib/agent/contracts.ts";
 import { createEvent } from "../lib/agent/events.ts";
 import { buildToolProtocol, normalizeProviderAttempt, ProviderFailure } from "../lib/agent/provider.ts";
 import { publicToolError, PUBLIC_TOOL_ERRORS } from "../lib/agent/tool-errors.ts";
@@ -35,8 +35,7 @@ deepEqual(normalizeProviderAttempt({ turn: 1, durationMs: 1, outcome: "http_erro
 deepEqual(normalizeProviderAttempt({ turn: 1, durationMs: 1, outcome: "timeout", httpStatus: 504 }), { turn: 1, durationMs: 1, outcome: "timeout", httpStatus: null }, "durable attempts drop status from non-HTTP outcomes");
 
 const privateSentinels = ["API_KEY_SECRET_VALUE", "PROVIDER_BODY_SENTINEL", "/tmp/absolute-workspace", "STDOUT_SENTINEL", "STDERR_SENTINEL", "RAW_EXCEPTION_SENTINEL"];
-/** @type {import("../lib/agent/contracts.ts").AgentRunResult} */
-const run = {
+const run: AgentRunResult = {
   runId: "run_contract",
   status: "success",
   terminalReason: "assistant_terminal",

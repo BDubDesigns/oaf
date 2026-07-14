@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getTestFiles } from "../scripts/run-tests.mjs";
+import { getTestFiles } from "../scripts/run-tests.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workflowPath = join(root, ".github", "workflows", "ci.yml");
@@ -10,17 +10,17 @@ const EXPECTED_TESTS = [
   "tests/agent-command-authorization.test.mjs",
   "tests/agent-command-tool.test.mjs",
   "tests/agent-context.test.mjs",
-  "tests/agent-contracts.test.mjs",
+  "tests/agent-contracts.test.ts",
   "tests/agent-diagnostics.test.mjs",
   "tests/agent-event-privacy.test.mjs",
-  "tests/agent-events.test.mjs",
+  "tests/agent-events.test.ts",
   "tests/agent-loop.test.mjs",
   "tests/agent-path-policy.test.mjs",
   "tests/agent-privacy.test.mjs",
   "tests/agent-public-tool-errors.test.mjs",
   "tests/agent-read-tools.test.mjs",
   "tests/agent-receipt.test.mjs",
-  "tests/agent-tools.test.mjs",
+  "tests/agent-tools.test.ts",
   "tests/agent-write-tool.test.mjs",
   "tests/ci-config.test.mjs",
   "tests/command-policy.test.mjs",
@@ -48,7 +48,7 @@ function assert(condition, message) {
 const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const runtime = JSON.parse(readFileSync(join(root, "config", "runtime", "oaf-runtime.json"), "utf8"));
 const marker = readFileSync(join(root, ".node-version"), "utf8").trim();
-assert(packageJson.scripts.test === "node scripts/run-tests.mjs", "pnpm test invokes the complete test runner");
+assert(packageJson.scripts.test === "node scripts/run-tests.ts", "pnpm test invokes the complete test runner");
 assert(packageJson.engines.node === runtime.node && marker === runtime.node, "factory Node declarations are consistent");
 assert(packageJson.packageManager === "pnpm@11.5.2", "package manager declaration remains exact");
 
