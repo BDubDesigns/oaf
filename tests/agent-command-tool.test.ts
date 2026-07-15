@@ -6,9 +6,10 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCommandExecutor, executeCommand } from "../lib/agent/tool-execution.ts";
 import { SandboxError } from "../lib/sandbox.ts";
+import type { AgentSandboxCommandOptions, SandboxExecutionResult } from "../lib/agent/contracts.ts";
 
 let failures = 0;
-function assert(condition, message) {
+function assert(condition: unknown, message: string): void {
   if (condition) {
     console.log(`PASS  ${message}`);
   } else {
@@ -17,7 +18,12 @@ function assert(condition, message) {
   }
 }
 
-async function rejects(action, predicate, message) {
+function foreignMessage(value: unknown): string {
+  const message = value !== null && (typeof value === "object" || typeof value === "function") ? Reflect.get(value, "message") : undefined;
+  return typeof message === "string" ? message : "";
+}
+
+async function rejects(action: () => Promise<unknown>, predicate: (error: unknown) => boolean, message: string): Promise<void> {
   try {
     await action();
     assert(false, message);
@@ -30,8 +36,8 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workspace = mkdtempSync(join(tmpdir(), "oaf-agent-command-tool-"));
 
 try {
-  const calls = [];
-  const fakeSandbox = async (options = {}) => {
+  const calls: { command: string; network: boolean; runtime: string; cwd: string }[] = [];
+  const fakeSandbox = async (options: AgentSandboxCommandOptions = {}): Promise<SandboxExecutionResult> => {
     const record = {
       command: "command" in options && typeof options.command === "string" ? options.command : "",
       network: false,
@@ -51,17 +57,17 @@ try {
   // 1. Command input and workspace root are mandatory before runner access.
   await rejects(
     () => Reflect.apply(executeWithFakeSandbox, undefined, [{ command: "pnpm test" }]),
-    (error) => /workspaceRoot is required/.test(error.message),
+    (error) => /workspaceRoot is required/.test(foreignMessage(error)),
     "command requires workspaceRoot",
   );
   await rejects(
     () => Reflect.apply(executeWithFakeSandbox, undefined, [{ workspaceRoot: workspace, command: "   " }]),
-    (error) => /command must be a non-empty string/.test(error.message),
+    (error) => /command must be a non-empty string/.test(foreignMessage(error)),
     "command rejects an empty string",
   );
   await rejects(
     () => Reflect.apply(executeWithFakeSandbox, undefined, [{ workspaceRoot: workspace, command: "pnpm test", mode: "unknown" }]),
-    (error) => /unknown sandbox mode/.test(error.message),
+    (error) => /unknown sandbox mode/.test(foreignMessage(error)),
     "command rejects an unknown sandbox mode",
   );
   assert(calls.length === 0, "invalid command input does not reach the sandbox seam");
@@ -77,12 +83,12 @@ try {
   // 3. Model-era authorization keys are never accepted by the agent executor.
   await rejects(
     () => Reflect.apply(executeWithFakeSandbox, undefined, [{ workspaceRoot: workspace, command: "pnpm test", confirm: true }]),
-    (error) => /unexpected argument: confirm/.test(error.message),
+    (error) => /unexpected argument: confirm/.test(foreignMessage(error)),
     "confirmation claim is rejected before sandbox dispatch",
   );
   await rejects(
     () => Reflect.apply(executeWithFakeSandbox, undefined, [{ workspaceRoot: workspace, command: "pnpm test", network: true }]),
-    (error) => /unexpected argument: network/.test(error.message),
+    (error) => /unexpected argument: network/.test(foreignMessage(error)),
     "network claim is rejected before sandbox dispatch",
   );
   assert(calls.length === 1, "authorization claims never reach sandbox seam");

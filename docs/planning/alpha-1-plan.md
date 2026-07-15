@@ -28,7 +28,7 @@ After the doctrine, `oaf init`, receipt, sandbox, and Pi-spike work, OAF has a
   and network policy; runs inside a locked-down container (rootless-friendly,
   no-new-privileges, project dir only, Docker socket off). `oaf sandbox
   status` reports runtime availability.
-- **Tests pass.** `tests/oaf-init.test.mjs` and `tests/sandbox.test.mjs` are
+- **Tests pass.** `tests/oaf-init.test.mjs` and `tests/sandbox.test.ts` are
   green.
 
 **Concrete loop Alpha 0 nearly supports:** human defines an app → `oaf init`

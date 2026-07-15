@@ -5,17 +5,31 @@ import { join } from "node:path";
 import { buildContainerRun, createVerificationWorkspace, runAgentSandboxCommand, runHumanSandboxCommand, runSandboxCommand, SandboxError, verifyPackageScript } from "../lib/sandbox.ts";
 import { runAgentLoop } from "../lib/agent/loop.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
+import type { JsonObject, Provider, SandboxDependencies } from "../lib/agent/contracts.ts";
 
 let failures = 0;
-function assert(condition, message) { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
-async function rejects(action, code, message) {
+function assert(condition: unknown, message: string): void { if (condition) console.log(`PASS  ${message}`); else { console.log(`FAIL  ${message}`); failures++; } }
+async function rejects(action: () => Promise<unknown>, code: SandboxError["code"], message: string): Promise<void> {
   try { await action(); assert(false, message); }
   catch (error) { assert(error instanceof SandboxError && error.code === code, message); }
 }
-function manifest(workspace) { return JSON.parse(readFileSync(join(workspace, "package.json"), "utf8")); }
-function writeManifest(workspace, value) { writeFileSync(join(workspace, "package.json"), JSON.stringify(value, null, 2)); }
+type Manifest = { scripts: Record<string, string>; packageManager: string };
+type ManifestMutation = (manifest: Manifest) => void;
+function isManifest(value: unknown): value is Manifest {
+  if (value === null || typeof value !== "object" || !Object.hasOwn(value, "scripts") || !Object.hasOwn(value, "packageManager")) return false;
+  const scripts = Reflect.get(value, "scripts");
+  const packageManager = Reflect.get(value, "packageManager");
+  if (scripts === null || typeof scripts !== "object" || Array.isArray(scripts) || typeof packageManager !== "string") return false;
+  return Object.values(scripts).every((script) => typeof script === "string");
+}
+function manifest(workspace: string): Manifest {
+  const parsed: unknown = JSON.parse(readFileSync(join(workspace, "package.json"), "utf8"));
+  if (!isManifest(parsed)) throw new Error("fixture package.json is invalid");
+  return parsed;
+}
+function writeManifest(workspace: string, value: Manifest): void { writeFileSync(join(workspace, "package.json"), JSON.stringify(value, null, 2)); }
 
-async function providerCall(args) {
+async function providerCall(args: JsonObject): Promise<Provider> {
   let calls = 0;
   return { complete: async () => calls++ === 0 ? { content: null, toolCalls: [{ id: "provider-call", name: "command", args }] } : { content: "done", toolCalls: [] } };
 }
@@ -32,12 +46,12 @@ try {
   await verifyPackageScript(fixture.workspace, "pnpm test");
   assert(true, "untouched generated pnpm test definition is accepted");
 
-  const cases = [
-    ["modified test script", (m) => { m.scripts.test = "node malicious.mjs"; }, "PACKAGE_SCRIPT_POLICY"],
-    ["pretest hook", (m) => { m.scripts.pretest = "node malicious.mjs"; }, "PACKAGE_SCRIPT_POLICY"],
-    ["posttest hook", (m) => { m.scripts.posttest = "node malicious.mjs"; }, "PACKAGE_SCRIPT_POLICY"],
-    ["missing test script", (m) => { delete m.scripts.test; }, "PACKAGE_SCRIPT_POLICY"],
-    ["wrong package manager", (m) => { m.packageManager = "pnpm@0.0.0"; }, "PACKAGE_SCRIPT_POLICY"],
+  const cases: readonly [string, ManifestMutation, SandboxError["code"]][] = [
+    ["modified test script", (m: Manifest) => { m.scripts.test = "node malicious.mjs"; }, "PACKAGE_SCRIPT_POLICY"],
+    ["pretest hook", (m: Manifest) => { m.scripts.pretest = "node malicious.mjs"; }, "PACKAGE_SCRIPT_POLICY"],
+    ["posttest hook", (m: Manifest) => { m.scripts.posttest = "node malicious.mjs"; }, "PACKAGE_SCRIPT_POLICY"],
+    ["missing test script", (m: Manifest) => { delete m.scripts.test; }, "PACKAGE_SCRIPT_POLICY"],
+    ["wrong package manager", (m: Manifest) => { m.packageManager = "pnpm@0.0.0"; }, "PACKAGE_SCRIPT_POLICY"],
   ];
   for (const [name, mutate, code] of cases) {
     const copy = copyGeneratedAppFixture();
@@ -93,17 +107,23 @@ try {
 
   await rejects(() => Reflect.apply(runSandboxCommand, undefined, [{ command: "pnpm test", cwd: fixture.workspace }]), "INVALID_ORIGIN", "omitted generic origin fails closed");
   let invalidCalls = 0;
-  const invalidDependencies = { detectRuntime: () => { invalidCalls++; return "fake"; }, runContainer: async () => { invalidCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
+  const invalidDependencies: SandboxDependencies = { detectRuntime: () => { invalidCalls++; return "fake"; }, runContainer: async () => { invalidCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
   for (const key of ["approvalGranted", "networkGranted", "origin", "confirm", "network", "unknown"]) {
-    await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, [key]: true, dependencies: invalidDependencies }), "INVALID_AGENT_ARGUMENT", `agent entry rejects ${key}`);
+    const options: Record<string, unknown> = { command: "pnpm test", cwd: fixture.workspace, [key]: true, dependencies: invalidDependencies };
+    await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [options]), "INVALID_AGENT_ARGUMENT", `agent entry rejects ${key}`);
   }
   assert(invalidCalls === 0, "invalid agent entry fields never reach runtime or container seams");
   let compatibleCalls = 0;
-  const compatibleDependencies = { detectRuntime: () => { compatibleCalls++; return "fake"; }, runContainer: async () => { compatibleCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
-  class CompatibleOptions { constructor() { this.command = "git status"; this.cwd = fixture.workspace; this.dependencies = compatibleDependencies; } }
+  const compatibleDependencies: SandboxDependencies = { detectRuntime: () => { compatibleCalls++; return "fake"; }, runContainer: async () => { compatibleCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
+  class CompatibleOptions {
+    command: string;
+    cwd: string;
+    dependencies: SandboxDependencies;
+    constructor() { this.command = "git status"; this.cwd = fixture.workspace; this.dependencies = compatibleDependencies; }
+  }
   await Reflect.apply(runAgentSandboxCommand, undefined, [new CompatibleOptions()]);
   assert(compatibleCalls === 2, "class instance with allowed fields reaches dependency path");
-  const nullPrototypeOptions = Object.create(null);
+  const nullPrototypeOptions: Record<string, unknown> = Object.create(null);
   nullPrototypeOptions.command = "git status";
   nullPrototypeOptions.cwd = fixture.workspace;
   nullPrototypeOptions.dependencies = compatibleDependencies;
@@ -112,10 +132,15 @@ try {
   let rejectedRuntimeCalls = 0;
   let rejectedWorkspaceCalls = 0;
   let rejectedContainerCalls = 0;
-  const rejectedDependencies = { detectRuntime: () => { rejectedRuntimeCalls++; return "fake"; }, createVerificationWorkspace: async () => { rejectedWorkspaceCalls++; throw new Error("must not run"); }, runContainer: async () => { rejectedContainerCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
-  class UnexpectedOptions { constructor() { this.command = "git status"; this.dependencies = rejectedDependencies; this.unexpected = true; } }
+  const rejectedDependencies: SandboxDependencies = { detectRuntime: () => { rejectedRuntimeCalls++; return "fake"; }, createVerificationWorkspace: async () => { rejectedWorkspaceCalls++; throw new Error("must not run"); }, runContainer: async () => { rejectedContainerCalls++; return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } };
+  class UnexpectedOptions {
+    command: string;
+    dependencies: SandboxDependencies;
+    unexpected: boolean;
+    constructor() { this.command = "git status"; this.dependencies = rejectedDependencies; this.unexpected = true; }
+  }
   await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [new UnexpectedOptions()]), "INVALID_AGENT_ARGUMENT", "class instance unexpected field is rejected");
-  const nullPrototypeUnexpected = Object.create(null);
+  const nullPrototypeUnexpected: Record<string, unknown> = Object.create(null);
   nullPrototypeUnexpected.command = "git status";
   nullPrototypeUnexpected.dependencies = rejectedDependencies;
   nullPrototypeUnexpected.unexpected = true;
@@ -129,20 +154,22 @@ try {
   await rejects(() => runHumanSandboxCommand({ command: "pnpm install", approvalGranted: false, networkGranted: false, cwd: fixture.workspace }), "POLICY_REJECTED", "human CLI requires trusted flags");
   let humanRuntimeCalls = 0;
   let humanContainerCalls = 0;
-  let humanOptions = null;
+  let humanOptions: Parameters<NonNullable<SandboxDependencies["runContainer"]>>[0] | null = null;
   const humanResult = await runHumanSandboxCommand({ command: "pnpm install", approvalGranted: true, networkGranted: true, cwd: fixture.workspace, dependencies: {
     detectRuntime: () => { humanRuntimeCalls++; return "fake-runtime"; },
     runContainer: async (options) => { humanContainerCalls++; humanOptions = options; return { exitCode: 0, stdout: "human out", stderr: "human err", truncated: false }; },
   } });
-  assert(humanRuntimeCalls === 1 && humanContainerCalls === 1 && humanOptions.command === "pnpm install" && humanOptions.network === true && humanOptions.argv[humanOptions.argv.indexOf("--network") + 1] === "bridge", "trusted human grants reach injected enabled-network sandbox path");
+  const capturedHumanOptions = (): Parameters<NonNullable<SandboxDependencies["runContainer"]>>[0] | null => humanOptions;
+  const humanContainerOptions = capturedHumanOptions();
+  assert(humanRuntimeCalls === 1 && humanContainerCalls === 1 && humanContainerOptions !== null && humanContainerOptions.command === "pnpm install" && humanContainerOptions.network === true && humanContainerOptions.argv[humanContainerOptions.argv.indexOf("--network") + 1] === "bridge", "trusted human grants reach injected enabled-network sandbox path");
   assert(humanResult.exitCode === 0 && humanResult.stdout === "human out" && humanResult.stderr === "human err", "human injected runner returns deterministic result without real runtime or mutation");
 
   // Exercise the real agent entry path with a fake container executor.
-  let disposablePath = null;
+  const disposable = { path: null as string | null };
   const malicious = await runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, dependencies: {
     detectRuntime: () => "fake",
     runContainer: async ({ cwd, argv }) => {
-      disposablePath = cwd;
+      disposable.path = cwd;
       writeFileSync(join(cwd, "app", "page.tsx"), "malicious rewrite");
       unlinkSync(join(cwd, "app", "layout.tsx"));
       writeFileSync(join(cwd, "malicious-sentinel"), "created");
@@ -152,20 +179,20 @@ try {
   } });
   assert(malicious.exitCode === 0 && malicious.stdout === "NPM_AUTH_SENTINEL absent", "agent runner preserves successful command output");
   assert(!readFileSync(join(fixture.workspace, "app", "page.tsx"), "utf8").includes("malicious") && existsSync(join(fixture.workspace, "app", "layout.tsx")) && !existsSync(join(fixture.workspace, "malicious-sentinel")), "malicious verification cannot alter authoritative project");
-  assert(!existsSync(disposablePath), "agent disposable workspace cleans after success");
-  let failedPath = null;
-  const nonzero = await runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd }) => { failedPath = cwd; return { exitCode: 7, stdout: "out", stderr: "err", truncated: false }; } } });
-  assert(nonzero.exitCode === 7 && nonzero.stdout === "out" && nonzero.stderr === "err" && !existsSync(failedPath), "nonzero verification result and cleanup are preserved");
-  let startupPath = null;
-  await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd }) => { startupPath = cwd; throw new SandboxError("SANDBOX_START_FAILED", "test startup failure"); } } }), "SANDBOX_START_FAILED", "container startup failure propagates");
-  assert(!existsSync(startupPath), "disposable workspace cleans after startup failure");
+  assert(disposable.path !== null && !existsSync(disposable.path), "agent disposable workspace cleans after success");
+  const failed = { path: null as string | null };
+  const nonzero = await runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd }) => { failed.path = cwd; return { exitCode: 7, stdout: "out", stderr: "err", truncated: false }; } } });
+  assert(nonzero.exitCode === 7 && nonzero.stdout === "out" && nonzero.stderr === "err" && failed.path !== null && !existsSync(failed.path), "nonzero verification result and cleanup are preserved");
+  const startup = { path: null as string | null };
+  await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd }) => { startup.path = cwd; throw new SandboxError("SANDBOX_START_FAILED", "test startup failure"); } } }), "SANDBOX_START_FAILED", "container startup failure propagates");
+  assert(startup.path !== null && !existsSync(startup.path), "disposable workspace cleans after startup failure");
   let runtimeCalls = 0;
   const invalid = copyGeneratedAppFixture();
   try { const value = manifest(invalid.workspace); value.scripts.test = "node malicious.mjs"; writeManifest(invalid.workspace, value); await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: invalid.workspace, dependencies: { detectRuntime: () => { runtimeCalls++; return "fake"; } } }), "PACKAGE_SCRIPT_POLICY", "script policy rejects before runtime startup"); assert(runtimeCalls === 0, "script policy does not invoke runtime or container"); } finally { invalid.cleanup(); }
-  let gitCwd = null;
+  let gitCwd: string | null = null;
   await runAgentSandboxCommand({ command: "git status", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd, argv }) => { gitCwd = cwd; assert(argv.includes(`${fixture.workspace}:/workspace:ro`) && argv[argv.indexOf("--network") + 1] === "none", "git runner uses authoritative read-only mount"); return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } } });
   assert(gitCwd === fixture.workspace, "git inspection creates no disposable workspace");
-  const stdout = []; const stderr = [];
+  const stdout: string[] = []; const stderr: string[] = [];
   await runHumanSandboxCommand({ command: "pnpm test", cwd: fixture.workspace, onStdout: (data) => stdout.push(String(data)), onStderr: (data) => stderr.push(String(data)), dependencies: { detectRuntime: () => "fake", runContainer: async ({ onStdout, onStderr }) => { onStdout?.(Buffer.from("stdout")); onStderr?.(Buffer.from("stderr")); return { exitCode: 0, stdout: "stdout", stderr: "stderr", truncated: false }; } } });
   assert(stdout.join("") === "stdout" && stderr.join("") === "stderr", "human stdout and stderr callbacks route once");
 } finally { fixture.cleanup(); }

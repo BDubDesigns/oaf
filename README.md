@@ -75,7 +75,7 @@ Once the `oaf` bin is installed / packaged, the commands shorten to:
 Run the repo smoke tests with:
 
     node tests/oaf-init.test.mjs
-    node tests/sandbox.test.mjs
+    node tests/sandbox.test.ts
 
 ## License
 
