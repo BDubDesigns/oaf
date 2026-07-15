@@ -13,8 +13,7 @@
   "scripts": {
     "test": "node scripts/run-tests.ts",
     "doctor": "node bin/oaf.ts doctor",
-    "typecheck": "node scripts/typecheck-baseline.mjs",
-    "typecheck:raw": "tsc --pretty false"
+    "typecheck": "tsc --noEmit --pretty false"
   },
   "devDependencies": {
     "@types/node": "24.13.2",

@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 export function getTestFiles(projectRoot: string = root): string[] {
   return readdirSync(join(projectRoot, "tests"), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && (entry.name.endsWith(".test.mjs") || entry.name.endsWith(".test.ts")))
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".test.ts"))
     .map((entry) => join(projectRoot, "tests", entry.name))
     .sort();
 }
