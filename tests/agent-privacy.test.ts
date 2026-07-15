@@ -12,9 +12,13 @@ import {
 } from "../lib/agent/privacy.ts";
 import { createEvent } from "../lib/agent/events.ts";
 
-/** @param {() => unknown} action @param {string} message */
-function rejected(action, message) {
+function rejected(action: () => unknown, message: string): void {
   assert.throws(action, { message });
+}
+
+function recordValue(value: unknown, key: string): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
+  return Reflect.get(value, key);
 }
 
 // UTF-8 byte measurements are bounded metadata, never string code-unit counts.
@@ -40,14 +44,17 @@ for (const value of [" pnpm test", "PNPM TEST", "pnpm test --extra", "pnpm test 
   assert.deepEqual(summarizeCommand(value), { command: "<redacted command>", redacted: true });
 }
 
-for (const value of [null, [], "command", {}, { command: 1, redacted: false }, { command: "pnpm test", redacted: "false" }, { command: "wrong", redacted: true }, { command: "echo secret", redacted: false }, { command: "pnpm test", redacted: false, mode: "unsafe" }]) {
+const invalidCommandSummaries: unknown[] = [null, [], "command", {}, { command: 1, redacted: false }, { command: "pnpm test", redacted: "false" }, { command: "wrong", redacted: true }, { command: "echo secret", redacted: false }, { command: "pnpm test", redacted: false, mode: "unsafe" }];
+for (const value of invalidCommandSummaries) {
+  const command = recordValue(value, "command");
+  const redacted = recordValue(value, "redacted");
   const message = value === null || Array.isArray(value) || typeof value !== "object"
     ? "Command summary must be an object"
-    : value.command === undefined ? "Command summary must have a string command"
-      : typeof value.command !== "string" ? "Command summary must have a string command"
-        : value.redacted === undefined || typeof value.redacted !== "boolean" ? "Command summary must have a boolean redacted"
-          : value.redacted && value.command !== "<redacted command>" ? "Redacted command must be exactly '<redacted command>'"
-            : !value.redacted && value.command !== "pnpm test" ? "Non-redacted command must be a canonical recordable command"
+    : command === undefined ? "Command summary must have a string command"
+      : typeof command !== "string" ? "Command summary must have a string command"
+        : redacted === undefined || typeof redacted !== "boolean" ? "Command summary must have a boolean redacted"
+          : redacted && command !== "<redacted command>" ? "Redacted command must be exactly '<redacted command>'"
+            : !redacted && command !== "pnpm test" ? "Non-redacted command must be a canonical recordable command"
               : "Command mode must be a valid sandbox mode or null";
   rejected(() => validateCommandSummary(value), message);
 }
@@ -55,7 +62,7 @@ validateCommandSummary({ command: "pnpm test", redacted: false });
 validateCommandSummary({ command: "pnpm test", redacted: false, mode: null });
 for (const mode of COMMAND_MODES) validateCommandSummary({ command: "pnpm test", redacted: false, mode });
 validateCommandSummary({ command: "pnpm test", redacted: false, extra: "event layer owns this" });
-rejected(() => createEvent("tool_call", { toolCallId: "tool_1", toolName: "command", summary: { command: "pnpm test", redacted: false, mode: null, extra: true } }), "Unsupported tool summary field: extra");
+rejected(() => Reflect.apply(createEvent, undefined, ["tool_call", { toolCallId: "tool_1", toolName: "command", summary: { command: "pnpm test", redacted: false, mode: null, extra: true } }]), "Unsupported tool summary field: extra");
 
 for (const value of [0, 1, Number.MAX_SAFE_INTEGER]) assert.equal(safeCount(value), value);
 for (const value of [-1, Number.MAX_SAFE_INTEGER + 1, 1.5, NaN, Infinity, "1", 1n, true, {}, null, undefined]) assert.equal(safeCount(value), null);
@@ -69,18 +76,18 @@ assert.deepEqual(summarizeToolCall("command", { command: "pnpm test", mode: "tes
 assert.deepEqual(summarizeToolCall("command", { command: "echo SECRET", mode: "unsafe" }), { command: "<redacted command>", redacted: true, mode: null });
 assert.deepEqual(Reflect.apply(summarizeToolCall, undefined, ["read", null]), {});
 assert.deepEqual(Reflect.apply(summarizeToolCall, undefined, ["list", ["private"]]), { recursive: false });
-assert.deepEqual(Reflect.apply(summarizeToolCall, undefined, ["write", Object.assign(Object.create(null), { path: "null-prototype.txt", content: 1 })]), { path: "null-prototype.txt", bytes: null });
+const nullPrototypeWrite: Record<string, unknown> = Object.assign(Object.create(null), { path: "null-prototype.txt", content: 1 });
+assert.deepEqual(Reflect.apply(summarizeToolCall, undefined, ["write", nullPrototypeWrite]), { path: "null-prototype.txt", bytes: null });
 assert.deepEqual(Reflect.apply(summarizeToolCall, undefined, ["read", new (class { path = "class-instance.txt"; })()]), { path: "class-instance.txt" });
 assert.deepEqual(Reflect.apply(summarizeToolCall, undefined, ["unknown", { secret: "never record" }]), {});
 
 assert.deepEqual(summarizeToolResult("read", { path: "a.txt", content: "😀", truncated: true }), { path: "a.txt", bytes: 4, truncated: true });
 assert.deepEqual(summarizeToolResult("list", { path: "src", entries: [{ name: "secret", type: "file" }] }), { path: "src", entryCount: 1 });
 assert.deepEqual(summarizeToolResult("grep", { matches: [{ path: "a\\b.ts", line: 1, text: "secret" }, { path: "a/b.ts", line: 2, text: "secret" }, { path: "/host", line: 3, text: "secret" }] }), { matchCount: 3, fileCount: 1 });
-const callableMatch = () => {};
-callableMatch.path = "src/callable.ts";
-const callableBackslashMatch = () => {};
-callableBackslashMatch.path = "src\\callable.ts";
-const callableWithoutPath = () => {};
+type CallableMatch = (() => void) & { path?: string };
+const callableMatch: CallableMatch = Object.assign(() => {}, { path: "src/callable.ts" });
+const callableBackslashMatch: CallableMatch = Object.assign(() => {}, { path: "src\\callable.ts" });
+const callableWithoutPath: CallableMatch = () => {};
 const callableGrepSummary = Reflect.apply(summarizeToolResult, undefined, ["grep", { matches: [callableMatch, callableBackslashMatch, callableWithoutPath, null, undefined, 1, "private"] }]);
 assert.deepEqual(callableGrepSummary, { matchCount: 7, fileCount: 1 });
 assert.equal(JSON.stringify(callableGrepSummary).includes("callable"), false);
@@ -89,7 +96,8 @@ assert.deepEqual(summarizeToolResult("command", { exitCode: 7, stdout: "😀", s
 assert.deepEqual(Reflect.apply(summarizeToolResult, undefined, ["read", null]), { bytes: 0, truncated: false });
 assert.deepEqual(Reflect.apply(summarizeToolResult, undefined, ["list", { entries: "private" }]), { entryCount: 0 });
 assert.deepEqual(Reflect.apply(summarizeToolResult, undefined, ["grep", { matches: "private" }]), { matchCount: 0, fileCount: 0 });
-assert.deepEqual(Reflect.apply(summarizeToolResult, undefined, ["grep", Object.assign(() => {}, { matches: [{ path: "src/function-result.ts" }] })]), { matchCount: 0, fileCount: 0 });
+const callableResult: (() => void) & { matches: { path: string }[] } = Object.assign(() => {}, { matches: [{ path: "src/function-result.ts" }] });
+assert.deepEqual(Reflect.apply(summarizeToolResult, undefined, ["grep", callableResult]), { matchCount: 0, fileCount: 0 });
 assert.deepEqual(Reflect.apply(summarizeToolResult, undefined, ["write", { path: "a.txt", bytes: -1 }]), { path: "a.txt", bytes: null });
 assert.deepEqual(Reflect.apply(summarizeToolResult, undefined, ["command", { exitCode: 256, stdout: null, stderr: {}, truncated: 1 }]), { exitCode: null, stdoutBytes: 0, stderrBytes: 0, truncated: false });
 assert.deepEqual(Reflect.apply(summarizeToolResult, undefined, ["unknown", { secret: "never record" }]), {});

@@ -15,10 +15,11 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadAgentContext } from "../lib/agent/context.ts";
+import type { GeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 import { copyGeneratedAppFixture, GENERATED_APP_FIXTURE } from "./generated-app-fixture-helper.ts";
 
 let failures = 0;
-function assert(condition, message) {
+function assert(condition: unknown, message: string): void {
   if (condition) {
     console.log(`PASS  ${message}`);
   } else {
@@ -27,16 +28,17 @@ function assert(condition, message) {
   }
 }
 
-async function rejects(action, pattern, message) {
+async function rejects(action: () => Promise<unknown>, pattern: RegExp, message: string): Promise<void> {
   try {
     await action();
     assert(false, message);
   } catch (error) {
-    assert(pattern.test(error.message), message);
+    const text = errorMessage(error);
+    assert(text !== undefined && pattern.test(text), message);
   }
 }
 
-function copyOafDocsPacks() {
+function copyOafDocsPacks(): { oafRoot: string; cleanup: () => void } {
   const base = mkdtempSync(join(tmpdir(), "oaf-agent-context-packs-"));
   const oafRoot = join(base, "oaf-root");
   mkdirSync(oafRoot);
@@ -44,9 +46,24 @@ function copyOafDocsPacks() {
   return { oafRoot, cleanup: () => rmSync(base, { recursive: true, force: true }) };
 }
 
+function errorProperty(error: unknown, name: string): unknown {
+  if (error === null || (typeof error !== "object" && typeof error !== "function")) return undefined;
+  return Reflect.get(error, name);
+}
+
+function errorMessage(error: unknown): string | undefined {
+  const message = errorProperty(error, "message");
+  return typeof message === "string" ? message : undefined;
+}
+
+function errorCode(error: unknown): string | undefined {
+  const code = errorProperty(error, "code");
+  return typeof code === "string" ? code : undefined;
+}
+
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const fixtureCopies = [];
-const temporaryRoots = [];
+const fixtureCopies: GeneratedAppFixture[] = [];
+const temporaryRoots: (() => void)[] = [];
 const sourcePage = readFileSync(join(GENERATED_APP_FIXTURE, "app/page.tsx"), "utf8");
 const sourceMarker = readFileSync(join(GENERATED_APP_FIXTURE, "oaf/docs-pack.json"), "utf8");
 
@@ -166,8 +183,7 @@ try {
     "context rejects a malformed docs-pack marker",
   );
 
-  /** @type {[string, string, RegExp, string][]} */
-  const markerCases = [
+  const markerCases: [string, string, RegExp, string][] = [
     ["oaf/app.json", "[]", /oaf\/app\.json is not a valid OAF-generated app marker/, "array app marker"],
     ["oaf/app.json", JSON.stringify({ name: 1, createdBy: "oaf", createdAt: "now" }), /oaf\/app\.json is not a valid OAF-generated app marker/, "invalid app marker fields"],
     ["oaf/stack.json", "[]", /oaf\/stack\.json is malformed/, "array stack marker"],
@@ -195,7 +211,7 @@ try {
   assert(!optionalContext.documents.some((document) => document.path === "docs/app.md"), "missing optional app docs are omitted cleanly");
 
   // 3. Marker pack identifiers cannot select arbitrary paths.
-  for (const [docsPack, pattern, label] of [
+  const docsPackCases: [string, RegExp, string][] = [
     ["unknown-pack", /docs-pack is missing/, "unknown docs-pack"],
     ["/tmp/pack", /docs-pack reference must not be absolute/, "absolute docs-pack reference"],
     ["C:\\pack", /docs-pack reference must not be absolute/, "Windows absolute docs-pack reference"],
@@ -204,7 +220,8 @@ try {
     ["a/../stack-0.1", /docs-pack reference must not contain parent traversal/, "nested traversal docs-pack reference"],
     ["stack/0.1", /docs-pack reference contains unsupported characters/, "nested docs-pack reference"],
     ["stack@0.1", /docs-pack reference contains unsupported characters/, "unsupported docs-pack characters"],
-  ]) {
+  ];
+  for (const [docsPack, pattern, label] of docsPackCases) {
     const fixture = copyGeneratedAppFixture();
     fixtureCopies.push(fixture);
     writeFileSync(
@@ -247,8 +264,7 @@ try {
     "context rejects a missing required docs-pack document",
   );
 
-  /** @type {[string, RegExp, string][]} */
-  const manifestCases = [
+  const manifestCases: [string, RegExp, string][] = [
     ["{}", /docs-pack manifest does not match the generated app marker/, "non-matching manifest object"],
     ["[]", /docs-pack manifest does not match the generated app marker/, "array manifest"],
     [JSON.stringify({ docsPack: "wrong", oafStack: "0.1.0", documents: [] }), /docs-pack manifest does not match the generated app marker/, "manifest marker mismatch"],
@@ -324,8 +340,9 @@ try {
     symlinkSync(outside, join(selectedEscapePacks.oafRoot, "docs-packs", "stack-0.1"));
     await rejects(() => loadAgentContext({ workspaceRoot: selectedPackEscape.workspace, oafRoot: selectedEscapePacks.oafRoot }), /docs-pack resolves outside its owner root through a symlink/, "context rejects a selected docs-pack symlink escape");
   } catch (error) {
-    if (error.code === "EPERM" || error.code === "EACCES" || error.code === "ENOTSUP") {
-      console.log(`SKIP  symlink context tests unavailable: ${error.code}`);
+    const code = errorCode(error);
+    if (code === "EPERM" || code === "EACCES" || code === "ENOTSUP") {
+      console.log(`SKIP  symlink context tests unavailable: ${code}`);
     } else {
       throw error;
     }
