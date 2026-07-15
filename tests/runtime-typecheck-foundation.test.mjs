@@ -49,6 +49,9 @@ const agentLoopTest = join(root, "tests", "agent-loop.test.ts");
 const agentReceiptTest = join(root, "tests", "agent-receipt.test.ts");
 const agentEventPrivacyTest = join(root, "tests", "agent-event-privacy.test.ts");
 const agentPrivacyTest = join(root, "tests", "agent-privacy.test.ts");
+const openaiCompatibleProviderTest = join(root, "tests", "openai-compatible-provider.test.ts");
+const agentDiagnosticsTest = join(root, "tests", "agent-diagnostics.test.ts");
+const agentCliTest = join(root, "tests", "agent-cli.test.ts");
 const usage = `OAF — Opinionated App Factory (Alpha 0)
 
 Usage:
@@ -159,6 +162,12 @@ const agentEventPrivacyOutput = execFileSync(process.execPath, [agentEventPrivac
 assert(agentEventPrivacyOutput.endsWith("\nAll agent-event privacy checks passed.\n"), "native TypeScript agent event privacy suite executes directly");
 const agentPrivacyOutput = execFileSync(process.execPath, [agentPrivacyTest], { encoding: "utf8" });
 assert(agentPrivacyOutput.trim() === "All agent privacy helper checks passed.", "native TypeScript agent privacy suite executes directly");
+const openaiCompatibleProviderOutput = execFileSync(process.execPath, [openaiCompatibleProviderTest], { encoding: "utf8" });
+assert(openaiCompatibleProviderOutput.endsWith("\nAll OpenAI-compatible provider checks passed.\n"), "native TypeScript OpenAI-compatible provider suite executes directly");
+const agentDiagnosticsOutput = execFileSync(process.execPath, [agentDiagnosticsTest], { encoding: "utf8" });
+assert(agentDiagnosticsOutput.endsWith("\nAll agent diagnostics checks passed.\n"), "native TypeScript agent diagnostics suite executes directly");
+const agentCliOutput = execFileSync(process.execPath, [agentCliTest], { encoding: "utf8" });
+assert(agentCliOutput.endsWith("All agent CLI checks passed.\n"), "native TypeScript agent CLI suite executes directly");
 assert(
   ![
     runner,
@@ -179,6 +188,9 @@ assert(
     agentReceiptTest,
     agentEventPrivacyTest,
     agentPrivacyTest,
+    openaiCompatibleProviderTest,
+    agentDiagnosticsTest,
+    agentCliTest,
   ].some((file) => existsSync(file.replace(/\.ts$/, ".js")) || existsSync(file.replace(/\.ts$/, ".js.map"))),
   "native TypeScript runner and agent suites emit no JavaScript or source maps",
 );
@@ -273,6 +285,9 @@ const newFiles = new Set([
   agentCommandToolTest,
   agentCommandAuthorizationTest,
   sandboxTest,
+  openaiCompatibleProviderTest,
+  agentDiagnosticsTest,
+  agentCliTest,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 

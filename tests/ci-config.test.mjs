@@ -6,12 +6,12 @@ import { getTestFiles } from "../scripts/run-tests.ts";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workflowPath = join(root, ".github", "workflows", "ci.yml");
 const EXPECTED_TESTS = [
-  "tests/agent-cli.test.mjs",
+  "tests/agent-cli.test.ts",
   "tests/agent-command-authorization.test.ts",
   "tests/agent-command-tool.test.ts",
   "tests/agent-context.test.ts",
   "tests/agent-contracts.test.ts",
-  "tests/agent-diagnostics.test.mjs",
+  "tests/agent-diagnostics.test.ts",
   "tests/agent-event-privacy.test.ts",
   "tests/agent-events.test.ts",
   "tests/agent-loop.test.ts",
@@ -28,7 +28,7 @@ const EXPECTED_TESTS = [
   "tests/generated-app-fixture.test.mjs",
   "tests/oaf-binary.test.mjs",
   "tests/oaf-init.test.mjs",
-  "tests/openai-compatible-provider.test.mjs",
+  "tests/openai-compatible-provider.test.ts",
   "tests/runtime-typecheck-foundation.test.mjs",
   "tests/sandbox.test.ts",
   "tests/stack-snapshot.test.mjs",
