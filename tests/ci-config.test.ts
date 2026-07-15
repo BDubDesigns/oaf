@@ -22,22 +22,21 @@ const EXPECTED_TESTS = [
   "tests/agent-receipt.test.ts",
   "tests/agent-tools.test.ts",
   "tests/agent-write-tool.test.ts",
-  "tests/ci-config.test.mjs",
+  "tests/ci-config.test.ts",
   "tests/command-policy.test.ts",
   "tests/doctor.test.ts",
   "tests/generated-app-fixture.test.ts",
   "tests/oaf-binary.test.ts",
   "tests/oaf-init.test.ts",
   "tests/openai-compatible-provider.test.ts",
-  "tests/runtime-typecheck-foundation.test.mjs",
+  "tests/runtime-typecheck-foundation.test.ts",
   "tests/sandbox.test.ts",
   "tests/stack-snapshot.test.ts",
   "tests/templates.test.ts",
 ];
 let failures = 0;
 
-/** @param {unknown} condition @param {string} message */
-function assert(condition, message) {
+function assert(condition: unknown, message: string): void {
   if (condition) console.log(`PASS  ${message}`);
   else {
     console.log(`FAIL  ${message}`);
@@ -45,12 +44,40 @@ function assert(condition, message) {
   }
 }
 
-const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-const runtime = JSON.parse(readFileSync(join(root, "config", "runtime", "oaf-runtime.json"), "utf8"));
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function readObject(path: string): Record<string, unknown> {
+  const value: unknown = JSON.parse(readFileSync(path, "utf8"));
+  if (!isRecord(value)) throw new Error(`${path} must contain an object`);
+  return value;
+}
+
+function readScripts(value: Record<string, unknown>): Record<string, unknown> {
+  const scripts = value.scripts;
+  if (!isRecord(scripts)) throw new Error("package scripts must be an object");
+  return scripts;
+}
+
+function readEngines(value: Record<string, unknown>): Record<string, unknown> {
+  const engines = value.engines;
+  if (!isRecord(engines)) throw new Error("package engines must be an object");
+  return engines;
+}
+
+function readString(value: Record<string, unknown>, field: string): string | undefined {
+  const fieldValue = value[field];
+  return typeof fieldValue === "string" ? fieldValue : undefined;
+}
+
+const packageJson = readObject(join(root, "package.json"));
+const runtime = readObject(join(root, "config", "runtime", "oaf-runtime.json"));
 const marker = readFileSync(join(root, ".node-version"), "utf8").trim();
-assert(packageJson.scripts.test === "node scripts/run-tests.ts", "pnpm test invokes the complete test runner");
-assert(packageJson.engines.node === runtime.node && marker === runtime.node, "factory Node declarations are consistent");
-assert(packageJson.packageManager === "pnpm@11.5.2", "package manager declaration remains exact");
+assert(readScripts(packageJson).test === "node scripts/run-tests.ts", "pnpm test invokes the complete test runner");
+assert(readScripts(packageJson).typecheck === "tsc --noEmit --pretty false", "pnpm typecheck invokes direct strict TypeScript checking");
+assert(readEngines(packageJson).node === readString(runtime, "node") && marker === readString(runtime, "node"), "factory Node declarations are consistent");
+assert(readString(packageJson, "packageManager") === "pnpm@11.5.2", "package manager declaration remains exact");
 
 const discoveredTests = getTestFiles().map((path) => relative(root, path).replaceAll("\\", "/"));
 assert(JSON.stringify(discoveredTests) === JSON.stringify(EXPECTED_TESTS), "runner discovers the expected sorted top-level suites");

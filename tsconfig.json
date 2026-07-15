@@ -2,8 +2,6 @@
   "compilerOptions": {
     "strict": true,
     "noEmit": true,
-    "allowJs": true,
-    "checkJs": true,
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -13,13 +11,9 @@
     "types": ["node"]
   },
   "include": [
-    "bin/**/*.mjs",
     "bin/**/*.ts",
-    "lib/**/*.mjs",
     "lib/**/*.ts",
-    "scripts/**/*.mjs",
     "scripts/**/*.ts",
-    "tests/**/*.mjs",
     "tests/**/*.ts"
   ],
   "exclude": [

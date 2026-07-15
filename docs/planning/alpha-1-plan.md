@@ -28,7 +28,7 @@ After the doctrine, `oaf init`, receipt, sandbox, and Pi-spike work, OAF has a
   and network policy; runs inside a locked-down container (rootless-friendly,
   no-new-privileges, project dir only, Docker socket off). `oaf sandbox
   status` reports runtime availability.
-- **Tests pass.** `tests/oaf-init.test.mjs` and `tests/sandbox.test.ts` are
+- **Tests pass.** `tests/oaf-init.test.ts` and `tests/sandbox.test.ts` are
   green.
 
 **Concrete loop Alpha 0 nearly supports:** human defines an app → `oaf init`
@@ -109,7 +109,7 @@ issue-ready. Numbers are suggested and can be renumbered at creation time.
   `agent_start`, `turn_start`, `message_start/end`, `tool_call`,
   `tool_execution_start/end`, `tool_result`, `receipt_emitted`, `agent_end`.
   Single source file, no runtime deps.
-- **Acceptance:** file `lib/agent/events.mjs` (or `.ts`) exports the event
+- **Acceptance:** file `lib/agent/events.ts` exports the event
   types + a tiny in-memory collector; unit test asserts shape. No loop yet.
 - **Non-goals:** no provider SDK, no tools, no receipt writer.
 
@@ -117,7 +117,7 @@ issue-ready. Numbers are suggested and can be renumbered at creation time.
 - **Scope:** Enumerate the exact tool set and each tool's JSON schema/args:
   `read`, `list`, `grep`, `write`/`edit`, `bash` (command). Document the
   contract (name, args, executionMode, who executes it).
-- **Acceptance:** `docs/agent-tools.md` + a `lib/agent/tools.mjs` registry
+- **Acceptance:** `docs/agent-tools.md` + a `lib/agent/tools.ts` registry
   stub (tool definitions, no execution bodies required yet). Decision on
   `write` vs `edit` granularity recorded.
 - **Non-goals:** implementing tool bodies, sandbox wiring.
@@ -135,7 +135,7 @@ issue-ready. Numbers are suggested and can be renumbered at creation time.
 - **Scope:** The `bash`/command tool whose `execute` calls `oaf sandbox run`
   (reuse `lib/sandbox.ts`). Passes through `--network`/`--confirm` only when
   policy allows. Returns exit code + captured output.
-- **Acceptance:** `lib/agent/tools/bash.mjs` invokes the sandbox; tests assert
+- **Acceptance:** `lib/agent/tools/bash.ts` invokes the sandbox; tests assert
   allowed commands run, confirmation/network-gated commands fail closed, and
   nothing escapes the workspace. Reuses existing sandbox tests' patterns.
 - **Non-goals:** new sandbox policy; changing `lib/sandbox.ts` behavior.
@@ -143,10 +143,10 @@ issue-ready. Numbers are suggested and can be renumbered at creation time.
 ### Issue A1-5 — Implement minimal model-call loop with one provider seam
 - **Scope:** A loop that (1) builds context from a prompt + docs-pack +
   AgentEvents, (2) calls a model via a single provider seam
-  (`lib/agent/provider.mjs` — interface + one stub/mock implementation so no
+  (`lib/agent/provider.ts` — interface + one stub/mock implementation so no
   real key is needed for tests), (3) parses tool calls, (4) executes them,
   (5) repeats until stop.
-- **Acceptance:** `lib/agent/loop.mjs` runs end-to-end against the mock
+- **Acceptance:** `lib/agent/loop.ts` runs end-to-end against the mock
   provider; emits `AgentEvent`s; stops on a terminal condition. No real API
   calls required for tests.
 - **Non-goals:** real provider SDK (Alpha 1 uses a mock seam; real provider is

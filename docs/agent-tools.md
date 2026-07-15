@@ -3,7 +3,7 @@
 This document defines the **fixed** tool set available to the tiny OAF-owned
 agent loop (Alpha 1). It is about **contracts and boundaries**, not execution.
 Tool bodies are implemented in later issues (A1-3, A1-4); this doc and
-`lib/agent/tools.mjs` pin the surface.
+`lib/agent/tools.ts` pin the surface.
 
 The registry is the source of truth for the loop, tests, and receipts.
 
@@ -214,7 +214,7 @@ policy and trusted host code own authorization.
 All five tools emit the same four `AgentEvent`s during a run:
 `tool_call` → `tool_execution_start` → `tool_execution_end` → `tool_result`.
 The loop aggregates these (plus `agent_start` / `turn_start` / `message_*`
-/ `receipt_emitted` / `agent_end` from `lib/agent/events.mjs`) into a receipt
+/ `receipt_emitted` / `agent_end` from `lib/agent/events.ts`) into a receipt
 (`docs/receipts.md`, ADR 0008).
 
 ## What is intentionally not here
