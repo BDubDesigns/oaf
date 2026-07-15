@@ -52,6 +52,12 @@ const agentPrivacyTest = join(root, "tests", "agent-privacy.test.ts");
 const openaiCompatibleProviderTest = join(root, "tests", "openai-compatible-provider.test.ts");
 const agentDiagnosticsTest = join(root, "tests", "agent-diagnostics.test.ts");
 const agentCliTest = join(root, "tests", "agent-cli.test.ts");
+const doctorTest = join(root, "tests", "doctor.test.ts");
+const generatedAppFixtureTest = join(root, "tests", "generated-app-fixture.test.ts");
+const binaryTest = join(root, "tests", "oaf-binary.test.ts");
+const initTest = join(root, "tests", "oaf-init.test.ts");
+const stackSnapshotTest = join(root, "tests", "stack-snapshot.test.ts");
+const templatesTest = join(root, "tests", "templates.test.ts");
 const usage = `OAF — Opinionated App Factory (Alpha 0)
 
 Usage:
@@ -168,6 +174,18 @@ const agentDiagnosticsOutput = execFileSync(process.execPath, [agentDiagnosticsT
 assert(agentDiagnosticsOutput.endsWith("\nAll agent diagnostics checks passed.\n"), "native TypeScript agent diagnostics suite executes directly");
 const agentCliOutput = execFileSync(process.execPath, [agentCliTest], { encoding: "utf8" });
 assert(agentCliOutput.endsWith("All agent CLI checks passed.\n"), "native TypeScript agent CLI suite executes directly");
+const doctorTestOutput = execFileSync(process.execPath, [doctorTest], { encoding: "utf8" });
+assert(doctorTestOutput.endsWith("Doctor checks passed.\n"), "native TypeScript doctor suite executes directly");
+const generatedAppFixtureOutput = execFileSync(process.execPath, [generatedAppFixtureTest], { encoding: "utf8" });
+assert(generatedAppFixtureOutput.endsWith("All generated-app fixture checks passed.\n"), "native TypeScript generated-app fixture suite executes directly");
+const binaryTestOutput = execFileSync(process.execPath, [binaryTest], { encoding: "utf8" });
+assert(binaryTestOutput.endsWith("Binary dispatch checks passed.\n"), "native TypeScript binary suite executes directly");
+const initTestOutput = execFileSync(process.execPath, [initTest], { encoding: "utf8" });
+assert(initTestOutput.endsWith("All init smoke tests passed.\n"), "native TypeScript init suite executes directly");
+const stackSnapshotTestOutput = execFileSync(process.execPath, [stackSnapshotTest], { encoding: "utf8" });
+assert(stackSnapshotTestOutput.endsWith("All Stack 0.1 snapshot checks passed.\n"), "native TypeScript stack snapshot suite executes directly");
+const templatesTestOutput = execFileSync(process.execPath, [templatesTest], { encoding: "utf8" });
+assert(templatesTestOutput.endsWith("Templates checks passed.\n"), "native TypeScript templates suite executes directly");
 assert(
   ![
     runner,
@@ -191,6 +209,12 @@ assert(
     openaiCompatibleProviderTest,
     agentDiagnosticsTest,
     agentCliTest,
+    doctorTest,
+    generatedAppFixtureTest,
+    binaryTest,
+    initTest,
+    stackSnapshotTest,
+    templatesTest,
   ].some((file) => existsSync(file.replace(/\.ts$/, ".js")) || existsSync(file.replace(/\.ts$/, ".js.map"))),
   "native TypeScript runner and agent suites emit no JavaScript or source maps",
 );
@@ -288,6 +312,12 @@ const newFiles = new Set([
   openaiCompatibleProviderTest,
   agentDiagnosticsTest,
   agentCliTest,
+  doctorTest,
+  generatedAppFixtureTest,
+  binaryTest,
+  initTest,
+  stackSnapshotTest,
+  templatesTest,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 

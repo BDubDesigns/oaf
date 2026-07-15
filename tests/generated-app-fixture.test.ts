@@ -11,9 +11,10 @@ import {
   FIXTURE_TEMPLATE_PATHS,
   GENERATED_APP_FIXTURE,
 } from "./generated-app-fixture-helper.ts";
+import type { GeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 
 let failures = 0;
-function assert(condition, message) {
+function assert(condition: unknown, message: string): void {
   if (condition) {
     console.log(`PASS  ${message}`);
   } else {
@@ -22,8 +23,13 @@ function assert(condition, message) {
   }
 }
 
-function walk(root, current = root) {
-  const entries = [];
+interface FixtureEntry {
+  path: string;
+  directory: boolean;
+}
+
+function walk(root: string, current: string = root): FixtureEntry[] {
+  const entries: FixtureEntry[] = [];
   for (const entry of readdirSync(current, { withFileTypes: true })) {
     const fullPath = join(current, entry.name);
     entries.push({ path: relative(root, fullPath), directory: entry.isDirectory() });
@@ -32,11 +38,27 @@ function walk(root, current = root) {
   return entries;
 }
 
-function matchesTemplate(actual, expected) {
+function matchesTemplate(actual: string, expected: string): boolean {
   return actual === expected || actual === `${expected}\n`;
 }
 
-const copies = [];
+function readPackageJson(text: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(text);
+  if (!isRecord(parsed)) throw new Error("fixture package JSON must be an object");
+  return parsed;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function templateContent(path: string, templates: Record<string, string>): string {
+  const content = Reflect.get(templates, path);
+  if (typeof content !== "string") throw new Error(`template ${path} must be a string`);
+  return content;
+}
+
+const copies: GeneratedAppFixture[] = [];
 try {
   // 1. The fixture is a recognizable generated OAF app with core markers.
   assert(existsSync(GENERATED_APP_FIXTURE), "checked-in generated-app fixture exists");
@@ -54,16 +76,17 @@ try {
     assert(existsSync(join(GENERATED_APP_FIXTURE, path)), `fixture core path exists: ${path}`);
   }
 
-  const packageJson = JSON.parse(readFileSync(join(GENERATED_APP_FIXTURE, "package.json"), "utf8"));
-  assert(packageJson.packageManager === "pnpm@11.5.2", "fixture uses the canonical pnpm metadata");
-  assert(packageJson.scripts.test === "node tests/sanity.test.mjs", "fixture exposes dependency-free validation");
+  const packageJson = readPackageJson(readFileSync(join(GENERATED_APP_FIXTURE, "package.json"), "utf8"));
+  assert(Reflect.get(packageJson, "packageManager") === "pnpm@11.5.2", "fixture uses the canonical pnpm metadata");
+  const scripts = Reflect.get(packageJson, "scripts");
+  assert(scripts !== null && typeof scripts === "object" && !Array.isArray(scripts) && Reflect.get(scripts, "test") === "node tests/sanity.test.mjs", "fixture exposes dependency-free validation");
 
   // 2. Curated generated files must stay aligned with the real init template.
   const templates = getAppTemplates(FIXTURE_NAME, FIXTURE_CREATED_AT);
   for (const path of FIXTURE_TEMPLATE_PATHS) {
     assert(path in templates, `fixture retained path remains generated: ${path}`);
     assert(
-      matchesTemplate(readFileSync(join(GENERATED_APP_FIXTURE, path), "utf8"), templates[path]),
+      matchesTemplate(readFileSync(join(GENERATED_APP_FIXTURE, path), "utf8"), templateContent(path, templates)),
       `fixture matches current init template: ${path}`,
     );
   }
@@ -72,13 +95,13 @@ try {
   const forbiddenDirectories = new Set(["node_modules", ".next", "dist", "build", ".cache", "coverage", ".turbo"]);
   const fixtureEntries = walk(GENERATED_APP_FIXTURE);
   const forbiddenDirectoryPaths = fixtureEntries
-    .filter((entry) => entry.directory && forbiddenDirectories.has(entry.path.split(/[\\/]/).at(-1)))
+    .filter((entry) => entry.directory && forbiddenDirectories.has(entry.path.split(/[\\/]/).at(-1) ?? ""))
     .map((entry) => entry.path);
   const environmentPaths = fixtureEntries
-    .filter((entry) => /^\.env(?:\.|$)/.test(entry.path.split(/[\\/]/).at(-1)))
+    .filter((entry) => /^\.env(?:\.|$)/.test(entry.path.split(/[\\/]/).at(-1) ?? ""))
     .map((entry) => entry.path);
   const secretPaths = fixtureEntries
-    .filter((entry) => /^(credentials\.json|id_rsa|.*\.(pem|key))$/i.test(entry.path.split(/[\\/]/).at(-1)))
+    .filter((entry) => /^(credentials\.json|id_rsa|.*\.(pem|key))$/i.test(entry.path.split(/[\\/]/).at(-1) ?? ""))
     .map((entry) => entry.path);
   assert(forbiddenDirectoryPaths.length === 0, "fixture has no dependency/build/cache directories");
   assert(environmentPaths.length === 0, "fixture has no environment files");
