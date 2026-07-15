@@ -10,9 +10,10 @@ import {
   isGitInspectionCommand,
   isVerificationCommand,
 } from "../lib/command-policy.ts";
+import type { CanonicalCommand } from "../lib/command-policy.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const expected = [
+const expected: readonly CanonicalCommand[] = [
   { command: "pnpm test", name: "test", type: "test", kind: "package" },
   { command: "pnpm lint", name: "lint", type: "lint", kind: "package" },
   { command: "pnpm typecheck", name: "typecheck", type: "typecheck", kind: "package" },
@@ -49,8 +50,11 @@ try { Reflect.set(BLESSED_PACKAGE_SCRIPTS, "test", "pnpm test"); } catch {}
 deepEqual(CANONICAL_COMMANDS, expected, "mutation attempts cannot alter canonical policy");
 deepEqual(BLESSED_PACKAGE_SCRIPTS, { doctor: "node oaf/doctor.mjs", test: "node tests/sanity.test.mjs" }, "blessed scripts retain their exact definitions");
 
-const stack = JSON.parse(readFileSync(resolve(root, "config", "stack", "oaf-stack-0.1.json"), "utf8"));
-strictEqual(BLESSED_PACKAGE_MANAGER, `pnpm@${stack.runtime.pnpm}`, "blessed package manager derives from the validated stack snapshot");
+const stack: unknown = JSON.parse(readFileSync(resolve(root, "config", "stack", "oaf-stack-0.1.json"), "utf8"));
+const runtime = stack !== null && typeof stack === "object" ? Reflect.get(stack, "runtime") : undefined;
+const pnpm = runtime !== null && typeof runtime === "object" ? Reflect.get(runtime, "pnpm") : undefined;
+if (typeof pnpm !== "string") throw new Error("stack snapshot runtime.pnpm is invalid");
+strictEqual(BLESSED_PACKAGE_MANAGER, `pnpm@${pnpm}`, "blessed package manager derives from the validated stack snapshot");
 for (const malformed of [null, [], {}, true, 1]) {
   strictEqual(Reflect.apply(canonicalCommand, null, [malformed]), null, `${String(malformed)} safely returns no canonical command`);
   strictEqual(Reflect.apply(isVerificationCommand, null, [malformed]), false, `${String(malformed)} safely returns false for package verification`);

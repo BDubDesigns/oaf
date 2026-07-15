@@ -14,12 +14,22 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const binPath = resolve(repoRoot, "bin", "oaf.ts");
 
 let failures = 0;
-function assert(cond, msg) {
+function assert(cond: unknown, msg: string): void {
   if (cond) console.log(`PASS  ${msg}`);
   else {
     console.log(`FAIL  ${msg}`);
     failures++;
   }
+}
+
+function foreignString(value: unknown, key: "stdout" | "stderr"): string {
+  const property = value !== null && (typeof value === "object" || typeof value === "function") ? Reflect.get(value, key) : undefined;
+  return property ? String(property) : "";
+}
+
+function foreignStatus(value: unknown): number | undefined {
+  const status = value !== null && (typeof value === "object" || typeof value === "function") ? Reflect.get(value, "status") : undefined;
+  return typeof status === "number" ? status : undefined;
 }
 
 // 1. Classification: allowed by default
@@ -79,8 +89,8 @@ try {
   blockedOut = execFileSync("node", [binPath, "sandbox", "run", "sudo rm -rf /"], {
     stdio: "pipe",
   }).toString();
-} catch (e) {
-  blockedOut = (e.stdout || "").toString() + (e.stderr || "").toString();
+  } catch (error: unknown) {
+  blockedOut = foreignString(error, "stdout") + foreignString(error, "stderr");
 }
 assert(/blocked/i.test(blockedOut), "CLI blocks denied command");
 
@@ -91,9 +101,9 @@ try {
   statusOut = execFileSync("node", [binPath, "sandbox", "status"], {
     stdio: "pipe",
   }).toString();
-} catch (e) {
-  statusOut = (e.stdout || "").toString();
-  statusCode = e.status ?? 1;
+} catch (error: unknown) {
+  statusOut = foreignString(error, "stdout");
+  statusCode = foreignStatus(error) ?? 1;
 }
 assert(statusCode === 0, "sandbox status exits 0");
 assert(/available|unavailable/.test(statusOut), "sandbox status reports availability");
@@ -105,9 +115,9 @@ try {
   runOut = execFileSync("node", [binPath, "sandbox", "run", "pnpm test"], {
     stdio: "pipe",
   }).toString();
-} catch (e) {
-  runOut = (e.stdout || "").toString() + (e.stderr || "").toString();
-  runCode = e.status ?? 1;
+} catch (error: unknown) {
+  runOut = foreignString(error, "stdout") + foreignString(error, "stderr");
+  runCode = foreignStatus(error) ?? 1;
 }
 if (!detectRuntime()) {
   assert(runCode !== 0, "sandbox run exits non-zero without a runtime");
@@ -128,9 +138,9 @@ if (detectRuntime()) {
     out = execFileSync("node", [binPath, "sandbox", "run", "pnpm test"], {
       stdio: "pipe",
     }).toString();
-  } catch (e) {
-    out = (e.stdout || "").toString() + (e.stderr || "").toString();
-    code = e.status ?? 1;
+  } catch (error: unknown) {
+    out = foreignString(error, "stdout") + foreignString(error, "stderr");
+    code = foreignStatus(error) ?? 1;
   }
   assert(
     /\[sandbox\] command:/.test(out),

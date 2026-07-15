@@ -40,6 +40,10 @@ const agentReadToolsTest = join(root, "tests", "agent-read-tools.test.ts");
 const agentWriteToolTest = join(root, "tests", "agent-write-tool.test.ts");
 const agentPathPolicyTest = join(root, "tests", "agent-path-policy.test.ts");
 const agentPublicToolErrorsTest = join(root, "tests", "agent-public-tool-errors.test.ts");
+const commandPolicyTest = join(root, "tests", "command-policy.test.ts");
+const agentCommandToolTest = join(root, "tests", "agent-command-tool.test.ts");
+const agentCommandAuthorizationTest = join(root, "tests", "agent-command-authorization.test.ts");
+const sandboxTest = join(root, "tests", "sandbox.test.ts");
 const usage = `OAF — Opinionated App Factory (Alpha 0)
 
 Usage:
@@ -90,8 +94,8 @@ const providerOutput = execFileSync(process.execPath, [providerFixture], { encod
 assert(providerOutput.trim() === "provider-native-typescript:ok", "native TypeScript provider modules execute with their explicit .ts imports");
 const pathToolErrorsOutput = execFileSync(process.execPath, [pathToolErrorsFixture], { encoding: "utf8" });
 assert(pathToolErrorsOutput.trim() === "agent-path-tool-errors-native-typescript:ok", "native TypeScript path and public tool-error modules execute with their explicit .ts imports");
-const commandPolicyOutput = execFileSync(process.execPath, [commandPolicyFixture], { encoding: "utf8" });
-assert(commandPolicyOutput.trim() === "command-policy-native-typescript:ok", "native TypeScript command policy executes with explicit .ts imports");
+const commandPolicyFixtureOutput = execFileSync(process.execPath, [commandPolicyFixture], { encoding: "utf8" });
+assert(commandPolicyFixtureOutput.trim() === "command-policy-native-typescript:ok", "native TypeScript command policy executes with explicit .ts imports");
 const sandboxOutput = execFileSync(process.execPath, [sandboxFixture], { encoding: "utf8" });
 assert(sandboxOutput.trim() === "sandbox-native-typescript:ok", "native TypeScript sandbox executes with explicit .ts imports");
 const contextOutput = execFileSync(process.execPath, [contextFixture], { encoding: "utf8" });
@@ -132,6 +136,14 @@ const agentPathPolicyOutput = execFileSync(process.execPath, [agentPathPolicyTes
 assert(agentPathPolicyOutput.endsWith("All agent path-policy checks passed.\n"), "native TypeScript agent path-policy suite executes directly");
 const agentPublicToolErrorsOutput = execFileSync(process.execPath, [agentPublicToolErrorsTest], { encoding: "utf8" });
 assert(agentPublicToolErrorsOutput.endsWith("All public tool-error checks passed.\n"), "native TypeScript public tool-error suite executes directly");
+const commandPolicyOutput = execFileSync(process.execPath, [commandPolicyTest], { encoding: "utf8" });
+assert(commandPolicyOutput.trim() === "Command policy tests passed.", "native TypeScript command-policy suite executes directly");
+const agentCommandToolOutput = execFileSync(process.execPath, [agentCommandToolTest], { encoding: "utf8" });
+assert(agentCommandToolOutput.endsWith("\nAll agent command-tool checks passed.\n"), "native TypeScript agent command-tool suite executes directly");
+const agentCommandAuthorizationOutput = execFileSync(process.execPath, [agentCommandAuthorizationTest], { encoding: "utf8" });
+assert(agentCommandAuthorizationOutput.endsWith("\nAll agent command-authorization checks passed.\n"), "native TypeScript agent command-authorization suite executes directly");
+const sandboxTestOutput = execFileSync(process.execPath, [sandboxTest], { encoding: "utf8" });
+assert(sandboxTestOutput.endsWith("\nAll sandbox smoke tests passed.\n"), "native TypeScript sandbox suite executes directly");
 assert(
   ![
     runner,
@@ -143,6 +155,10 @@ assert(
     agentWriteToolTest,
     agentPathPolicyTest,
     agentPublicToolErrorsTest,
+    commandPolicyTest,
+    agentCommandToolTest,
+    agentCommandAuthorizationTest,
+    sandboxTest,
   ].some((file) => existsSync(file.replace(/\.ts$/, ".js")) || existsSync(file.replace(/\.ts$/, ".js.map"))),
   "native TypeScript runner and agent suites emit no JavaScript or source maps",
 );
@@ -233,6 +249,10 @@ const newFiles = new Set([
   agentWriteToolTest,
   agentPathPolicyTest,
   agentPublicToolErrorsTest,
+  commandPolicyTest,
+  agentCommandToolTest,
+  agentCommandAuthorizationTest,
+  sandboxTest,
 ]);
 assert(!collectDiagnostics().some((diagnostic) => diagnostic.file && newFiles.has(diagnostic.file.fileName)), "new typecheck infrastructure is type-clean");
 

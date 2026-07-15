@@ -7,8 +7,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workflowPath = join(root, ".github", "workflows", "ci.yml");
 const EXPECTED_TESTS = [
   "tests/agent-cli.test.mjs",
-  "tests/agent-command-authorization.test.mjs",
-  "tests/agent-command-tool.test.mjs",
+  "tests/agent-command-authorization.test.ts",
+  "tests/agent-command-tool.test.ts",
   "tests/agent-context.test.mjs",
   "tests/agent-contracts.test.ts",
   "tests/agent-diagnostics.test.mjs",
@@ -23,14 +23,14 @@ const EXPECTED_TESTS = [
   "tests/agent-tools.test.ts",
   "tests/agent-write-tool.test.ts",
   "tests/ci-config.test.mjs",
-  "tests/command-policy.test.mjs",
+  "tests/command-policy.test.ts",
   "tests/doctor.test.mjs",
   "tests/generated-app-fixture.test.mjs",
   "tests/oaf-binary.test.mjs",
   "tests/oaf-init.test.mjs",
   "tests/openai-compatible-provider.test.mjs",
   "tests/runtime-typecheck-foundation.test.mjs",
-  "tests/sandbox.test.mjs",
+  "tests/sandbox.test.ts",
   "tests/stack-snapshot.test.mjs",
   "tests/templates.test.mjs",
 ];
