@@ -9,19 +9,25 @@ import { runAgentLoop } from "../lib/agent/loop.ts";
 import { createMockProvider, buildToolProtocol } from "../lib/agent/provider.ts";
 import { TOOL_NAMES } from "../lib/agent/tools.ts";
 import { copyGeneratedAppFixture } from "./generated-app-fixture-helper.ts";
-/** @typedef {import("../lib/agent/contracts.ts").RecordedAgentEvent} RecordedAgentEvent */
-/** @typedef {import("../lib/agent/contracts.ts").ProviderMessage} ProviderMessage */
-/** @typedef {import("../lib/agent/contracts.ts").NormalizedProviderRequest} NormalizedProviderRequest */
+import type { AgentRunResult, NormalizedProviderRequest, ProviderMessage, RecordedAgentEvent, ToolExecutorInput, ToolExecutorMap } from "../lib/agent/contracts.ts";
+import type { GeneratedAppFixture } from "./generated-app-fixture-helper.ts";
 
-/** @param {RecordedAgentEvent} event @returns {event is Extract<RecordedAgentEvent, { type: "tool_result" }>} */
-function isToolResult(event) { return event.type === "tool_result"; }
-/** @param {RecordedAgentEvent} event @returns {event is Extract<RecordedAgentEvent, { type: "tool_result", toolName: "read" }>} */
-function isReadToolResult(event) { return event.type === "tool_result" && event.toolName === "read"; }
-/** @param {RecordedAgentEvent} event @returns {event is Extract<RecordedAgentEvent, { type: "message_end" }>} */
-function isMessageEnd(event) { return event.type === "message_end"; }
+function isToolResult(event: RecordedAgentEvent): event is Extract<RecordedAgentEvent, { type: "tool_result" }> { return event.type === "tool_result"; }
+function isReadToolResult(event: RecordedAgentEvent): event is Extract<RecordedAgentEvent, { type: "tool_result"; toolName: "read" }> { return event.type === "tool_result" && event.toolName === "read"; }
+function isMessageEnd(event: RecordedAgentEvent): event is Extract<RecordedAgentEvent, { type: "message_end" }> { return event.type === "message_end"; }
+function isToolCall(event: RecordedAgentEvent): event is Extract<RecordedAgentEvent, { type: "tool_call" }> { return event.type === "tool_call"; }
+function isToolExecutionEvent(event: RecordedAgentEvent): event is Extract<RecordedAgentEvent, { type: "tool_execution_start" | "tool_execution_end" }> { return event.type === "tool_execution_start" || event.type === "tool_execution_end"; }
+function isToolExecutionStart(event: RecordedAgentEvent): event is Extract<RecordedAgentEvent, { type: "tool_execution_start" }> { return event.type === "tool_execution_start"; }
+function isRejectedToolResult(event: RecordedAgentEvent): event is Extract<RecordedAgentEvent, { type: "tool_result" }> { return isToolResult(event) && event.errorCode !== null; }
+function includesOutsideContent(event: RecordedAgentEvent): boolean { return JSON.stringify(event).includes("EVIL README CONTENT"); }
+function errorMessage(error: unknown): string | undefined {
+  if (error === null || (typeof error !== "object" && typeof error !== "function")) return undefined;
+  const message = Reflect.get(error, "message");
+  return typeof message === "string" ? message : undefined;
+}
 
 let failures = 0;
-function assert(condition, message) {
+function assert(condition: unknown, message: string): void {
   if (condition) {
     console.log(`PASS  ${message}`);
   } else {
@@ -30,7 +36,7 @@ function assert(condition, message) {
   }
 }
 
-function assertDeepEqual(actual, expected, message) {
+function assertDeepEqual(actual: unknown, expected: unknown, message: string): void {
   try {
     deepEqual(actual, expected);
     console.log(`PASS  ${message}`);
@@ -41,23 +47,32 @@ function assertDeepEqual(actual, expected, message) {
 }
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const fixtures = [];
-const outsideDirs = [];
+const fixtures: GeneratedAppFixture[] = [];
+const outsideDirs: string[] = [];
 
-function withFixture() {
+function withFixture(): string {
   const fixture = copyGeneratedAppFixture();
   fixtures.push(fixture);
   return fixture.workspace;
 }
 
-function makeOutsideDir() {
+function makeOutsideDir(): string {
   const dir = mkdtempSync(join(tmpdir(), "oaf-loop-outside-"));
   outsideDirs.push(dir);
   return dir;
 }
 
-function types(events) {
+function types(events: RecordedAgentEvent[]): string[] {
   return events.map((event) => event.type);
+}
+
+function capturedRequest(request: NormalizedProviderRequest | undefined): NormalizedProviderRequest {
+  if (request === undefined) throw new Error("provider request was not captured");
+  return request;
+}
+
+function malformedRunAgentLoop(options: object): Promise<AgentRunResult> {
+  return Reflect.apply(runAgentLoop, undefined, [options]);
 }
 
 try {
@@ -87,7 +102,7 @@ try {
   // 2. Context is supplied through the provider seam.
   {
     const workspace = withFixture();
-    let captured;
+    let captured: NormalizedProviderRequest | undefined;
     const provider = createMockProvider({
       script: [{ content: "ok", toolCalls: [] }],
       onRequest: (request) => {
@@ -96,16 +111,17 @@ try {
     });
     await runAgentLoop({ task: "hi", workspaceRoot: workspace, provider });
 
-    assert(typeof captured.system === "string" && captured.system.includes("Opinionated App Factory"),
+    const request = capturedRequest(captured);
+    assert(typeof request.system === "string" && request.system.includes("Opinionated App Factory"),
       "provider receives assembled OAF context in request.system");
-    assert(!("apiKey" in captured) && !("key" in captured), "provider request carries no API key");
-    assertDeepEqual(captured.tools, buildToolProtocol(), "provider receives the fixed tool protocol");
+    assert(!("apiKey" in request) && !("key" in request), "provider request carries no API key");
+    assertDeepEqual(request.tools, buildToolProtocol(), "provider receives the fixed tool protocol");
   }
 
   // 3. The fixed tool registry is used, not a parallel invented registry.
   {
     const workspace = withFixture();
-    let captured;
+    let captured: NormalizedProviderRequest | undefined;
     const provider = createMockProvider({
       script: [{ content: "ok", toolCalls: [] }],
       onRequest: (request) => {
@@ -114,10 +130,11 @@ try {
     });
     await runAgentLoop({ task: "hi", workspaceRoot: workspace, provider });
 
-    const providedNames = captured.tools.map((tool) => tool.name).sort();
+    const request = capturedRequest(captured);
+    const providedNames = request.tools.map((tool) => tool.name).sort();
     assert(JSON.stringify(providedNames) === JSON.stringify([...TOOL_NAMES].sort()),
       "provider receives exactly the 5 fixed tool names");
-    assert(captured.tools.every((tool) => typeof tool.argsSchema === "object" && tool.argsSchema !== null),
+    assert(request.tools.every((tool) => typeof tool.argsSchema === "object" && tool.argsSchema !== null),
       "each provided tool carries its registered argsSchema");
   }
 
@@ -147,9 +164,9 @@ try {
     const badResult = result.events.find(isToolResult);
     assert(badResult?.errorCode === "rejected" && badResult.toolName === null,
       "unknown tool request fails closed without retaining its raw name");
-    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_result" && event.toolName === "read"),
+    assert(!result.events.some(isReadToolResult),
       "unknown tool is never dispatched to a real executor");
-    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
+    assert(!result.events.some(isToolExecutionEvent),
       "rejected unknown tool emits no tool_execution_start/end");
 
     // Malformed call (no name) also fails closed.
@@ -160,9 +177,9 @@ try {
       ],
     });
     const result2 = await runAgentLoop({ task: "be vague", workspaceRoot: withFixture(), provider: provider2 });
-    const malformed = result2.events.find((event) => isToolResult(event) && event.errorCode !== null);
+    const malformed = result2.events.find(isRejectedToolResult);
     assert(!!malformed && malformed.toolName === null, "malformed tool call (missing name) fails closed");
-    assert(!result2.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start" || event.type === "tool_execution_end"),
+    assert(!result2.events.some(isToolExecutionEvent),
       "rejected malformed tool emits no tool_execution_start/end");
   }
 
@@ -183,11 +200,11 @@ try {
   {
     const workspace = withFixture();
     const broken = { complete: async () => null };
-    const result = await runAgentLoop({ task: "x", workspaceRoot: workspace, provider: broken });
+    const result = await malformedRunAgentLoop({ task: "x", workspaceRoot: workspace, provider: broken });
 
     assert(result.status === "failed" && result.terminalReason === "provider_error",
       "malformed provider response ends the run as failed");
-    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_call"),
+    assert(!result.events.some(isToolCall),
       "no tool is dispatched on a failed provider response");
     const msgEnd = result.events.find(isMessageEnd);
     assert(!!msgEnd && msgEnd.errorCode === "provider_error",
@@ -211,7 +228,8 @@ try {
     try {
       await Reflect.apply(runAgentLoop, undefined, [{ workspaceRoot: withFixture(), provider }]);
     } catch (error) {
-      threw = /task is required/.test(error.message);
+      const message = errorMessage(error);
+      threw = message !== undefined && /task is required/.test(message);
     }
     assert(threw, "loop requires a task");
   }
@@ -235,7 +253,7 @@ try {
   {
     const workspace = withFixture();
     const throwing = { complete: async () => { throw new Error("boom"); } };
-    const result = await runAgentLoop({ task: "x", workspaceRoot: workspace, provider: throwing });
+    const result = await malformedRunAgentLoop({ task: "x", workspaceRoot: workspace, provider: throwing });
 
     assert(result.status === "failed" && result.terminalReason === "provider_error", "provider throw ends the run as failed");
     const t = types(result.events);
@@ -262,7 +280,7 @@ try {
     const readResult = result.events.find(isReadToolResult);
     assert(readResult?.summary.path === "README.md" && readResult.summary.bytes > 0,
       "read used the trusted workspace root and records only safe metadata");
-    assert(!result.events.some(/** @param {RecordedAgentEvent} event */ (event) => JSON.stringify(event).includes("EVIL README CONTENT")),
+    assert(!result.events.some(includesOutsideContent),
       "no event leaks the outside file contents");
   }
 
@@ -288,8 +306,8 @@ try {
   // 14. BLOCKER 1: a command call containing args.workspaceRoot passes the
   // actual loop workspace to the injected command executor.
   {
-    const calls = [];
-    const myExecutor = async (options) => {
+    const calls: ToolExecutorInput<"command">[] = [];
+    const myExecutor: ToolExecutorMap["command"] = async (options) => {
       calls.push(options);
       return { exitCode: 0, stdout: "ok", stderr: "", truncated: false };
     };
@@ -312,8 +330,8 @@ try {
   // 15. BLOCKER 1: unexpected keys and non-object args fail closed without any
   // executor dispatch.
   {
-    const calls = [];
-    const neverCalled = async (options) => {
+    const calls: ToolExecutorInput<"command">[] = [];
+    const neverCalled: ToolExecutorMap["command"] = async (options) => {
       calls.push(options);
       throw new Error("executor should not have been called");
     };
@@ -329,7 +347,7 @@ try {
     assert(calls.length === 0, "executor not called when args have an unexpected key");
     const errA = resultA.events.find(isToolResult);
     assert(!!errA && errA.errorCode === "rejected", "unexpected key rejected with a safe error result");
-    assert(!resultA.events.some(/** @param {RecordedAgentEvent} event */ (event) => event.type === "tool_execution_start"),
+    assert(!resultA.events.some(isToolExecutionStart),
       "no tool_execution_start emitted for rejected args");
 
     // Non-object args.
@@ -349,7 +367,7 @@ try {
   // exact command result or execute the tool a second time.
   {
     const workspace = withFixture();
-    /** @type {NormalizedProviderRequest[]} */ const requests = [];
+    const requests: NormalizedProviderRequest[] = [];
     const rawResult = { exitCode: null, stdout: "SUMMARY_FAILURE_STDOUT", stderr: "", truncated: false };
     const provider = createMockProvider({
       script: [
@@ -360,7 +378,7 @@ try {
     });
     const result = await runAgentLoop({ task: "test", workspaceRoot: workspace, provider, commandExecutor: async () => rawResult });
     const toolResult = result.events.find(isToolResult);
-    const secondToolMessage = requests[1].messages.find(/** @param {ProviderMessage} message */ (message) => message.role === "tool");
+    const secondToolMessage = capturedRequest(requests[1]).messages.find((message): message is Extract<ProviderMessage, { role: "tool" }> => message.role === "tool");
     assert(toolResult?.errorCode === "rejected", "summary failure records a bounded rejected event");
     assert(secondToolMessage?.toolResults[0] && "result" in secondToolMessage.toolResults[0] && secondToolMessage.toolResults[0].result === rawResult,
       "summary failure preserves the exact provider tool result");

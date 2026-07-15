@@ -44,6 +44,11 @@ const commandPolicyTest = join(root, "tests", "command-policy.test.ts");
 const agentCommandToolTest = join(root, "tests", "agent-command-tool.test.ts");
 const agentCommandAuthorizationTest = join(root, "tests", "agent-command-authorization.test.ts");
 const sandboxTest = join(root, "tests", "sandbox.test.ts");
+const agentContextTest = join(root, "tests", "agent-context.test.ts");
+const agentLoopTest = join(root, "tests", "agent-loop.test.ts");
+const agentReceiptTest = join(root, "tests", "agent-receipt.test.ts");
+const agentEventPrivacyTest = join(root, "tests", "agent-event-privacy.test.ts");
+const agentPrivacyTest = join(root, "tests", "agent-privacy.test.ts");
 const usage = `OAF — Opinionated App Factory (Alpha 0)
 
 Usage:
@@ -144,6 +149,16 @@ const agentCommandAuthorizationOutput = execFileSync(process.execPath, [agentCom
 assert(agentCommandAuthorizationOutput.endsWith("\nAll agent command-authorization checks passed.\n"), "native TypeScript agent command-authorization suite executes directly");
 const sandboxTestOutput = execFileSync(process.execPath, [sandboxTest], { encoding: "utf8" });
 assert(sandboxTestOutput.endsWith("\nAll sandbox smoke tests passed.\n"), "native TypeScript sandbox suite executes directly");
+const agentContextOutput = execFileSync(process.execPath, [agentContextTest], { encoding: "utf8" });
+assert(agentContextOutput.endsWith("\nAll agent-context checks passed.\n"), "native TypeScript agent context suite executes directly");
+const agentLoopOutput = execFileSync(process.execPath, [agentLoopTest], { encoding: "utf8" });
+assert(agentLoopOutput.endsWith("\nAll agent-loop checks passed.\n"), "native TypeScript agent loop suite executes directly");
+const agentReceiptOutput = execFileSync(process.execPath, [agentReceiptTest], { encoding: "utf8" });
+assert(agentReceiptOutput.endsWith("\nAll agent-receipt checks passed.\n"), "native TypeScript agent receipt suite executes directly");
+const agentEventPrivacyOutput = execFileSync(process.execPath, [agentEventPrivacyTest], { encoding: "utf8" });
+assert(agentEventPrivacyOutput.endsWith("\nAll agent-event privacy checks passed.\n"), "native TypeScript agent event privacy suite executes directly");
+const agentPrivacyOutput = execFileSync(process.execPath, [agentPrivacyTest], { encoding: "utf8" });
+assert(agentPrivacyOutput.trim() === "All agent privacy helper checks passed.", "native TypeScript agent privacy suite executes directly");
 assert(
   ![
     runner,
@@ -159,6 +174,11 @@ assert(
     agentCommandToolTest,
     agentCommandAuthorizationTest,
     sandboxTest,
+    agentContextTest,
+    agentLoopTest,
+    agentReceiptTest,
+    agentEventPrivacyTest,
+    agentPrivacyTest,
   ].some((file) => existsSync(file.replace(/\.ts$/, ".js")) || existsSync(file.replace(/\.ts$/, ".js.map"))),
   "native TypeScript runner and agent suites emit no JavaScript or source maps",
 );
