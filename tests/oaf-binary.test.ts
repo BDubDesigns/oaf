@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import type { SpawnSyncReturns } from "node:child_process";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const binary = join(root, "bin", "oaf.ts");
@@ -16,7 +17,7 @@ Usage:
 let failures = 0;
 
 /** @param {boolean} condition @param {string} message */
-function assert(condition, message) {
+function assert(condition: boolean, message: string): void {
   if (condition) console.log(`PASS  ${message}`);
   else {
     console.log(`FAIL  ${message}`);
@@ -25,12 +26,12 @@ function assert(condition, message) {
 }
 
 /** @param {string[]} args @param {string} [cwd] */
-function runNode(args, cwd = root) {
+function runNode(args: string[], cwd: string = root): SpawnSyncReturns<string> {
   return spawnSync(process.execPath, [binary, ...args], { cwd, encoding: "utf8" });
 }
 
 /** @param {string[]} args @param {string} [cwd] */
-function runDirect(args, cwd = root) {
+function runDirect(args: string[], cwd: string = root): SpawnSyncReturns<string> {
   return spawnSync("./bin/oaf.ts", args, { cwd, encoding: "utf8" });
 }
 

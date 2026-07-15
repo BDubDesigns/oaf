@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { getAppTemplates } from "../lib/templates.ts";
 import { BLESSED_PACKAGE_MANAGER, BLESSED_PACKAGE_SCRIPTS } from "../lib/command-policy.ts";
 import { loadStackSnapshot } from "../lib/stack-snapshot.ts";
+import type { AppTemplateTree } from "../lib/templates.ts";
 
 const NAME = "generated-app-fixture";
 const CREATED_AT = "2000-01-01T00:00:00.000Z";
@@ -50,13 +51,30 @@ const COMPLETE_TREE_DIGEST = "afa58a4a4b507c204ebeec168d8c7f7b180c051691cc1fe055
 const CLEAN_MAIN_README_DIGEST = "7827f616071ce68596ce38ef4cce5542264e80886c5b06d7b84d9e816dde6e2e";
 
 /** @param {string} content */
-function digest(content) {
+function digest(content: string): string {
   return createHash("sha256").update(content, "utf8").digest("hex");
 }
 
 /** @param {Record<string, string>} tree */
-function describe(tree) {
+function describe(tree: AppTemplateTree): [string, number, string][] {
   return Object.entries(tree).map(([path, content]) => [path, Buffer.byteLength(content, "utf8"), digest(content)]);
+}
+
+function parseRecord(text: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(text);
+  if (!isRecord(parsed)) throw new Error("template JSON must be an object");
+  return parsed;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function templateValue(tree: unknown, path: string): string {
+  if (tree === null || typeof tree !== "object" || Array.isArray(tree)) throw new Error("template tree must be an object");
+  const value = Reflect.get(tree, path);
+  if (typeof value !== "string") throw new Error(`template ${path} must be a string`);
+  return value;
 }
 
 const tree = getAppTemplates(NAME, CREATED_AT);
@@ -102,31 +120,31 @@ const special = Reflect.apply(getAppTemplates, undefined, [specialName, CREATED_
 assert.ok(special["README.md"].startsWith(`# ${specialName}\n`), "README name interpolation remains raw");
 assert.equal(JSON.parse(special["package.json"]).name, specialName, "package JSON retains native escaping");
 
-const numeric = Reflect.apply(getAppTemplates, undefined, [123, 456]);
-assert.equal(numeric["README.md"].startsWith("# 123\n"), true, "numeric names use native interpolation");
-assert.deepEqual(JSON.parse(numeric["oaf/app.json"]), { name: 123, createdBy: "oaf", createdAt: 456 }, "numeric inputs use native JSON serialization");
-const nullName = Reflect.apply(getAppTemplates, undefined, [null, CREATED_AT]);
-assert.equal(nullName["README.md"].startsWith("# null\n"), true, "null names use native interpolation");
-assert.equal(JSON.parse(nullName["package.json"]).name, null, "null names use native JSON serialization");
-const undefinedValues = Reflect.apply(getAppTemplates, undefined, [undefined, undefined]);
-assert.equal(undefinedValues["README.md"].startsWith("# undefined\n"), true, "undefined names use native interpolation");
-assert.deepEqual(JSON.parse(undefinedValues["oaf/app.json"]), { createdBy: "oaf" }, "undefined values retain native JSON omission");
+const numeric: unknown = Reflect.apply(getAppTemplates, undefined, [123, 456]);
+assert.equal(templateValue(numeric, "README.md").startsWith("# 123\n"), true, "numeric names use native interpolation");
+assert.deepEqual(JSON.parse(templateValue(numeric, "oaf/app.json")), { name: 123, createdBy: "oaf", createdAt: 456 }, "numeric inputs use native JSON serialization");
+const nullName: unknown = Reflect.apply(getAppTemplates, undefined, [null, CREATED_AT]);
+assert.equal(templateValue(nullName, "README.md").startsWith("# null\n"), true, "null names use native interpolation");
+assert.equal(Reflect.get(parseRecord(templateValue(nullName, "package.json")), "name"), null, "null names use native JSON serialization");
+const undefinedValues: unknown = Reflect.apply(getAppTemplates, undefined, [undefined, undefined]);
+assert.equal(templateValue(undefinedValues, "README.md").startsWith("# undefined\n"), true, "undefined names use native interpolation");
+assert.deepEqual(JSON.parse(templateValue(undefinedValues, "oaf/app.json")), { createdBy: "oaf" }, "undefined values retain native JSON omission");
 assert.throws(() => Reflect.apply(getAppTemplates, undefined, [1n, CREATED_AT]), TypeError, "BigInt serialization errors propagate without wrapping");
 /** @type {{ self?: unknown }} */
-const cyclic = {};
+const cyclic: { self?: unknown } = {};
 cyclic.self = cyclic;
 assert.throws(() => Reflect.apply(getAppTemplates, undefined, ["cyclic", cyclic]), TypeError, "cyclic serialization errors propagate without wrapping");
 
 const snapshot = loadStackSnapshot();
-const packageJson = JSON.parse(independent["package.json"]);
+const packageJson = parseRecord(independent["package.json"]);
 assert.deepEqual(Object.keys(packageJson), ["name", "private", "packageManager", "scripts"], "package JSON property order is unchanged");
-assert.equal(packageJson.packageManager, BLESSED_PACKAGE_MANAGER, "package manager remains command-policy-derived");
-assert.deepEqual(packageJson.scripts, BLESSED_PACKAGE_SCRIPTS, "package scripts remain command-policy-derived");
-const appJson = JSON.parse(independent["oaf/app.json"]);
+assert.equal(Reflect.get(packageJson, "packageManager"), BLESSED_PACKAGE_MANAGER, "package manager remains command-policy-derived");
+assert.deepEqual(Reflect.get(packageJson, "scripts"), BLESSED_PACKAGE_SCRIPTS, "package scripts remain command-policy-derived");
+const appJson = parseRecord(independent["oaf/app.json"]);
 assert.deepEqual(Object.keys(appJson), ["name", "createdBy", "createdAt"], "app JSON property order is unchanged");
-assert.deepEqual(Object.keys(JSON.parse(independent["oaf/docs-pack.json"])), ["docsPack", "oafStack"], "docs-pack JSON property order is unchanged");
-assert.equal(JSON.parse(independent["oaf/stack.json"]).oafStack, snapshot.id, "stack ID remains snapshot-derived");
-assert.equal(JSON.parse(independent["oaf/docs-pack.json"]).docsPack, snapshot.docsPack, "docs-pack ID remains snapshot-derived");
+assert.deepEqual(Object.keys(parseRecord(independent["oaf/docs-pack.json"])), ["docsPack", "oafStack"], "docs-pack JSON property order is unchanged");
+assert.equal(Reflect.get(parseRecord(independent["oaf/stack.json"]), "oafStack"), snapshot.id, "stack ID remains snapshot-derived");
+assert.equal(Reflect.get(parseRecord(independent["oaf/docs-pack.json"]), "docsPack"), snapshot.docsPack, "docs-pack ID remains snapshot-derived");
 assert.ok(independent["docker-compose.yml"].includes(`image: ${snapshot.data.postgresImage}`), "Postgres image remains snapshot-derived");
 
 console.log("Templates checks passed.");

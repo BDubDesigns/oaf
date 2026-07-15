@@ -20,9 +20,12 @@ const EXPECTED_KEYS = {
 };
 const COMPONENT_KEYS = Object.entries(EXPECTED_KEYS).flatMap(([section, keys]) => keys.map((key) => `${section}.${key}`));
 
+type SnapshotRecord = Record<string, unknown>;
+type SectionName = keyof typeof EXPECTED_KEYS;
+
 let failures = 0;
 /** @param {unknown} condition @param {string} message */
-function assert(condition, message) {
+function assert(condition: unknown, message: string): void {
   if (condition) console.log(`PASS  ${message}`);
   else {
     console.log(`FAIL  ${message}`);
@@ -31,7 +34,7 @@ function assert(condition, message) {
 }
 
 /** @param {() => unknown} action @param {string} message @param {string} expected */
-function throws(action, message, expected) {
+function throws(action: () => unknown, message: string, expected: string): void {
   try {
     action();
     assert(false, message);
@@ -41,17 +44,41 @@ function throws(action, message, expected) {
 }
 
 /** @param {unknown} value */
-function copy(value) {
-  return JSON.parse(JSON.stringify(value));
+function isRecord(value: unknown): value is SnapshotRecord {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-/** @param {string} section @param {object} value @param {string[]} expectedKeys */
-function assertSectionKeys(section, value, expectedKeys) {
+function copy(value: unknown): unknown {
+  const parsed: unknown = JSON.parse(JSON.stringify(value));
+  return parsed;
+}
+
+function copyRecord(value: unknown): SnapshotRecord {
+  const copied = copy(value);
+  if (!isRecord(copied)) throw new Error("snapshot copy must be an object");
+  return copied;
+}
+
+function section(value: SnapshotRecord, key: string): SnapshotRecord {
+  const selected = Reflect.get(value, key);
+  if (!isRecord(selected)) throw new Error(`snapshot ${key} section must be an object`);
+  return selected;
+}
+
+function isSectionName(value: string): value is SectionName {
+  return Object.hasOwn(EXPECTED_KEYS, value);
+}
+
+function sameReference(left: unknown, right: unknown): boolean {
+  return left === right;
+}
+
+function assertSectionKeys(section: string, value: object, expectedKeys: string[]): void {
   assert(JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...expectedKeys].sort()), `${section} contains every expected component exactly once`);
 }
 
-function validSnapshot() {
-  return copy(loadStackSnapshot());
+function validSnapshot(): SnapshotRecord {
+  return copyRecord(loadStackSnapshot());
 }
 
 // Snapshot exists and has the locked, exact contract.
@@ -72,36 +99,36 @@ for (const value of [null, [], "snapshot", 1, () => {}]) {
   throws(() => validateStackSnapshot(value), `top-level ${value === null ? "null" : typeof value} is rejected`, "stack snapshot has unknown, missing, or malformed top-level sections");
 }
 assert(validateStackSnapshot(validSnapshot()) !== null, "ordinary objects are accepted");
-const nullPrototype = Object.assign(Object.create(null), validSnapshot());
-assert(validateStackSnapshot(nullPrototype) === nullPrototype, "null-prototype objects are accepted");
+const nullPrototype: unknown = Object.assign(Object.create(null), validSnapshot());
+assert(sameReference(validateStackSnapshot(nullPrototype), nullPrototype), "null-prototype objects are accepted");
 class SnapshotInstance {}
-const instance = Object.assign(new SnapshotInstance(), validSnapshot());
-assert(validateStackSnapshot(instance) === instance, "class instances are accepted");
+const instance: unknown = Object.assign(new SnapshotInstance(), validSnapshot());
+assert(sameReference(validateStackSnapshot(instance), instance), "class instances are accepted");
 const missingTopLevel = validSnapshot();
 delete missingTopLevel.testing;
 throws(() => validateStackSnapshot(missingTopLevel), "missing top-level key is rejected", "stack snapshot has unknown, missing, or malformed top-level sections");
 const extraTopLevel = validSnapshot();
 extraTopLevel.extra = true;
 throws(() => validateStackSnapshot(extraTopLevel), "extra enumerable own top-level key is rejected", "stack snapshot has unknown, missing, or malformed top-level sections");
-const inheritedTopLevel = Object.create({ testing: validSnapshot().testing });
-Object.assign(inheritedTopLevel, validSnapshot());
-delete inheritedTopLevel.testing;
-inheritedTopLevel.placeholder = true;
-assert(validateStackSnapshot(inheritedTopLevel) === inheritedTopLevel, "inherited top-level required keys are accepted when enumerable own-key count matches");
+const inheritedTopLevelValue: unknown = Object.assign(Object.create({ testing: Reflect.get(validSnapshot(), "testing") }), validSnapshot());
+if (!isRecord(inheritedTopLevelValue)) throw new Error("inherited snapshot must be an object");
+const inheritedTopLevel = inheritedTopLevelValue;
+Reflect.deleteProperty(inheritedTopLevel, "testing");
+Reflect.set(inheritedTopLevel, "placeholder", true);
+assert(sameReference(validateStackSnapshot(inheritedTopLevel), inheritedTopLevel), "inherited top-level required keys are accepted when enumerable own-key count matches");
 const nonEnumerableTopLevel = validSnapshot();
 Object.defineProperty(nonEnumerableTopLevel, "extra", { value: true });
-assert(validateStackSnapshot(nonEnumerableTopLevel) === nonEnumerableTopLevel, "non-enumerable top-level extras are ignored");
+assert(sameReference(validateStackSnapshot(nonEnumerableTopLevel), nonEnumerableTopLevel), "non-enumerable top-level extras are ignored");
 const symbolTopLevel = validSnapshot();
-symbolTopLevel[Symbol("extra")] = true;
-assert(validateStackSnapshot(symbolTopLevel) === symbolTopLevel, "symbol top-level extras are ignored");
-/** @type {Record<string, unknown>} */
-const reordered = {};
-for (const key of Object.keys(validSnapshot()).reverse()) reordered[key] = validSnapshot()[key];
+Reflect.set(symbolTopLevel, Symbol("extra"), true);
+assert(sameReference(validateStackSnapshot(symbolTopLevel), symbolTopLevel), "symbol top-level extras are ignored");
+const reordered: SnapshotRecord = {};
+for (const key of Object.keys(validSnapshot()).reverse()) Reflect.set(reordered, key, Reflect.get(validSnapshot(), key));
 assert(validateStackSnapshot(reordered).id === "0.1.0", "top-level key order does not matter");
 
 // Identity, literals, docs-pack rules, and date behavior.
 const identity = validSnapshot();
-assert(validateStackSnapshot(identity) === identity, "validation returns the original object reference");
+assert(sameReference(validateStackSnapshot(identity), identity), "validation returns the original object reference");
 const wrongId = validSnapshot();
 wrongId.id = "0.1";
 throws(() => validateStackSnapshot(wrongId), "wrong ID is rejected", "stack snapshot id must be 0.1.0");
@@ -111,7 +138,7 @@ throws(() => validateStackSnapshot(wrongStatus), "wrong status is rejected", "st
 for (const [value, accepted] of [["stack-0.1", true], ["STACK_0.1", true], [".stack", false], ["stack/0.1", false], ["../stack", false], ["stack 0.1", false], [1, false]]) {
   const candidate = validSnapshot();
   candidate.docsPack = value;
-  if (accepted) assert(validateStackSnapshot(candidate) === candidate, `docsPack ${String(value)} is accepted`);
+  if (accepted) assert(sameReference(validateStackSnapshot(candidate), candidate), `docsPack ${String(value)} is accepted`);
   else throws(() => validateStackSnapshot(candidate), `docsPack ${String(value)} is rejected`, "stack snapshot docsPack must be a known identifier");
 }
 const malformedDate = validSnapshot();
@@ -122,47 +149,49 @@ parseFailureDate.verifiedAt = "2026-99-99";
 throws(() => validateStackSnapshot(parseFailureDate), "unparseable date is rejected", "stack snapshot verifiedAt is not a real date");
 const parsedCalendarDate = validSnapshot();
 parsedCalendarDate.verifiedAt = "2026-02-31";
-assert(validateStackSnapshot(parsedCalendarDate) === parsedCalendarDate, "Date.parse-accepted calendar-looking date remains accepted");
+assert(sameReference(validateStackSnapshot(parsedCalendarDate), parsedCalendarDate), "Date.parse-accepted calendar-looking date remains accepted");
 
 // Every section retains its exact key and object behavior.
-for (const [section, keys] of Object.entries(EXPECTED_KEYS)) {
+for (const [sectionName, keys] of Object.entries(EXPECTED_KEYS)) {
   const valid = validSnapshot();
-  assert(validateStackSnapshot(valid) === valid, `${section} valid exact shape is accepted`);
+  assert(sameReference(validateStackSnapshot(valid), valid), `${sectionName} valid exact shape is accepted`);
   const missing = validSnapshot();
-  delete missing[section][keys[0]];
-  throws(() => validateStackSnapshot(missing), `${section} missing key is rejected`, `stack snapshot ${section} section has unknown, missing, or malformed values`);
+  Reflect.deleteProperty(section(missing, sectionName), keys[0]);
+  throws(() => validateStackSnapshot(missing), `${sectionName} missing key is rejected`, `stack snapshot ${sectionName} section has unknown, missing, or malformed values`);
   const extra = validSnapshot();
-  extra[section].extra = true;
-  throws(() => validateStackSnapshot(extra), `${section} extra enumerable own key is rejected`, `stack snapshot ${section} section has unknown, missing, or malformed values`);
+  Reflect.set(section(extra, sectionName), "extra", true);
+  throws(() => validateStackSnapshot(extra), `${sectionName} extra enumerable own key is rejected`, `stack snapshot ${sectionName} section has unknown, missing, or malformed values`);
   const nonObject = validSnapshot();
-  nonObject[section] = "not-an-object";
-  throws(() => validateStackSnapshot(nonObject), `${section} non-object is rejected`, `stack snapshot ${section} section has unknown, missing, or malformed values`);
+  nonObject[sectionName] = "not-an-object";
+  throws(() => validateStackSnapshot(nonObject), `${sectionName} non-object is rejected`, `stack snapshot ${sectionName} section has unknown, missing, or malformed values`);
   const array = validSnapshot();
-  array[section] = [];
-  throws(() => validateStackSnapshot(array), `${section} array is rejected`, `stack snapshot ${section} section has unknown, missing, or malformed values`);
+  array[sectionName] = [];
+  throws(() => validateStackSnapshot(array), `${sectionName} array is rejected`, `stack snapshot ${sectionName} section has unknown, missing, or malformed values`);
 }
-const inheritedRuntime = Object.create({ pnpm: snapshot.runtime.pnpm });
-inheritedRuntime.node = snapshot.runtime.node;
-inheritedRuntime.placeholder = true;
+const inheritedRuntimeValue: unknown = Object.create({ pnpm: snapshot.runtime.pnpm });
+if (!isRecord(inheritedRuntimeValue)) throw new Error("inherited runtime must be an object");
+const inheritedRuntime = inheritedRuntimeValue;
+Reflect.set(inheritedRuntime, "node", snapshot.runtime.node);
+Reflect.set(inheritedRuntime, "placeholder", true);
 const inheritedSection = validSnapshot();
 inheritedSection.runtime = inheritedRuntime;
-assert(validateStackSnapshot(inheritedSection) === inheritedSection, "inherited section required keys are accepted when enumerable own-key count matches");
+assert(sameReference(validateStackSnapshot(inheritedSection), inheritedSection), "inherited section required keys are accepted when enumerable own-key count matches");
 
 // Accessors and Proxies retain the original repeated direct section reads.
-/** @type {Record<string, number>} */
-const accessorCounts = { runtime: 0, framework: 0, data: 0, app: 0, testing: 0 };
+const accessorCounts: Record<SectionName, number> = { runtime: 0, framework: 0, data: 0, app: 0, testing: 0 };
 const accessorSnapshot = validSnapshot();
-for (const section of Object.keys(accessorCounts)) {
-  const value = accessorSnapshot[section];
-  Object.defineProperty(accessorSnapshot, section, {
+for (const sectionName of Object.keys(accessorCounts)) {
+  if (!isSectionName(sectionName)) continue;
+  const value = Reflect.get(accessorSnapshot, sectionName);
+  Object.defineProperty(accessorSnapshot, sectionName, {
     enumerable: true,
     get() {
-      accessorCounts[section]++;
+      accessorCounts[sectionName]++;
       return value;
     },
   });
 }
-assert(validateStackSnapshot(accessorSnapshot) === accessorSnapshot, "stable section accessors are accepted");
+assert(sameReference(validateStackSnapshot(accessorSnapshot), accessorSnapshot), "stable section accessors are accepted");
 assert(accessorCounts.runtime === 3, "runtime accessor is read exactly 3 times");
 assert(accessorCounts.framework === 7, "framework accessor is read exactly 7 times");
 assert(accessorCounts.data === 6, "data accessor is read exactly 6 times");
@@ -170,7 +199,7 @@ assert(accessorCounts.app === 5, "app accessor is read exactly 5 times");
 assert(accessorCounts.testing === 3, "testing accessor is read exactly 3 times");
 let changingRuntimeReads = 0;
 const changingRuntime = validSnapshot();
-const validRuntime = changingRuntime.runtime;
+const validRuntime = section(changingRuntime, "runtime");
 Object.defineProperty(changingRuntime, "runtime", {
   enumerable: true,
   get() {
@@ -197,36 +226,35 @@ try {
 } catch (error) {
   assert(error === laterReadError, "getter exception during a later component read propagates");
 }
-/** @type {Record<string, number>} */
-const proxyCounts = { runtime: 0, framework: 0, data: 0, app: 0, testing: 0 };
+const proxyCounts: Record<SectionName, number> = { runtime: 0, framework: 0, data: 0, app: 0, testing: 0 };
 const proxySnapshot = new Proxy(validSnapshot(), {
   get(target, property, receiver) {
-    if (typeof property === "string" && Object.hasOwn(proxyCounts, property)) proxyCounts[property]++;
+    if (typeof property === "string" && isSectionName(property)) proxyCounts[property]++;
     return Reflect.get(target, property, receiver);
   },
 });
-assert(validateStackSnapshot(proxySnapshot) === proxySnapshot, "section Proxy is accepted");
+assert(sameReference(validateStackSnapshot(proxySnapshot), proxySnapshot), "section Proxy is accepted");
 assert(JSON.stringify(proxyCounts) === JSON.stringify(accessorCounts), "Proxy get trap observes repeated direct section reads");
 
 // Version, image, and cross-field validation retain their exact expressions.
 const versionCases = [["1.2.3", true], ["^1.2.3", false], ["~1.2.3", false], ["1.2.*", false], ["1.2.3-rc.1", false], [" 1.2.3 ", false], [1, false]];
 for (const [value, accepted] of versionCases) {
   const candidate = validSnapshot();
-  candidate.framework.next = value;
-  if (accepted) assert(validateStackSnapshot(candidate) === candidate, `version ${String(value)} is accepted`);
+  Reflect.set(section(candidate, "framework"), "next", value);
+  if (accepted) assert(sameReference(validateStackSnapshot(candidate), candidate), `version ${String(value)} is accepted`);
   else throws(() => validateStackSnapshot(candidate), `version ${String(value)} is rejected`, "framework.next must be an exact stable version");
 }
 const missingVersion = validSnapshot();
-delete missingVersion.framework.next;
+Reflect.deleteProperty(section(missingVersion, "framework"), "next");
 throws(() => validateStackSnapshot(missingVersion), "missing component is rejected by section shape", "stack snapshot framework section has unknown, missing, or malformed values");
 for (const [value, accepted] of [[snapshot.data.postgresImage, true], ["postgres:latest", false], ["postgres:18.3-BOOKWORM", false], ["postgres:18.3-", false], ["postgres:18-bookworm", false], [1, false]]) {
   const candidate = validSnapshot();
-  candidate.data.postgresImage = value;
-  if (accepted) assert(validateStackSnapshot(candidate) === candidate, `Postgres image ${String(value)} is accepted`);
+  Reflect.set(section(candidate, "data"), "postgresImage", value);
+  if (accepted) assert(sameReference(validateStackSnapshot(candidate), candidate), `Postgres image ${String(value)} is accepted`);
   else throws(() => validateStackSnapshot(candidate), `Postgres image ${String(value)} is rejected`, "data.postgresImage must be an exact postgres image tag");
 }
 const mismatch = validSnapshot();
-mismatch.framework.reactDom = "0.0.0";
+Reflect.set(section(mismatch, "framework"), "reactDom", "0.0.0");
 throws(() => validateStackSnapshot(mismatch), "React mismatch is rejected", "framework.react and framework.reactDom must match exactly");
 
 // Loader returns independent caller-owned JSON data and templates retain lock-derived output.

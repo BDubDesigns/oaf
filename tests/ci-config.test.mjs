@@ -24,15 +24,15 @@ const EXPECTED_TESTS = [
   "tests/agent-write-tool.test.ts",
   "tests/ci-config.test.mjs",
   "tests/command-policy.test.ts",
-  "tests/doctor.test.mjs",
-  "tests/generated-app-fixture.test.mjs",
-  "tests/oaf-binary.test.mjs",
-  "tests/oaf-init.test.mjs",
+  "tests/doctor.test.ts",
+  "tests/generated-app-fixture.test.ts",
+  "tests/oaf-binary.test.ts",
+  "tests/oaf-init.test.ts",
   "tests/openai-compatible-provider.test.ts",
   "tests/runtime-typecheck-foundation.test.mjs",
   "tests/sandbox.test.ts",
-  "tests/stack-snapshot.test.mjs",
-  "tests/templates.test.mjs",
+  "tests/stack-snapshot.test.ts",
+  "tests/templates.test.ts",
 ];
 let failures = 0;
 

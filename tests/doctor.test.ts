@@ -4,10 +4,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { DoctorCheck, DoctorCheckLabel } from "../lib/doctor.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const binPath = join(root, "bin", "oaf.ts");
-const labels = [
+const labels: DoctorCheckLabel[] = [
   "oaf/app.json",
   "oaf/stack.json",
   "oaf/docs-pack.json",
@@ -28,35 +29,35 @@ const labels = [
 const files = labels.slice(0, 5);
 const directories = labels.slice(5).map((label) => label.slice(0, -1));
 /** @type {string[]} */
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
-function temporaryRoot() {
+function temporaryRoot(): string {
   const path = mkdtempSync(join(tmpdir(), "oaf-doctor-"));
   temporaryRoots.push(path);
   return path;
 }
 
 /** @param {string} rootPath @param {string} relativePath */
-function createFile(rootPath, relativePath) {
+function createFile(rootPath: string, relativePath: string): void {
   mkdirSync(dirname(join(rootPath, relativePath)), { recursive: true });
   writeFileSync(join(rootPath, relativePath), "");
 }
 
 /** @param {string} rootPath */
-function populate(rootPath) {
+function populate(rootPath: string): void {
   for (const file of files) createFile(rootPath, file);
   for (const directory of directories) mkdirSync(join(rootPath, directory), { recursive: true });
 }
 
 /** @param {string} cwd */
-function runDoctor(cwd) {
+function runDoctor(cwd: string) {
   return spawnSync(process.execPath, [binPath, "doctor"], { cwd, encoding: "utf8" });
 }
 
 const importDirectory = temporaryRoot();
 const originalDirectory = process.cwd();
 /** @type {typeof import("../lib/doctor.ts").checkApp} */
-let checkApp;
+let checkApp: (dir?: string) => DoctorCheck[];
 try {
   process.chdir(importDirectory);
   const doctor = await import("../lib/doctor.ts");
@@ -123,7 +124,7 @@ try {
   for (const value of [null, 1, Symbol("directory"), {}]) {
     assert.throws(
       () => Reflect.apply(checkApp, undefined, [value]),
-      (error) => error instanceof TypeError && (!("code" in error) || error.code === "ERR_INVALID_ARG_TYPE"),
+      (error: unknown) => error instanceof TypeError && (!("code" in error) || Reflect.get(error, "code") === "ERR_INVALID_ARG_TYPE"),
       "invalid JavaScript directories retain native TypeErrors",
     );
   }

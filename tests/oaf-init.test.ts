@@ -11,7 +11,7 @@ const binPath = join(repoRoot, "bin", "oaf.ts");
 const base = mkdtempSync(join(tmpdir(), "oaf-init-"));
 
 let failures = 0;
-function assert(cond, msg) {
+function assert(cond: unknown, msg: string): void {
   if (cond) {
     console.log(`PASS  ${msg}`);
   } else {
@@ -59,7 +59,7 @@ try {
     refusedTraversal = true;
   }
   assert(refusedTraversal, "init refuses path-traversal name");
-} catch (e) {
+} catch (e: unknown) {
   console.error(e);
   failures++;
 } finally {
