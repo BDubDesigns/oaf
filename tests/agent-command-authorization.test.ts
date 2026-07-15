@@ -123,7 +123,7 @@ try {
   }
   await Reflect.apply(runAgentSandboxCommand, undefined, [new CompatibleOptions()]);
   assert(compatibleCalls === 2, "class instance with allowed fields reaches dependency path");
-  const nullPrototypeOptions = Object.create(null);
+  const nullPrototypeOptions: Record<string, unknown> = Object.create(null);
   nullPrototypeOptions.command = "git status";
   nullPrototypeOptions.cwd = fixture.workspace;
   nullPrototypeOptions.dependencies = compatibleDependencies;
@@ -140,7 +140,7 @@ try {
     constructor() { this.command = "git status"; this.dependencies = rejectedDependencies; this.unexpected = true; }
   }
   await rejects(() => Reflect.apply(runAgentSandboxCommand, undefined, [new UnexpectedOptions()]), "INVALID_AGENT_ARGUMENT", "class instance unexpected field is rejected");
-  const nullPrototypeUnexpected = Object.create(null);
+  const nullPrototypeUnexpected: Record<string, unknown> = Object.create(null);
   nullPrototypeUnexpected.command = "git status";
   nullPrototypeUnexpected.dependencies = rejectedDependencies;
   nullPrototypeUnexpected.unexpected = true;
@@ -189,7 +189,7 @@ try {
   let runtimeCalls = 0;
   const invalid = copyGeneratedAppFixture();
   try { const value = manifest(invalid.workspace); value.scripts.test = "node malicious.mjs"; writeManifest(invalid.workspace, value); await rejects(() => runAgentSandboxCommand({ command: "pnpm test", cwd: invalid.workspace, dependencies: { detectRuntime: () => { runtimeCalls++; return "fake"; } } }), "PACKAGE_SCRIPT_POLICY", "script policy rejects before runtime startup"); assert(runtimeCalls === 0, "script policy does not invoke runtime or container"); } finally { invalid.cleanup(); }
-  let gitCwd = null;
+  let gitCwd: string | null = null;
   await runAgentSandboxCommand({ command: "git status", cwd: fixture.workspace, dependencies: { detectRuntime: () => "fake", runContainer: async ({ cwd, argv }) => { gitCwd = cwd; assert(argv.includes(`${fixture.workspace}:/workspace:ro`) && argv[argv.indexOf("--network") + 1] === "none", "git runner uses authoritative read-only mount"); return { exitCode: 0, stdout: "", stderr: "", truncated: false }; } } });
   assert(gitCwd === fixture.workspace, "git inspection creates no disposable workspace");
   const stdout: string[] = []; const stderr: string[] = [];

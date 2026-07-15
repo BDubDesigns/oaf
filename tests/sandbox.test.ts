@@ -89,7 +89,7 @@ try {
   blockedOut = execFileSync("node", [binPath, "sandbox", "run", "sudo rm -rf /"], {
     stdio: "pipe",
   }).toString();
-  } catch (error: unknown) {
+} catch (error: unknown) {
   blockedOut = foreignString(error, "stdout") + foreignString(error, "stderr");
 }
 assert(/blocked/i.test(blockedOut), "CLI blocks denied command");
